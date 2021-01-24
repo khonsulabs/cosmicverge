@@ -1,0 +1,48 @@
+[tasks.wasm-pack-development]
+condition = { profiles = ["development"] }
+command = "wasm-pack"
+args = ["build", "--target", "web", "--dev", "-d", "static/pkg"]
+
+[tasks.wasm-pack-release]
+condition = { profiles = ["release"] }
+command = "wasm-pack"
+args = ["build", "--target", "web", "-d", "static/pkg", "--release"]
+
+[tasks.wasm-pack]
+run_task = { name = [
+    "wasm-pack-release",
+    "wasm-pack-development"
+], parallel = true }
+
+[tasks.sass]
+script = ["sass sass/styles.sass static/styles.css"]
+
+[tasks.build-wasm]
+clear = true # For this project we don't want the default build command
+run_task = { name = ["wasm-pack"] }
+
+[tasks.build]
+clear = true # For this project we don't want the default build command
+run_task = { name = ["build-wasm", "sass"] }
+
+[tasks.watch]
+run_task = { name = ["watch-sass", "watch-wasm"], parallel = true }
+
+[tasks.watch-sass]
+script = ["sass --watch sass/styles.sass static/styles.css"]
+
+[tasks.watch-wasm]
+command = "cargo"
+args = [
+    "watch",
+    "-i",
+    "static/index.html",
+    "-w",
+    "src",
+    "-w",
+    "static/styles.css",
+    "-w",
+    "../shared",
+    "-x",
+    "make build-wasm"
+]
