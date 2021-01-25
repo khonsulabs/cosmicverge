@@ -3,14 +3,20 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Loading... - ncog.id</title>
+    <title>Loading... - Cosmic Verge</title>
     <link rel="stylesheet" href="/styles.css" />
     <script type="module">
-      import init, { run_app } from "./pkg/web.js";
+      import init, { run_app, glcanvas } from "./pkg/web.js";
 
       async function run() {
         await init();
+        // Purposely don't await so that it runs asynchronously
+        rungl();
         run_app();
+      }
+
+      async function rungl() {
+        glcanvas()
       }
 
       run();
@@ -18,5 +24,8 @@
     <base href="/index.html" />
   </head>
 
-  <body></body>
+  <body>
+    <div id="app"></div>
+    <canvas id="glcanvas"></canvas>
+  </body>
 </html>

@@ -17,9 +17,12 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 chrono = { version = "*", features = ["serde", "js-sys"] }
 wasm-bindgen = "0.2"
-web-sys = { version = "0.3", features = ["UrlSearchParams"] }
+web-sys = { version = "0.3", features = ["UrlSearchParams", "NamedNodeMap", "Attr"] }
 log = "0.4"
 wasm-logger = "0.2"
+glow = "0.7"
+once_cell = "1"
+console_error_panic_hook = "0.1"
 
 [patch.crates-io]
 cosmicverge-shared = { path = "../shared" }

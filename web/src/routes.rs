@@ -22,21 +22,22 @@ pub enum AppRoute {
     // BackOfficeRolesList,
     // #[to = "/backoffice!"]
     // BackOfficeDashboard,
-    #[to = "/!"]
-    Index,
     #[to = "/"]
-    NotFound,
+    Index,
+
+    // #[to = "/"]
+    // NotFound,
 }
 
 impl AppRoute {
     pub fn render(&self, set_title: Callback<String>) -> Html {
         match self {
             AppRoute::Index => {
-                html! {<StaticPage title="Welcome" content=localize("home-page") set_title=set_title.clone() />}
+                html! {<p>{"Hello"}</p>}
             }
-            AppRoute::NotFound => {
-                html! {<StaticPage title="Not Found" content=localize("not-found") set_title=set_title.clone() />}
-            }
+            // AppRoute::NotFound => {
+            //     html! {<StaticPage title="Not Found" content=localize("not-found") set_title=set_title.clone() />}
+            // }
         }
     }
 }
