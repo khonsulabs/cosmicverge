@@ -1,7 +1,7 @@
 
 use glow::*;
 use wasm_bindgen::prelude::*;
-use crate::{frame_counter, initialize_shared_helpers, space_bridge};
+use crate::{initialize_shared_helpers, space_bridge};
 use crossbeam::channel::Receiver;
 use crate::space_bridge::BridgeCommand;
 use wasm_bindgen::JsCast;
@@ -20,7 +20,6 @@ impl SpaceView {
     fn new(command_receiver: Receiver<space_bridge::BridgeCommand>) -> Self {
         let gl = unsafe {
             let (_window, gl, _events_loop, _render_loop, shader_version) = {
-                use wasm_bindgen::JsCast;
                 let canvas = web_sys::window()
                     .unwrap()
                     .document()
@@ -113,18 +112,12 @@ impl SpaceView {
         }
     }
 
-    fn run(mut self) {
+    fn run(self) {
         self.request_animation_frame();
     }
 
     fn receive_commands(&mut self) {
         while let Ok(command) = self.command_receiver.try_recv() {
-            self.handle_command(command);
-        }
-    }
-
-    fn receive_at_least_one_command(&mut self) {
-        if let Ok(command) = self.command_receiver.recv() {
             self.handle_command(command);
         }
     }
@@ -140,7 +133,7 @@ impl SpaceView {
         }
     }
 
-    fn request_animation_frame(mut self) {
+    fn request_animation_frame(self) {
         let closure = Closure::once_into_js(move || {
             self.next_frame()
         });
@@ -150,7 +143,7 @@ impl SpaceView {
             .unwrap();
     }
 
-    fn sleep_before_frame(mut self, sleep_duration: Duration) {
+    fn sleep_before_frame(self, sleep_duration: Duration) {
         info!("Fast machine! Sleeping {}ms", sleep_duration.as_millis());
         let closure = Closure::once_into_js(move || {
             self.request_animation_frame()
@@ -196,7 +189,7 @@ impl SpaceView {
                 if let Some(attr) = width_attr {
                     attr.set_value(&canvas.client_width().to_string());
                 } else {
-                    canvas.set_attribute("width", &canvas.client_width().to_string());
+                    let _ = canvas.set_attribute("width", &canvas.client_width().to_string());
                 }
             }
 
@@ -205,7 +198,7 @@ impl SpaceView {
                 if let Some(attr) = height_attr {
                     attr.set_value(&canvas.client_height().to_string());
                 } else {
-                    canvas.set_attribute("height", &canvas.client_height().to_string());
+                    let _ = canvas.set_attribute("height", &canvas.client_height().to_string());
                 }
             }
 

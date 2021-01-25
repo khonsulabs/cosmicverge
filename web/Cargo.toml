@@ -24,6 +24,9 @@ glow = "0.7"
 once_cell = "1"
 console_error_panic_hook = "0.1"
 crossbeam = {version = "0.8"}
+fluent-templates = "0.5"
+unic-langid = "0.9"
+include_dir = "0.6"
 
 [patch.crates-io]
 cosmicverge-shared = { path = "../shared" }

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // Create a flow of messages from the canvas to the app, and the app to the canvas
 //   App -> Canvas: Start/Stop animation, eventually more stuff including socket updates, scene changes, etc
 //   Canvas -> App: Click events (eventually)

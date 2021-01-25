@@ -1,18 +1,22 @@
 use crate::routes::AppRoute;
 use yew::prelude::*;
 use yew_router::prelude::*;
-use std::sync::{Arc, RwLock};
-use crate::{frame_counter, space_bridge};
+use crate::{space_bridge, localize};
 
 pub struct App {
     link: ComponentLink<Self>,
-    title: String,
     rendering: bool,
+    navbar_expanded: bool,
 }
 
 pub enum Message {
     SetTitle(String),
     ToggleRendering,
+    ToggleNavbar,
+}
+
+fn set_document_title(title: &str) {
+    web_sys::window().unwrap().document().unwrap().set_title(title);
 }
 
 impl Component for App {
@@ -20,17 +24,19 @@ impl Component for App {
     type Properties = ();
 
     fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        set_document_title(&localize!("cosmic-verge"));
+
         Self {
             link,
-            title: Default::default(),
-            rendering: true
+            rendering: true,
+            navbar_expanded: false,
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Message::SetTitle(title) => {
-                self.title = title;
+                set_document_title(&title);
                 false
             }
             Message::ToggleRendering => {
@@ -40,8 +46,12 @@ impl Component for App {
                     space_bridge::BridgeCommand::ResumeRendering
                 } else {
                     space_bridge::BridgeCommand::PauseRendering
-                });
+                }).unwrap();
 
+                true
+            }
+            Message::ToggleNavbar => {
+                self.navbar_expanded = !self.navbar_expanded;
                 true
             }
         }
@@ -53,12 +63,10 @@ impl Component for App {
 
     fn view(&self) -> Html {
         let set_title = self.link.callback(Message::SetTitle);
-        let frame_counter = crate::frame_counter().clone();
-        let frame_counter = frame_counter.lock().unwrap();
         // let user = self.user.clone();
         html! {
             <div>
-                //{ self.nav_bar() }
+                { self.navbar() }
                 <p>{ self.rendering }</p>
                 <button onclick=self.link.callback(|_| Message::ToggleRendering)>{ "Toggle" }</button>
 
@@ -79,6 +87,42 @@ impl Component for App {
 
                 //{ self.footer() }
             </div>
+        }
+    }
+}
+
+impl App {
+    fn navbar(&self) -> Html {
+        html! {
+            <nav class=format!("navbar {}", self.navbar_menu_expanded_class()) role="navigation" aria-label=localize!("navbar-label")>
+                <div class="navbar-brand">
+                    <a class="navbar-item" href="/">
+                        { localize!("cosmic-verge") }
+                    </a>
+
+                    <a role="button" class="navbar-burger" aria-label=localize!("navbar-menu-label") aria-expanded=self.navbar_expanded data-target="navbar-contents" onclick=self.link.callback(|_| Message::ToggleNavbar)>
+                        <span aria-hidden="true"></span>
+                        <span aria-hidden="true"></span>
+                        <span aria-hidden="true"></span>
+                    </a>
+                </div>
+
+                <div id="navbar-contents" class=format!("navbar-menu {}", self.navbar_menu_expanded_class())>
+                    <div class="navbar-start">
+                        <a class="navbar-item">
+                            { "Home" }
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        }
+    }
+
+    fn navbar_menu_expanded_class(&self) -> &'static str {
+        if self.navbar_expanded {
+            "is-active"
+        } else {
+            ""
         }
     }
 }

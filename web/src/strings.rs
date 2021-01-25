@@ -1,11 +1,26 @@
-use cosmicverge_shared::{
-    fluent_templates::{fluent_bundle::FluentValue, loader::Loader},
-    localization::{LOCALES, US_ENGLISH},
-};
 use std::collections::HashMap;
-use yew::prelude::*;
 
+use fluent_templates::{fluent_bundle::FluentValue, loader::Loader};
+use include_dir::include_dir;
+use unic_langid::{langid, LanguageIdentifier};
+use yew::prelude::*;
 use yew_bulma::markdown::render_markdown;
+
+pub const US_ENGLISH: LanguageIdentifier = langid!("en-US");
+
+fluent_templates::static_loader! {
+    pub static LOCALES = {
+        locales: "./src/strings",
+        fallback_language: "en-US",
+    };
+}
+
+// TODO This is only here because of https://github.com/XAMPPRocky/fluent-templates/issues/2
+#[allow(dead_code)]
+fn unused() {
+    include_dir!("./src/strings");
+}
+
 
 pub fn localize(name: &str) -> Html {
     render_markdown(&localize_raw(name))
@@ -31,7 +46,7 @@ macro_rules! localize_html {
     ($name:expr, $($key:expr => $value:expr),+) => {{
         let mut args = std::collections::HashMap::new();
         $(
-            args.insert(String::from($key), ncog_shared::fluent_templates::fluent_bundle::FluentValue::from($value));
+            args.insert(String::from($key), fluent_templates::fluent_bundle::FluentValue::from($value));
         )+
         crate::webapp::strings::localize_with_args($name, &args)
     }};
@@ -45,7 +60,7 @@ macro_rules! localize {
     ($name:expr, $($key:expr => $value:expr),+) => {{
         let mut args = std::collections::HashMap::new();
         $(
-            args.insert(String::from($key), ncog_shared::fluent_templates::fluent_bundle::FluentValue::from($value));
+            args.insert(String::from($key), fluent_templates::fluent_bundle::FluentValue::from($value));
         )+
         crate::strings::localize_raw_with_args($name, &args)
     }};

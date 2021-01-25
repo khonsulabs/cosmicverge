@@ -1,6 +1,6 @@
-use crate::strings::localize;
+// use crate::strings::localize;
 use yew::prelude::*;
-use yew_bulma::static_page::StaticPage;
+// use yew_bulma::static_page::StaticPage;
 use yew_router::prelude::*;
 
 #[derive(Switch, Clone, Debug)]
@@ -30,7 +30,7 @@ pub enum AppRoute {
 }
 
 impl AppRoute {
-    pub fn render(&self, set_title: Callback<String>) -> Html {
+    pub fn render(&self, _set_title: Callback<String>) -> Html {
         match self {
             AppRoute::Index => {
                 html! {<p>{"Hello"}</p>}

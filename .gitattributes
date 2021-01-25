@@ -1,0 +1,2 @@
+# The rust fluent library requires LF delimiters
+*.ftl text eol=lf

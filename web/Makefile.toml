@@ -40,8 +40,6 @@ args = [
     "-w",
     "src",
     "-w",
-    "static/styles.css",
-    "-w",
     "../shared",
     "-x",
     "make build-wasm"

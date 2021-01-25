@@ -30,6 +30,14 @@ $text-strong: $grey-lighter
 @import "./bulma/sass/grid/_all"
 @import "./bulma/sass/layout/_all"
 
+@mixin heading-font
+  font-family: 'Orbitron', sans-serif
+
+.navbar-brand
+  @include heading-font
+  a
+    color: $primary
+
 .content
   h1,
   h2,
@@ -37,7 +45,7 @@ $text-strong: $grey-lighter
   h4,
   h5,
   h6
-    font-family: cholla-slab, serif
+    @include heading-font
     color: $primary
 
 .patreon-link

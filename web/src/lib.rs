@@ -23,6 +23,7 @@ const MAX_LOG_LEVEL: log::Level = log::Level::Info;
 
 mod app;
 mod routes;
+#[macro_use]
 pub mod strings;
 mod space;
 mod space_bridge;
