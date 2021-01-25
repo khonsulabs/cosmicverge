@@ -1,12 +1,14 @@
-
-use glow::*;
-use wasm_bindgen::prelude::*;
+use crate::space_bridge::BridgeCommand;
 use crate::{initialize_shared_helpers, space_bridge};
 use crossbeam::channel::Receiver;
-use crate::space_bridge::BridgeCommand;
+use glow::*;
+use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::__rt::core::time::Duration;
 use web_sys::Performance;
+
+const FRAMERATE_TARGET_BACKGROUND: f32 = 10.;
+const FRAMERATE_TARGET_FOREGROUND: f32 = 60.;
 
 struct SpaceView {
     performance: Performance,
@@ -14,6 +16,7 @@ struct SpaceView {
     gl: Context,
     command_receiver: Receiver<space_bridge::BridgeCommand>,
     should_render: bool,
+    framerate_target: f32,
 }
 
 impl SpaceView {
@@ -109,6 +112,7 @@ impl SpaceView {
             gl,
             should_render: true,
             last_frame_time: None,
+            framerate_target: FRAMERATE_TARGET_BACKGROUND,
         }
     }
 
@@ -124,19 +128,17 @@ impl SpaceView {
 
     fn handle_command(&mut self, command: space_bridge::BridgeCommand) {
         match command {
-            BridgeCommand::PauseRendering => {
-                self.should_render = false;
+            BridgeCommand::ReduceFramerate => {
+                self.framerate_target = FRAMERATE_TARGET_BACKGROUND;
             }
-            BridgeCommand::ResumeRendering => {
-                self.should_render = true;
+            BridgeCommand::IncreaseFramerate => {
+                self.framerate_target = FRAMERATE_TARGET_FOREGROUND;
             }
         }
     }
 
     fn request_animation_frame(self) {
-        let closure = Closure::once_into_js(move || {
-            self.next_frame()
-        });
+        let closure = Closure::once_into_js(move || self.next_frame());
         web_sys::window()
             .unwrap()
             .request_animation_frame(closure.as_ref().unchecked_ref())
@@ -144,11 +146,14 @@ impl SpaceView {
     }
 
     fn sleep_before_frame(self, sleep_duration: Duration) {
-        info!("Fast machine! Sleeping {}ms", sleep_duration.as_millis());
-        let closure = Closure::once_into_js(move || {
-            self.request_animation_frame()
-        });
-        web_sys::window().unwrap().set_timeout_with_callback_and_timeout_and_arguments_0(closure.as_ref().unchecked_ref(), sleep_duration.as_millis() as i32).unwrap();
+        let closure = Closure::once_into_js(move || self.request_animation_frame());
+        web_sys::window()
+            .unwrap()
+            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                closure.as_ref().unchecked_ref(),
+                sleep_duration.as_millis() as i32,
+            )
+            .unwrap();
     }
 
     fn wait_for_resume(mut self) {
@@ -160,7 +165,13 @@ impl SpaceView {
                 self.wait_for_resume()
             }
         });
-        web_sys::window().unwrap().set_timeout_with_callback_and_timeout_and_arguments_0(closure.as_ref().unchecked_ref(), 150).unwrap();
+        web_sys::window()
+            .unwrap()
+            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                closure.as_ref().unchecked_ref(),
+                150,
+            )
+            .unwrap();
     }
 
     fn next_frame(mut self) {
@@ -168,7 +179,7 @@ impl SpaceView {
         self.receive_commands();
 
         if !self.should_render {
-            return self.wait_for_resume()
+            return self.wait_for_resume();
         }
 
         let canvas = web_sys::window()
@@ -178,34 +189,39 @@ impl SpaceView {
             .get_element_by_id("glcanvas")
             .unwrap();
 
-
-            let width_attr = canvas.attributes().get_with_name("width");
-            let height_attr = canvas.attributes().get_with_name("height");
-            let actual_width: Option<i32> = width_attr.as_ref().map(|w| w.value().parse().ok()).flatten();
-            let actual_height: Option<i32> = height_attr.as_ref().map(|h| h.value().parse().ok()).flatten();
-            let mut changed = false;
-            if actual_width.is_none() || actual_width.unwrap() != canvas.client_width() {
-                changed = true;
-                if let Some(attr) = width_attr {
-                    attr.set_value(&canvas.client_width().to_string());
-                } else {
-                    let _ = canvas.set_attribute("width", &canvas.client_width().to_string());
-                }
+        let width_attr = canvas.attributes().get_with_name("width");
+        let height_attr = canvas.attributes().get_with_name("height");
+        let actual_width: Option<i32> = width_attr
+            .as_ref()
+            .map(|w| w.value().parse().ok())
+            .flatten();
+        let actual_height: Option<i32> = height_attr
+            .as_ref()
+            .map(|h| h.value().parse().ok())
+            .flatten();
+        let mut changed = false;
+        if actual_width.is_none() || actual_width.unwrap() != canvas.client_width() {
+            changed = true;
+            if let Some(attr) = width_attr {
+                attr.set_value(&canvas.client_width().to_string());
+            } else {
+                let _ = canvas.set_attribute("width", &canvas.client_width().to_string());
             }
+        }
 
-            if actual_height.is_none() || actual_height.unwrap() != canvas.client_height() {
-                changed = true;
-                if let Some(attr) = height_attr {
-                    attr.set_value(&canvas.client_height().to_string());
-                } else {
-                    let _ = canvas.set_attribute("height", &canvas.client_height().to_string());
-                }
+        if actual_height.is_none() || actual_height.unwrap() != canvas.client_height() {
+            changed = true;
+            if let Some(attr) = height_attr {
+                attr.set_value(&canvas.client_height().to_string());
+            } else {
+                let _ = canvas.set_attribute("height", &canvas.client_height().to_string());
             }
+        }
 
-        info!("Rendering!");
         unsafe {
             if changed {
-                self.gl.viewport(0, 0, canvas.client_width(), canvas.client_height());
+                self.gl
+                    .viewport(0, 0, canvas.client_width(), canvas.client_height());
             }
 
             self.gl.clear(glow::COLOR_BUFFER_BIT);
@@ -213,15 +229,18 @@ impl SpaceView {
         }
 
         let now = self.performance.now();
-        let frame_duration = Duration::from_millis((now - self.last_frame_time.unwrap_or(frame_start)) as u64);
+        let frame_duration =
+            Duration::from_millis((now - self.last_frame_time.unwrap_or(frame_start)) as u64);
         self.last_frame_time = Some(frame_start);
 
-        let target_duration = Duration::from_secs_f64(1.0 / 60.0);
+        let target_duration = Duration::from_secs_f32(1.0 / self.framerate_target);
         match target_duration.checked_sub(frame_duration) {
-            Some(sleep_amount) => if sleep_amount.as_millis() < 3 {
-                // Only sleep if we know we have a few ms to spare
-                return self.sleep_before_frame(sleep_amount)
-            },
+            Some(sleep_amount) => {
+                if sleep_amount.as_millis() < 3 {
+                    // Only sleep if we know we have a few ms to spare
+                    return self.sleep_before_frame(sleep_amount);
+                }
+            }
             None => {}
         }
         self.request_animation_frame()

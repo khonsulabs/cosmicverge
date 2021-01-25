@@ -7,16 +7,16 @@
 use crossbeam::channel::{self, Receiver, Sender};
 use once_cell::sync::OnceCell;
 
-static COMMAND_CHANNEL: OnceCell<(Sender<BridgeCommand>, Receiver<BridgeCommand>)> = OnceCell::new();
+static COMMAND_CHANNEL: OnceCell<(Sender<BridgeCommand>, Receiver<BridgeCommand>)> =
+    OnceCell::new();
 static EVENT_CHANNEL: OnceCell<(Sender<BridgeEvent>, Receiver<BridgeEvent>)> = OnceCell::new();
 
 pub enum BridgeCommand {
-    PauseRendering,
-    ResumeRendering,
+    ReduceFramerate,
+    IncreaseFramerate,
 }
 
 pub enum BridgeEvent {}
-
 
 pub fn emit_event(event: BridgeEvent) -> Result<(), channel::SendError<BridgeEvent>> {
     let sender = &event_channel().0;

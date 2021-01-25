@@ -1,7 +1,12 @@
-use crate::routes::AppRoute;
 use yew::prelude::*;
 use yew_router::prelude::*;
-use crate::{space_bridge, localize};
+
+use routes::AppRoute;
+
+use crate::{localize, space_bridge};
+
+mod game;
+mod routes;
 
 pub struct App {
     link: ComponentLink<Self>,
@@ -11,12 +16,15 @@ pub struct App {
 
 pub enum Message {
     SetTitle(String),
-    ToggleRendering,
     ToggleNavbar,
 }
 
 fn set_document_title(title: &str) {
-    web_sys::window().unwrap().document().unwrap().set_title(title);
+    web_sys::window()
+        .unwrap()
+        .document()
+        .unwrap()
+        .set_title(title);
 }
 
 impl Component for App {
@@ -39,17 +47,6 @@ impl Component for App {
                 set_document_title(&title);
                 false
             }
-            Message::ToggleRendering => {
-                self.rendering = !self.rendering;
-
-                space_bridge::emit_command( if self.rendering {
-                    space_bridge::BridgeCommand::ResumeRendering
-                } else {
-                    space_bridge::BridgeCommand::PauseRendering
-                }).unwrap();
-
-                true
-            }
             Message::ToggleNavbar => {
                 self.navbar_expanded = !self.navbar_expanded;
                 true
@@ -67,23 +64,12 @@ impl Component for App {
         html! {
             <div>
                 { self.navbar() }
-                <p>{ self.rendering }</p>
-                <button onclick=self.link.callback(|_| Message::ToggleRendering)>{ "Toggle" }</button>
 
-                <section class="section content">
-                    <div class="columns is-centered">
-                        <div class="column is-half">
-                            <p class="notification is-danger is-light">
-                  //              { localize("early-warning") }
-                            </p>
-                        </div>
-                    </div>
-                    <Router<AppRoute>
-                        render = Router::render(move |switch: AppRoute| {
-                            switch.render(set_title.clone())
-                        })
-                    />
-                </section>
+                <Router<AppRoute>
+                    render = Router::render(move |switch: AppRoute| {
+                        switch.render(set_title.clone())
+                    })
+                />
 
                 //{ self.footer() }
             </div>
@@ -96,9 +82,9 @@ impl App {
         html! {
             <nav class=format!("navbar {}", self.navbar_menu_expanded_class()) role="navigation" aria-label=localize!("navbar-label")>
                 <div class="navbar-brand">
-                    <a class="navbar-item" href="/">
+                    <RouterAnchor<AppRoute> classes="navbar-item" route=AppRoute::Index>
                         { localize!("cosmic-verge") }
-                    </a>
+                    </RouterAnchor<AppRoute>>
 
                     <a role="button" class="navbar-burger" aria-label=localize!("navbar-menu-label") aria-expanded=self.navbar_expanded data-target="navbar-contents" onclick=self.link.callback(|_| Message::ToggleNavbar)>
                         <span aria-hidden="true"></span>
@@ -109,9 +95,12 @@ impl App {
 
                 <div id="navbar-contents" class=format!("navbar-menu {}", self.navbar_menu_expanded_class())>
                     <div class="navbar-start">
-                        <a class="navbar-item">
-                            { "Home" }
-                        </a>
+                        <RouterAnchor<AppRoute> classes="navbar-item" route=AppRoute::Index>
+                            { localize!("home") }
+                        </RouterAnchor<AppRoute>>
+                        <RouterAnchor<AppRoute> classes="navbar-item" route=AppRoute::Game>
+                            { localize!("space") }
+                        </RouterAnchor<AppRoute>>
                     </div>
                 </div>
             </nav>

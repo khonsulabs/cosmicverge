@@ -21,7 +21,6 @@ fn unused() {
     include_dir!("./src/strings");
 }
 
-
 pub fn localize(name: &str) -> Html {
     render_markdown(&localize_raw(name))
 }
@@ -41,14 +40,14 @@ pub fn localize_raw_with_args(name: &str, args: &HashMap<String, FluentValue>) -
 #[macro_export]
 macro_rules! localize_html {
     ($name:expr) => {
-        crate::webapp::strings::localize($name)
+        crate::strings::localize($name)
     };
     ($name:expr, $($key:expr => $value:expr),+) => {{
         let mut args = std::collections::HashMap::new();
         $(
             args.insert(String::from($key), fluent_templates::fluent_bundle::FluentValue::from($value));
         )+
-        crate::webapp::strings::localize_with_args($name, &args)
+        crate::strings::localize_with_args($name, &args)
     }};
 }
 

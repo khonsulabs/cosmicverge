@@ -3,8 +3,10 @@
 #[macro_use]
 extern crate log;
 
-use wasm_bindgen::prelude::*;
+use std::sync::{Arc, Mutex};
 
+use once_cell::sync::OnceCell;
+use wasm_bindgen::prelude::*;
 
 #[macro_use]
 mod internal_macros {
@@ -22,14 +24,11 @@ const MAX_LOG_LEVEL: log::Level = log::Level::Trace;
 const MAX_LOG_LEVEL: log::Level = log::Level::Info;
 
 mod app;
-mod routes;
 #[macro_use]
 pub mod strings;
 mod space;
 mod space_bridge;
 
-use once_cell::sync::OnceCell;
-use std::sync::{Arc, Mutex};
 static FRAME_COUNTER: OnceCell<Arc<Mutex<bool>>> = OnceCell::new();
 
 pub fn frame_counter() -> &'static Arc<Mutex<bool>> {
