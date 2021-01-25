@@ -2,16 +2,17 @@ use crate::routes::AppRoute;
 use yew::prelude::*;
 use yew_router::prelude::*;
 use std::sync::{Arc, RwLock};
+use crate::{frame_counter, space_bridge};
 
 pub struct App {
     link: ComponentLink<Self>,
     title: String,
-
+    rendering: bool,
 }
 
 pub enum Message {
     SetTitle(String),
-    IncrementCount,
+    ToggleRendering,
 }
 
 impl Component for App {
@@ -22,6 +23,7 @@ impl Component for App {
         Self {
             link,
             title: Default::default(),
+            rendering: true
         }
     }
 
@@ -31,7 +33,15 @@ impl Component for App {
                 self.title = title;
                 false
             }
-            Message::IncrementCount => {
+            Message::ToggleRendering => {
+                self.rendering = !self.rendering;
+
+                space_bridge::emit_command( if self.rendering {
+                    space_bridge::BridgeCommand::ResumeRendering
+                } else {
+                    space_bridge::BridgeCommand::PauseRendering
+                });
+
                 true
             }
         }
@@ -49,8 +59,8 @@ impl Component for App {
         html! {
             <div>
                 //{ self.nav_bar() }
-                <p>{ *frame_counter }</p>
-                <button onclick=self.link.callback(|_| Message::IncrementCount)>{ "Update" }</button>
+                <p>{ self.rendering }</p>
+                <button onclick=self.link.callback(|_| Message::ToggleRendering)>{ "Toggle" }</button>
 
                 <section class="section content">
                     <div class="columns is-centered">
