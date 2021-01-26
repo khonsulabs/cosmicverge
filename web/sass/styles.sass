@@ -1,25 +1,40 @@
 @charset "utf-8"
+@use "sass:color"
 
-// Custom colors
-$coral:    #FF6F61
-$seafoam: #2AB573
+// Neon Space inspiration https://lospec.com/palette-list/neon-space
+$deep-purple:     #352a55
+$light-purple:    #3e3264
+$lightest-purple: #45396f
+$neon-white:      #fffdff
+$neon-white-bis:  #fef0fe
+$neon-white-ter:  #fce8fc
 
-$primary:    $coral
-$link: $seafoam
+$hot-pink:        #df0772
+$fuchsia:         #fe546f
+$peach:           #ff9e7d
+$yellow:          #ffd080
+$light-blue:      #0bffe6
+$medium-blue:     #01cbcf
+$ocean-blue:      #0188a5
+
+$primary:    $hot-pink
+$link: $light-blue
 
 @import "./bulma/sass/utilities/initial-variables"
 
-$scheme-main: $black
-$scheme-main-bis: $black-bis
-$scheme-main-ter: $black-ter
-$scheme-invert: $white
-$scheme-invert-bis: $white-bis
-$scheme-invert-ter: $white-ter
+$scheme-main: $deep-purple
+$scheme-main-bis: $light-purple
+$scheme-main-ter: $lightest-purple
+$scheme-invert: $neon-white
+$scheme-invert-bis: $neon-white-bis
+$scheme-invert-ter: $neon-white-ter
 
-$background: $black-ter
+$background: $scheme-main-ter
 
-$text: $grey-light
-$text-strong: $grey-lighter
+$text: $scheme-invert
+$text-strong: $scheme-invert-bis
+
+$navbar-item-active-background-color: $light-purple
 
 /*! bulma.io v0.8.0 | MIT License | github.com/jgthms/bulma */
 @import "./bulma/sass/utilities/_all"
@@ -30,8 +45,10 @@ $text-strong: $grey-lighter
 @import "./bulma/sass/grid/_all"
 @import "./bulma/sass/layout/_all"
 
+
 @mixin heading-font
   font-family: 'Orbitron', sans-serif
+  font-weight: 600
 
 .navbar-brand
   @include heading-font
@@ -80,13 +97,18 @@ $text-strong: $grey-lighter
 #app
   position: fixed
   left: 0
-  top: 0
+  top: $navbar-height
   right: 0
   bottom: 0
   width: 100%
   height: 100%
   overflow: auto
   z-index: 2
+
+.section
+  margin: 0.5rem
+
+  background-color: color.adjust($light-purple, $alpha: -0.3)
 
 html
   overflow: hidden

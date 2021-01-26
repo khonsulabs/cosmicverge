@@ -1,12 +1,39 @@
 use yew::prelude::*;
+use yew_bulma::static_page::StaticPage;
 use yew_router::prelude::*;
 
-use routes::AppRoute;
-
-use crate::{localize, space_bridge};
+use crate::{app::{game::Game}, localize, localize_html, space_bridge};
 
 mod game;
-mod routes;
+
+
+#[derive(Switch, Clone, Debug, Eq, PartialEq)]
+pub enum AppRoute {
+    // #[to = "/login!"]
+    // LogIn,
+    // #[to = "/backoffice/users"]
+    // #[rest]
+    // BackOfficeUserEdit(EditingId),
+    // #[to = "/backoffice/users!"]
+    // BackOfficeUsersList,
+    // #[to = "/backoffice/roles/{id}/permissions"]
+    // #[rest]
+    // BackOfficeRolePermissionStatementEdit(i64, EditingId),
+    // #[to = "/backoffice/roles"]
+    // #[rest]
+    // BackOfficeRoleEdit(EditingId),
+    // #[to = "/backoffice/roles!"]
+    // BackOfficeRolesList,
+    // #[to = "/backoffice!"]
+    // BackOfficeDashboard,
+    #[to = "/game!"]
+    Game,
+    #[to = "/!"]
+    Index,
+
+    #[to = "/"]
+    NotFound,
+}
 
 pub struct App {
     link: ComponentLink<Self>,
@@ -16,6 +43,7 @@ pub struct App {
 
 pub enum Message {
     SetTitle(String),
+    ToggleRendering,
     ToggleNavbar,
 }
 
@@ -41,6 +69,12 @@ impl Component for App {
         }
     }
 
+    fn rendered(&mut self, first_render: bool) {
+        if first_render {
+            crate::space::run()
+        }
+    }
+
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Message::SetTitle(title) => {
@@ -51,6 +85,15 @@ impl Component for App {
                 self.navbar_expanded = !self.navbar_expanded;
                 true
             }
+            Message::ToggleRendering => {
+                self.rendering = !self.rendering;
+                let _ = space_bridge::emit_command(if self.rendering {
+                    space_bridge::BridgeCommand::Resume
+                } else {
+                    space_bridge::BridgeCommand::Pause
+                });
+                true
+            }
         }
     }
 
@@ -59,28 +102,84 @@ impl Component for App {
     }
 
     fn view(&self) -> Html {
-        let set_title = self.link.callback(Message::SetTitle);
-        // let user = self.user.clone();
+        let link = self.link.clone();
+        let rendering = self.rendering;
+        let navbar_expanded = self.navbar_expanded;
+
         html! {
             <div>
-                { self.navbar() }
-
                 <Router<AppRoute>
-                    render = Router::render(move |switch: AppRoute| {
-                        switch.render(set_title.clone())
+                    render = Router::render(move |route: AppRoute| {
+                        let app = AppRouteRenderer {
+                            link: link.clone(),
+                            route,
+                            rendering,
+                            navbar_expanded,
+                        };
+                        app.render()
                     })
                 />
-
-                //{ self.footer() }
+                <canvas id="glcanvas"></canvas>
             </div>
         }
     }
 }
 
-impl App {
+struct AppRouteRenderer {
+    route: AppRoute,
+    link: ComponentLink<App>,
+    rendering: bool,
+    navbar_expanded: bool,
+}
+
+impl AppRouteRenderer {
+    fn render(&self) -> Html {
+        let set_title = self.link.callback(Message::SetTitle);
+        let contents = match &self.route {
+            AppRoute::Game => {
+                // Reveal the canvas
+                html! { <Game set_title=set_title.clone() /> }
+            }
+            other => {
+                html! {
+                    <section class="section content">
+                        <div class="columns is-centered">
+                            <div class="column is-half">
+                                <p class="notification is-danger is-light">
+                                    { localize!("early-warning") }
+                                </p>
+                            </div>
+                        </div>
+
+                        { self.render_content(other) }
+                    </section>
+                }
+            }
+        };
+        html! {
+            <div id="app">
+                { self.navbar() }
+                { contents }
+            </div>
+        }
+    }
+
+    fn render_content(&self, route: &AppRoute) -> Html {
+        let set_title = self.link.callback(Message::SetTitle);
+        match route {
+            AppRoute::Game => unreachable!(),
+            AppRoute::Index => {
+                html! {<p>{"This is the home page. Cool aint it?"}</p>}
+            }
+            AppRoute::NotFound => {
+                html! {<StaticPage title="Not Found" content=localize_html!("not-found") set_title=set_title.clone() />}
+            }
+        }
+    }
+
     fn navbar(&self) -> Html {
         html! {
-            <nav class=format!("navbar {}", self.navbar_menu_expanded_class()) role="navigation" aria-label=localize!("navbar-label")>
+            <nav class=format!("navbar is-fixed-top {}", self.navbar_menu_expanded_class()) role="navigation" aria-label=localize!("navbar-label")>
                 <div class="navbar-brand">
                     <RouterAnchor<AppRoute> classes="navbar-item" route=AppRoute::Index>
                         { localize!("cosmic-verge") }
@@ -95,12 +194,17 @@ impl App {
 
                 <div id="navbar-contents" class=format!("navbar-menu {}", self.navbar_menu_expanded_class())>
                     <div class="navbar-start">
-                        <RouterAnchor<AppRoute> classes="navbar-item" route=AppRoute::Index>
+                        <RouterAnchor<AppRoute> classes=self.navbar_item_class(AppRoute::Index) route=AppRoute::Index>
                             { localize!("home") }
                         </RouterAnchor<AppRoute>>
-                        <RouterAnchor<AppRoute> classes="navbar-item" route=AppRoute::Game>
+                        <RouterAnchor<AppRoute> classes=self.navbar_item_class(AppRoute::Game) route=AppRoute::Game>
                             { localize!("space") }
                         </RouterAnchor<AppRoute>>
+                    </div>
+                    <div class="navbar-end">
+                        <div class="navbar-item">
+                            <button class="button" onclick=self.link.callback(|_| Message::ToggleRendering)>{ self.rendering_icon() }</button>
+                        </div>
                     </div>
                 </div>
             </nav>
@@ -112,6 +216,22 @@ impl App {
             "is-active"
         } else {
             ""
+        }
+    }
+
+    fn rendering_icon(&self) -> Html {
+        if self.rendering {
+            html! { <i class="icofont-ui-pause"></i> }
+        } else {
+            html! { <i class="icofont-ui-play"></i> }
+        }
+    }
+
+    fn navbar_item_class(&self, check_route: AppRoute) -> &'static str {
+        if self.route == check_route {
+            "navbar-item is-active"
+        } else {
+            "navbar-item"
         }
     }
 }
