@@ -46,13 +46,7 @@ fn initialize_shared_helpers() {
 #[wasm_bindgen]
 pub fn run_app() -> Result<(), JsValue> {
     initialize_shared_helpers();
-    let root = web_sys::window()
-        .unwrap()
-        .document()
-        .unwrap()
-        .get_element_by_id("app")
-        .unwrap();
-    yew::App::<app::App>::new().mount(root);
+    yew::App::<app::App>::new().mount_to_body();
     yew::run_loop();
 
     Ok(())

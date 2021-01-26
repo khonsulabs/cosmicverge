@@ -14,6 +14,8 @@ static EVENT_CHANNEL: OnceCell<(Sender<BridgeEvent>, Receiver<BridgeEvent>)> = O
 pub enum BridgeCommand {
     ReduceFramerate,
     IncreaseFramerate,
+    Pause,
+    Resume,
 }
 
 pub enum BridgeEvent {}

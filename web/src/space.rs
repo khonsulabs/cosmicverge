@@ -1,5 +1,5 @@
 use crate::space_bridge::BridgeCommand;
-use crate::{initialize_shared_helpers, space_bridge};
+use crate::{ space_bridge};
 use crossbeam::channel::Receiver;
 use glow::*;
 use wasm_bindgen::prelude::*;
@@ -7,8 +7,8 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::__rt::core::time::Duration;
 use web_sys::Performance;
 
-const FRAMERATE_TARGET_BACKGROUND: f32 = 10.;
-const FRAMERATE_TARGET_FOREGROUND: f32 = 60.;
+const FRAMERATE_TARGET_BACKGROUND: f64 = 15.;
+const FRAMERATE_TARGET_FOREGROUND: f64 = 60.;
 
 struct SpaceView {
     performance: Performance,
@@ -16,7 +16,7 @@ struct SpaceView {
     gl: Context,
     command_receiver: Receiver<space_bridge::BridgeCommand>,
     should_render: bool,
-    framerate_target: f32,
+    framerate_target: f64,
 }
 
 impl SpaceView {
@@ -103,7 +103,7 @@ impl SpaceView {
             }
 
             gl.use_program(Some(program));
-            gl.clear_color(0.1, 0.2, 0.3, 1.0);
+            gl.clear_color(0.0, 0.0, 0.0, 1.0);
             gl
         };
         Self {
@@ -133,6 +133,12 @@ impl SpaceView {
             }
             BridgeCommand::IncreaseFramerate => {
                 self.framerate_target = FRAMERATE_TARGET_FOREGROUND;
+            }
+            BridgeCommand::Resume => {
+                self.should_render = true;
+            }
+            BridgeCommand::Pause => {
+                self.should_render = false;
             }
         }
     }
@@ -233,11 +239,11 @@ impl SpaceView {
             Duration::from_millis((now - self.last_frame_time.unwrap_or(frame_start)) as u64);
         self.last_frame_time = Some(frame_start);
 
-        let target_duration = Duration::from_secs_f32(1.0 / self.framerate_target);
+        let target_duration = Duration::from_secs_f64(1.0 / self.framerate_target);
         match target_duration.checked_sub(frame_duration) {
             Some(sleep_amount) => {
-                if sleep_amount.as_millis() < 3 {
-                    // Only sleep if we know we have a few ms to spare
+                // Only sleep if we know we have more than a few ms to spare
+                if sleep_amount.as_millis() > 3 {
                     return self.sleep_before_frame(sleep_amount);
                 }
             }
@@ -247,9 +253,7 @@ impl SpaceView {
     }
 }
 
-#[wasm_bindgen]
-pub fn glcanvas() {
-    initialize_shared_helpers();
+pub fn run() {
     let command_receiver = space_bridge::command_receiver();
     SpaceView::new(command_receiver).run()
 }
