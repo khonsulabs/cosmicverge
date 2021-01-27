@@ -2,22 +2,26 @@
 @use "sass:color"
 
 // Neon Space inspiration https://lospec.com/palette-list/neon-space
-$deep-purple:     #352a55
-$light-purple:    #3e3264
+$deep-purple: #352a55
+$light-purple: #3e3264
+// New color, not from palette
 $lightest-purple: #45396f
-$neon-white:      #fffdff
-$neon-white-bis:  #fef0fe
-$neon-white-ter:  #fce8fc
 
-$hot-pink:        #df0772
-$fuchsia:         #fe546f
-$peach:           #ff9e7d
-$yellow:          #ffd080
-$light-blue:      #0bffe6
-$medium-blue:     #01cbcf
-$ocean-blue:      #0188a5
+$neon-white: #fffdff
+// New color, not from palette
+$neon-white-bis: #fef0fe
+// New color, not from palette
+$neon-white-ter: #fce8fc
 
-$primary:    $hot-pink
+$hot-pink: #df0772
+$fuchsia: #fe546f
+$peach: #ff9e7d
+$yellow: #ffd080
+$light-blue: #0bffe6
+$medium-blue: #01cbcf
+$ocean-blue: #0188a5
+
+$primary: $hot-pink
 $link: $light-blue
 
 @import "./bulma/sass/utilities/initial-variables"
@@ -52,6 +56,7 @@ $navbar-item-active-background-color: $light-purple
 
 .navbar-brand
   @include heading-font
+
   a
     color: $primary
 
@@ -73,6 +78,7 @@ $navbar-item-active-background-color: $light-purple
 
 .twitch-button
   background-color: #9146FF
+
   img
     width: 83px
     height: 25px

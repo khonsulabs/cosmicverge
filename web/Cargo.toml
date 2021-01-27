@@ -27,6 +27,7 @@ crossbeam = {version = "0.8"}
 fluent-templates = "0.5"
 unic-langid = "0.9"
 include_dir = "0.6"
+anyhow = "1"
 
 [patch.crates-io]
 cosmicverge-shared = { path = "../shared" }

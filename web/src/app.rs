@@ -2,7 +2,7 @@ use yew::prelude::*;
 use yew_bulma::static_page::StaticPage;
 use yew_router::prelude::*;
 
-use crate::{app::{game::Game}, localize, localize_html, space_bridge};
+use crate::{app::{game::Game}, localize, localize_html};
 
 mod game;
 
@@ -43,8 +43,8 @@ pub struct App {
 
 pub enum Message {
     SetTitle(String),
-    ToggleRendering,
     ToggleNavbar,
+    ToggleRendering,
 }
 
 fn set_document_title(title: &str) {
@@ -69,12 +69,6 @@ impl Component for App {
         }
     }
 
-    fn rendered(&mut self, first_render: bool) {
-        if first_render {
-            crate::space::run()
-        }
-    }
-
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Message::SetTitle(title) => {
@@ -87,11 +81,6 @@ impl Component for App {
             }
             Message::ToggleRendering => {
                 self.rendering = !self.rendering;
-                let _ = space_bridge::emit_command(if self.rendering {
-                    space_bridge::BridgeCommand::Resume
-                } else {
-                    space_bridge::BridgeCommand::Pause
-                });
                 true
             }
         }
@@ -107,20 +96,17 @@ impl Component for App {
         let navbar_expanded = self.navbar_expanded;
 
         html! {
-            <div>
-                <Router<AppRoute>
-                    render = Router::render(move |route: AppRoute| {
-                        let app = AppRouteRenderer {
-                            link: link.clone(),
-                            route,
-                            rendering,
-                            navbar_expanded,
-                        };
-                        app.render()
-                    })
-                />
-                <canvas id="glcanvas"></canvas>
-            </div>
+            <Router<AppRoute>
+                render = Router::render(move |route: AppRoute| {
+                    let app = AppRouteRenderer {
+                        link: link.clone(),
+                        route,
+                        rendering,
+                        navbar_expanded,
+                    };
+                    app.render()
+                })
+            />
         }
     }
 }
@@ -135,13 +121,15 @@ struct AppRouteRenderer {
 impl AppRouteRenderer {
     fn render(&self) -> Html {
         let set_title = self.link.callback(Message::SetTitle);
-        let contents = match &self.route {
+
+
+        let (game_foregrounded, contents) = match &self.route {
             AppRoute::Game => {
                 // Reveal the canvas
-                html! { <Game set_title=set_title.clone() /> }
+                (true, Html::default())
             }
             other => {
-                html! {
+                (false, html! {
                     <section class="section content">
                         <div class="columns is-centered">
                             <div class="column is-half">
@@ -153,13 +141,16 @@ impl AppRouteRenderer {
 
                         { self.render_content(other) }
                     </section>
-                }
+                })
             }
         };
         html! {
-            <div id="app">
-                { self.navbar() }
-                { contents }
+            <div>
+                <div id="app">
+                    { self.navbar() }
+                    { contents }
+                </div>
+                <Game set_title=set_title.clone() foregrounded=game_foregrounded rendering=self.rendering />
             </div>
         }
     }

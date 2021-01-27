@@ -1,8 +1,19 @@
-use std::path::Path;
-use warp::Filter;
-
 #[macro_use]
 extern crate tracing;
+
+use std::path::Path;
+
+use basws_server::shared::Uuid;
+use magrathea::{coloring::Earthlike, Planet};
+use magrathea::{ElevationColor, Kilometers};
+use magrathea::{image, planet};
+use magrathea::euclid::Length;
+use magrathea::euclid::Point2D;
+use magrathea::image::{DynamicImage, RgbaImage};
+use magrathea::Light;
+use magrathea::palette::Srgb;
+use warp::{Filter, Rejection, Reply};
+use warp::filters::BoxedFilter;
 
 #[cfg(debug_assertions)]
 const STATIC_FOLDER_PATH: &str = "../../web/static";
@@ -33,8 +44,10 @@ async fn main() {
 
     let base_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_owned());
     let base_dir = Path::new(&base_dir);
-    let static_path = dbg!(base_dir.join(STATIC_FOLDER_PATH));
+    let static_path = base_dir.join(STATIC_FOLDER_PATH);
     let index_path = static_path.join("index.html");
+
+    let api = warp::path("api").and(magrathea_filter());
 
     let spa = warp::get()
         .and(warp::fs::dir(static_path).or(warp::fs::file(index_path)))
@@ -42,4 +55,73 @@ async fn main() {
     let spa_only_server = warp::serve(spa).run(([0, 0, 0, 0], 7879));
 
     spa_only_server.await
+}
+
+fn magrathea_filter() -> BoxedFilter<(impl Reply, )> {
+    warp::path("magrathea")
+        .and(warp::path("world").and(
+            warp::path::param()).
+            and(warp::path::param()).
+            and(warp::path::param()).
+            and(warp::path::param()).
+            and(warp::path::param())
+            .map(|seed, x, y, radius, resolution| create_world(MagratheaType::Planet, seed, x, y, radius, resolution))
+                .or(
+                    warp::path("sun").and(
+                        warp::path::param()).
+                        and(warp::path::param()).
+                        and(warp::path::param())
+                        .map(|seed, radius, resolution| create_world(MagratheaType::Sun, seed, 0., 0., radius, resolution)
+                ))
+        ).boxed()
+}
+
+enum MagratheaType {
+    Planet,
+    Sun,
+}
+
+fn create_world(kind: MagratheaType, seed: Uuid, x: f32, y: f32, radius: f32, resolution: u32) -> impl Reply {
+    let planet = Planet::<Earthlike> {
+        seed,
+        origin: Point2D::<f32, Kilometers>::new(x, y),
+        radius: Length::new(radius),
+        colors: ElevationColor::earthlike(),
+    };
+    let generated = planet.generate(resolution, &Some(Light {
+        color: Srgb::new(1., 1., 1.),
+        sols: 1.,
+    }));
+    let image = match kind {
+        MagratheaType::Planet => generate_world(seed, x, y, radius, resolution),
+        MagratheaType::Sun => generate_sun(seed, x, y, radius, resolution),
+    };
+    let image = DynamicImage::ImageRgba8(image);
+    let mut bytes: Vec<u8> = Vec::new();
+    image.write_to(&mut bytes, image::ImageOutputFormat::Png).unwrap();
+
+    warp::reply::with_header(bytes, "Content-Type", "image/png")
+}
+
+fn generate_world(seed: Uuid, x: f32, y: f32, radius: f32, resolution: u32) -> RgbaImage {
+    let planet = Planet {
+        seed,
+        origin: Point2D::<f32, Kilometers>::new(x, y),
+        radius: Length::new(radius),
+        colors: ElevationColor::earthlike(),
+    };
+    planet.generate(resolution, &Some(Light {
+        color: Srgb::new(1., 1., 1.),
+        sols: 1.,
+    })).image
+}
+
+fn generate_sun(seed: Uuid, x: f32, y: f32, radius: f32, resolution: u32) -> RgbaImage {
+    let planet = Planet {
+        seed,
+        origin: Point2D::<f32, Kilometers>::new(x, y),
+        radius: Length::new(radius),
+        colors: ElevationColor::sunlike(),
+    };
+    planet.generate(resolution, &None).image
 }

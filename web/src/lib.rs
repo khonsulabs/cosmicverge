@@ -26,8 +26,7 @@ const MAX_LOG_LEVEL: log::Level = log::Level::Info;
 mod app;
 #[macro_use]
 pub mod strings;
-mod space;
-mod space_bridge;
+mod redraw_loop;
 
 static FRAME_COUNTER: OnceCell<Arc<Mutex<bool>>> = OnceCell::new();
 
