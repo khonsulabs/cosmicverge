@@ -144,9 +144,14 @@ impl AppRouteRenderer {
                 })
             }
         };
+        let app_class = if game_foregrounded {
+            "in-game"
+        } else {
+            "out-of-game"
+        };
         html! {
             <div>
-                <div id="app">
+                <div id="app" class=app_class>
                     { self.navbar() }
                     { contents }
                 </div>

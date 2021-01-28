@@ -2,6 +2,7 @@ use glow::*;
 use wasm_bindgen::JsCast;
 
 use crate::redraw_loop::Drawable;
+use crate::app::game::check_canvas_size;
 
 pub struct SpaceView {
     gl: Option<Context>,
@@ -113,36 +114,11 @@ impl Drawable for SpaceView {
             .document()
             .unwrap()
             .get_element_by_id("glcanvas") // TODO this should be a configuration
+            .unwrap()
+            .dyn_into::<web_sys::HtmlCanvasElement>()
             .unwrap();
 
-        let width_attr = canvas.attributes().get_with_name("width");
-        let height_attr = canvas.attributes().get_with_name("height");
-        let actual_width: Option<i32> = width_attr
-            .as_ref()
-            .map(|w| w.value().parse().ok())
-            .flatten();
-        let actual_height: Option<i32> = height_attr
-            .as_ref()
-            .map(|h| h.value().parse().ok())
-            .flatten();
-        let mut changed = false;
-        if actual_width.is_none() || actual_width.unwrap() != canvas.client_width() {
-            changed = true;
-            if let Some(attr) = width_attr {
-                attr.set_value(&canvas.client_width().to_string());
-            } else {
-                let _ = canvas.set_attribute("width", &canvas.client_width().to_string());
-            }
-        }
-
-        if actual_height.is_none() || actual_height.unwrap() != canvas.client_height() {
-            changed = true;
-            if let Some(attr) = height_attr {
-                attr.set_value(&canvas.client_height().to_string());
-            } else {
-                let _ = canvas.set_attribute("height", &canvas.client_height().to_string());
-            }
-        }
+        let changed = check_canvas_size(&canvas);
 
         unsafe {
             if changed {

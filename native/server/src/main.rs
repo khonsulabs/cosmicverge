@@ -52,7 +52,7 @@ async fn main() {
     let spa = warp::get()
         .and(warp::fs::dir(static_path).or(warp::fs::file(index_path)))
         .with(custom_logger);
-    let spa_only_server = warp::serve(spa).run(([0, 0, 0, 0], 7879));
+    let spa_only_server = warp::serve(api.or(spa)).run(([0, 0, 0, 0], 7879));
 
     spa_only_server.await
 }
