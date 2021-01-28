@@ -1,3 +1,7 @@
 [submodule "web/sass/bulma"]
 	path = web/sass/bulma
 	url = https://github.com/jgthms/bulma.git
+[submodule "private"]
+	path = private
+	url = git@github.com:khonsulabs/cosmicverge-private.git
+	branch = main
