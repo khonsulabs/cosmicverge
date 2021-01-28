@@ -20,6 +20,11 @@ const STATIC_FOLDER_PATH: &str = "../../web/static";
 #[cfg(not(debug_assertions))]
 const STATIC_FOLDER_PATH: &str = "static";
 
+#[cfg(debug_assertions)]
+const PRIVATE_ASSETS_PATH: &str = "../../private/assets";
+#[cfg(not(debug_assertions))]
+const STATIC_FOLDER_PATH: &str = "static";
+
 #[tokio::main]
 async fn main() {
     info!("server starting up");
@@ -47,14 +52,16 @@ async fn main() {
     let static_path = base_dir.join(STATIC_FOLDER_PATH);
     let index_path = static_path.join("index.html");
 
-    let api = warp::path("api").and(magrathea_filter());
 
     let spa = warp::get()
-        .and(warp::fs::dir(static_path).or(warp::fs::file(index_path)))
-        .with(custom_logger);
-    let spa_only_server = warp::serve(api.or(spa)).run(([0, 0, 0, 0], 7879));
+        .and(warp::fs::dir(static_path).or(warp::fs::file(index_path)));
+    let private_assets_path = base_dir.join(PRIVATE_ASSETS_PATH);
+    let private_assets = warp::fs::dir(private_assets_path);
 
-    spa_only_server.await
+    let api = warp::path("api").and(magrathea_filter());
+
+    warp::serve(api.or(private_assets).or(spa)
+        .with(custom_logger)).run(([0, 0, 0, 0], 7879)).await
 }
 
 fn magrathea_filter() -> BoxedFilter<(impl Reply, )> {
@@ -66,13 +73,13 @@ fn magrathea_filter() -> BoxedFilter<(impl Reply, )> {
             and(warp::path::param()).
             and(warp::path::param())
             .map(|seed, x, y, radius, resolution| create_world(MagratheaType::Planet, seed, x, y, radius, resolution))
-                .or(
-                    warp::path("sun").and(
-                        warp::path::param()).
-                        and(warp::path::param()).
-                        and(warp::path::param())
-                        .map(|seed, radius, resolution| create_world(MagratheaType::Sun, seed, 0., 0., radius, resolution)
-                ))
+            .or(
+                warp::path("sun").and(
+                    warp::path::param()).
+                    and(warp::path::param()).
+                    and(warp::path::param())
+                    .map(|seed, radius, resolution| create_world(MagratheaType::Sun, seed, 0., 0., radius, resolution)
+                    ))
         ).boxed()
 }
 

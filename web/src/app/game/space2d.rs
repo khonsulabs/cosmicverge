@@ -1,11 +1,11 @@
+use crossbeam::channel::{self, Receiver, Sender, TryRecvError};
+use glam::f64::DVec2;
+use wasm_bindgen::__rt::std::collections::HashMap;
 use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlImageElement};
-use crossbeam::channel::{Sender, Receiver, TryRecvError, self};
 
 use crate::app::game::check_canvas_size;
 use crate::redraw_loop::Drawable;
-
-use glam::f64::DVec2;
 
 pub enum Command {
     /// In pixels
@@ -17,11 +17,12 @@ pub enum Command {
 pub struct SpaceView {
     canvas: Option<HtmlCanvasElement>,
     context: Option<CanvasRenderingContext2d>,
-    sun: Option<HtmlImageElement>,
-    planet: Option<HtmlImageElement>,
+    backdrop: Option<HtmlImageElement>,
+    location_images: HashMap<i64, HtmlImageElement>,
+    solar_system: SolarSystem,
     look_at: DVec2,
     zoom: f64,
-    receiver: Receiver<Command>
+    receiver: Receiver<Command>,
 }
 
 impl SpaceView {
@@ -30,11 +31,12 @@ impl SpaceView {
         (Self {
             canvas: None,
             context: None,
-            sun: None,
-            planet: None,
+            backdrop: None,
+            location_images: Default::default(),
             look_at: DVec2::new(0., 0.),
             zoom: 1.,
             receiver,
+            solar_system: fake_solar_system(),
         }, sender)
     }
 
@@ -69,7 +71,7 @@ impl SpaceView {
         self.context.clone()
     }
 
-    fn receive_commands(&mut self)-> anyhow::Result<()> {
+    fn receive_commands(&mut self) -> anyhow::Result<()> {
         while let Some(event) = match self.receiver.try_recv() {
             Ok(command) => Some(command),
             Err(TryRecvError::Empty) => None,
@@ -92,16 +94,18 @@ impl SpaceView {
 
 impl Drawable for SpaceView {
     fn initialize(&mut self) -> anyhow::Result<()> {
-        self.sun = Some({
+        self.backdrop = Some({
             let image = HtmlImageElement::new().unwrap();
-            image.set_src("/api/magrathea/sun/d4cf31ea-ab1b-44d4-9d3c-a801892bf1af/6371/128");
+            image.set_src(&self.solar_system.background);
             image
         });
-        self.planet = Some({
+
+        for location in self.solar_system.locations.iter() {
             let image = HtmlImageElement::new().unwrap();
-            image.set_src("/api/magrathea/world/d4cf31ea-ab1b-44d4-9d3c-a801892bf1af/150200000/0/6371/32");
-            image
-        });
+            image.set_src(&location.image);
+            self.location_images.insert(location.id, image);
+        }
+
         Ok(())
     }
 
@@ -113,22 +117,53 @@ impl Drawable for SpaceView {
                 check_canvas_size(&canvas);
 
                 let size = DVec2::new(canvas.client_width() as f64, canvas.client_height() as f64);
-                let center = size / 2. + self.look_at * self.zoom;
+                let canvas_center = size / 2.;
+                let center = canvas_center + self.look_at * self.zoom;
 
                 context.set_image_smoothing_enabled(false);
-                context.fill_rect(0., 0., size.x, size.y);
 
-                let sun = self.sun.as_ref().expect("No sun");
-                if sun.complete() {
-                    if let Err(err) = context.draw_image_with_html_image_element_and_dw_and_dh(sun, center.x - 32. * self.zoom, center.y - 32. * self.zoom, 64. * self.zoom,  64. * self.zoom) {
-                        error!("Error rendering sun: {:#?}", err);
+                let backdrop =  self.backdrop.as_ref().unwrap();
+                context.fill_rect(0., 0., size.x, size.y);
+                if backdrop.complete() {
+                    // The backdrop is tiled and panned based on the look_at unaffected by zoom
+                    let backdrop_center = canvas_center + self.look_at * (self.zoom * 0.1);
+                    let size = size.ceil().as_i32();
+                    let backdrop_width = backdrop.width() as i32;
+                    let backdrop_height = backdrop.height() as i32;
+                    let mut y = (backdrop_center.y) as i32 % backdrop_height;
+                    if y > 0 {
+                        y -= backdrop_height;
+                    }
+                    while y < size.y {
+                        let mut x = (backdrop_center.x) as i32 % backdrop_width;
+                        if x > 0 {
+                            x -= backdrop_width;
+                        }
+                        while x < size.x {
+                            if let Err(err) = context.draw_image_with_html_image_element(backdrop, x as f64, y as f64) {
+                                error!("Error rendering backdrop: {:#?}", err);
+                            }
+                            x += backdrop_width;
+                        }
+                        y += backdrop_height;
                     }
                 }
 
-                let planet = self.planet.as_ref().expect("No planet");
-                if planet.complete() {
-                    if let Err(err) = context.draw_image_with_html_image_element_and_dw_and_dh(planet, center.x + (500. - 16.) * self.zoom, center.y - 16. * self.zoom, 32. * self.zoom,  32. * self.zoom) {
-                        error!("Error rendering planet: {:#?}", err);
+                for location in self.solar_system.locations.iter() {
+                    let image = &self.location_images[&location.id];
+                    if image.complete() {
+                        let render_radius = location.size * self.zoom;
+                        let render_center = center + location.location * self.zoom;
+
+                        if let Err(err) = context.draw_image_with_html_image_element_and_dw_and_dh(
+                            image,
+                            render_center.x - render_radius,
+                            render_center.y - render_radius,
+                            render_radius * 2.,
+                            render_radius * 2.,
+                        ) {
+                            error!("Error rendering sun: {:#?}", err);
+                        }
                     }
                 }
             }
@@ -139,5 +174,53 @@ impl Drawable for SpaceView {
 
     fn cleanup(&mut self) -> anyhow::Result<()> {
         Ok(())
+    }
+}
+
+pub struct SolarSystem {
+    pub name: String,
+    pub background: String,
+    pub locations: Vec<SolarSystemLocation>,
+}
+
+pub struct SolarSystemLocation {
+    pub id: i64,
+    pub name: String,
+    pub image: String,
+    pub size: f64,
+    pub location: DVec2,
+    pub owned_by: Option<i64>,
+}
+
+pub fn fake_solar_system() -> SolarSystem {
+    SolarSystem {
+        name: String::from("SM-0-A9F4"),
+        background: String::from("/helianthusgames/Backgrounds/BlueStars.png"),
+        locations: vec![
+            SolarSystemLocation {
+                id: 1,
+                name: String::from("Sun"),
+                image: String::from("/helianthusgames/Suns/2.png"),
+                size: 128.,
+                location: DVec2::zero(),
+                owned_by: None,
+            },
+            SolarSystemLocation {
+                id: 2,
+                name: String::from("Earth"),
+                image: String::from("/helianthusgames/Terran_or_Earth-like/1.png"),
+                size: 32.,
+                location: DVec2::new(600., 0.),
+                owned_by: Some(1),
+            },
+            SolarSystemLocation {
+                id: 3,
+                name: String::from("Earth"),
+                image: String::from("/helianthusgames/Rocky/1.png"),
+                size: 24.,
+                location: DVec2::new(200., 200.),
+                owned_by: Some(1),
+            },
+        ],
     }
 }
