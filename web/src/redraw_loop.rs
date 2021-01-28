@@ -11,7 +11,7 @@ pub trait Drawable: 'static {
 }
 
 pub enum Command {
-    SetFramerateTarget(f64),
+    SetFramerateTarget(Option<f64>),
     Pause,
     Resume,
     Stop,
@@ -23,7 +23,7 @@ struct RedrawLoopConfiguration {
     receiver: Receiver<Command>,
     should_render: bool,
     exit: bool,
-    framerate_target: f64,
+    framerate_target: Option<f64>,
     initialized: bool,
 }
 
@@ -34,14 +34,14 @@ pub struct RedrawLoop<D> {
 
 pub struct Configuration {
     pub wait_to_render: bool,
-    pub framerate_target: f64,
+    pub framerate_target: Option<f64>,
 }
 
 impl Default for Configuration {
     fn default() -> Self {
         Self {
             wait_to_render: false,
-            framerate_target: 60.,
+            framerate_target: None,
         }
     }
 }
@@ -155,15 +155,17 @@ impl<D> RedrawLoop<D>
             Duration::from_millis((now - self.config.last_frame_time.unwrap_or(frame_start)) as u64);
         self.config.last_frame_time = Some(frame_start);
 
-        let target_duration = Duration::from_secs_f64(1.0 / self.config.framerate_target);
-        match target_duration.checked_sub(frame_duration) {
-            Some(sleep_amount) => {
-                // Only sleep if we know we have more than a few ms to spare
-                if sleep_amount.as_millis() > 3 {
-                    return self.sleep_before_frame(sleep_amount);
+        if let Some(framerate_target) = self.config.framerate_target {
+            let target_duration = Duration::from_secs_f64(1.0 / framerate_target);
+            match target_duration.checked_sub(frame_duration) {
+                Some(sleep_amount) => {
+                    // Only sleep if we know we have more than a few ms to spare
+                    if sleep_amount.as_millis() > 3 {
+                        return self.sleep_before_frame(sleep_amount);
+                    }
                 }
+                None => {}
             }
-            None => {}
         }
         self.request_animation_frame()
     }
