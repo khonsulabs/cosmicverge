@@ -3,6 +3,4 @@ members = ["server", "database", "migrations"]
 
 [patch.crates-io]
 cosmicverge-shared = { path = "../shared" }
-magrathea = { path = "../../magrathea" }
-sqlx-simple-migrator = { path = "../../sqlx-simple-migrator" }
 sqlx = { git = "https://github.com/launchbadge/sqlx.git" }
