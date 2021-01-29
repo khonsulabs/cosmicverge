@@ -30,7 +30,7 @@ jobs:
           - 5432:5432
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
         with:
           submodules: true
           token: ${{ secrets.CITOKEN }}
