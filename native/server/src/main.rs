@@ -3,9 +3,7 @@ extern crate tracing;
 
 use std::{convert::Infallible, path::Path};
 
-use basws_server::shared::Uuid;
-use tracing_subscriber::prelude::*;
-use warp::{filters::BoxedFilter, Filter, Rejection, Reply};
+use warp::{Filter, Reply};
 
 mod database_refactor;
 mod jwk;
@@ -20,8 +18,6 @@ const STATIC_FOLDER_PATH: &str = "static";
 
 #[cfg(debug_assertions)]
 const PRIVATE_ASSETS_PATH: &str = "../../private/assets";
-#[cfg(not(debug_assertions))]
-const STATIC_FOLDER_PATH: &str = "static";
 
 #[cfg(debug_assertions)]
 fn webserver_base_url() -> warp::http::uri::Builder {
@@ -97,17 +93,20 @@ async fn main() {
     let index_path = static_path.join("index.html");
 
     let spa = warp::get().and(warp::fs::dir(static_path).or(warp::fs::file(index_path)));
-    let private_assets_path = base_dir.join(PRIVATE_ASSETS_PATH);
-    let private_assets = warp::fs::dir(private_assets_path);
 
-    warp::serve(
-        api.or(private_assets)
-            .or(healthcheck)
-            .or(spa)
-            .with(custom_logger),
-    )
-    .run(([0, 0, 0, 0], 7879))
-    .await
+    #[cfg(debug_assertions)]
+    let routes = {
+        let private_assets_path = base_dir.join(PRIVATE_ASSETS_PATH);
+        let private_assets = warp::fs::dir(private_assets_path);
+
+        private_assets.or(api)
+    };
+    #[cfg(not(debug_assertions))]
+    let routes = api;
+
+    warp::serve(routes.or(healthcheck).or(spa).with(custom_logger))
+        .run(([0, 0, 0, 0], 7879))
+        .await
 }
 
 async fn healthcheck() -> Result<impl Reply, Infallible> {
