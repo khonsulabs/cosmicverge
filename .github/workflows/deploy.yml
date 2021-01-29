@@ -46,7 +46,7 @@ jobs:
         run: |
           # cd web
           # cargo test --target wasm32-unknown-unknown --release --verbose
-          cd ../native
+          cd native
           cargo run --bin migrator --release
           cargo test --release --verbose
         env:
