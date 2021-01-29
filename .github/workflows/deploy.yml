@@ -42,6 +42,18 @@ jobs:
           DOTENVFILE: ${{ secrets.DOTENVFILE }}
         run: echo "$DOTENVFILE" > .env
 
+      - name: Run tests
+        run: |
+          # cd web
+          # cargo test --target wasm32-unknown-unknown --release --verbose
+          cd ../native
+          cargo run --bin migrator --release
+          cargo test --release --verbose
+        env:
+          # TODO delete once basws is updated with this env var change
+          NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
+          BASWS_CLIENT_ENCRYPTION_KEY: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
+
       - name: Build
         env:
           POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
@@ -56,32 +68,20 @@ jobs:
           cargo make build -p release
 
           cd ../native
-          cargo run --bin migrator --release
           cargo build --bin server --release
 
-      - name: Run tests
-        run: |
-          cd web
-          cargo test --target wasm32-unknown-unknown --release --verbose
-          cd ../native
-          cargo test --release --verbose
-        env:
-          # TODO delete once basws is updated with this env var change
-          NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
-          BASWS_CLIENT_ENCRYPTION_KEY: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
-
       - uses: kciter/aws-ecr-action@v1
-        if: github.ref == 'refs/heads/production'
+        if: github.ref == 'refs/heads/main'
         with:
           access_key_id: ${{ secrets.ECR_ACCESS_KEY_ID }}
           secret_access_key: ${{ secrets.ECR_SECRET_KEY }}
           account_id: ${{ secrets.AWS_ACCOUNT_ID }}
-          repo: khonsulabs/ncog
+          repo: khonsulabs/cosmicverge
           region: us-east-1
           tags: latest,sha-${{ github.sha }}
 
       - name: Deploy API
-        if: github.ref == 'refs/heads/production'
+        if: github.ref == 'refs/heads/main'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.ECR_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.ECR_SECRET_KEY }}
