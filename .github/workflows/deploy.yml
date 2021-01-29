@@ -73,7 +73,7 @@ jobs:
         with:
           access_key_id: ${{ secrets.ECR_ACCESS_KEY_ID }}
           secret_access_key: ${{ secrets.ECR_SECRET_KEY }}
-          account_id: !Ref "AWS::AccountId"
+          account_id: ${{ secrets.AWS_ACCOUNT_ID }}
           repo: khonsulabs/ncog
           region: us-east-1
           tags: latest,sha-${{ github.sha }}
