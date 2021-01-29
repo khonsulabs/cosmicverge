@@ -3,8 +3,12 @@ use yew_bulma::static_page::StaticPage;
 use yew_router::prelude::*;
 
 use crate::{app::{game::Game}, localize, localize_html};
+use crate::client_api::{ApiBridge, ApiAgent, AgentResponse, AgentMessage};
+use wasm_bindgen::__rt::std::sync::Arc;
+use cosmicverge_shared::{UserProfile, CosmicVergeResponse};
 
 mod game;
+mod home_page;
 
 
 #[derive(Switch, Clone, Debug, Eq, PartialEq)]
@@ -37,11 +41,20 @@ pub enum AppRoute {
 
 pub struct App {
     link: ComponentLink<Self>,
+    api: ApiBridge,
     rendering: bool,
+    user: Option<Arc<LoggedInUser>>,
     navbar_expanded: bool,
+    connected: Option<bool>,
+}
+
+#[derive(PartialEq, Debug)]
+pub struct LoggedInUser {
+    pub profile: UserProfile,
 }
 
 pub enum Message {
+    WsMessage(AgentResponse),
     SetTitle(String),
     ToggleNavbar,
     ToggleRendering,
@@ -60,12 +73,17 @@ impl Component for App {
     type Properties = ();
 
     fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        let callback = link.callback(Message::WsMessage);
+        let api = ApiAgent::bridge(callback);
         set_document_title(&localize!("cosmic-verge"));
 
         Self {
             link,
+            api,
             rendering: true,
             navbar_expanded: false,
+            user: None,
+            connected: None,
         }
     }
 
@@ -83,6 +101,28 @@ impl Component for App {
                 self.rendering = !self.rendering;
                 true
             }
+            Message::WsMessage(message) => match message {
+                AgentResponse::Disconnected => {
+                    self.user = None;
+                    self.connected = Some(false);
+                    true
+                }
+                AgentResponse::Connected => {
+                    self.user = None;
+                    self.connected = Some(true);
+                    true
+                }
+                AgentResponse::Response(response) => match response {
+                    CosmicVergeResponse::Authenticated(user) => {
+                        self.user = Some(Arc::new(LoggedInUser {
+                            profile: user.profile,
+                        }));
+                        true
+                    }
+                    _ => false,
+                },
+                _ => false,
+            },
         }
     }
 
@@ -92,8 +132,10 @@ impl Component for App {
 
     fn view(&self) -> Html {
         let link = self.link.clone();
+        let user = self.user.clone();
         let rendering = self.rendering;
         let navbar_expanded = self.navbar_expanded;
+        let connected = self.connected;
 
         html! {
             <Router<AppRoute>
@@ -103,15 +145,26 @@ impl Component for App {
                         route,
                         rendering,
                         navbar_expanded,
+                        connected,
+                        user: user.clone(),
                     };
                     app.render()
                 })
             />
         }
     }
+
+    fn rendered(&mut self, first_render: bool) {
+        if first_render {
+            self.api.send(AgentMessage::RegisterBroadcastHandler);
+            self.api.send(AgentMessage::Initialize);
+        }
+    }
 }
 
 struct AppRouteRenderer {
+    user: Option<Arc<LoggedInUser>>,
+    connected: Option<bool>,
     route: AppRoute,
     link: ComponentLink<App>,
     rendering: bool,
@@ -122,41 +175,45 @@ impl AppRouteRenderer {
     fn render(&self) -> Html {
         let set_title = self.link.callback(Message::SetTitle);
 
-
-        let (game_foregrounded, contents) = match &self.route {
-            AppRoute::Game => {
-                // Reveal the canvas
-                (true, Html::default())
-            }
-            other => {
-                (false, html! {
-                    <section class="section content">
-                        <div class="columns is-centered">
-                            <div class="column is-half">
-                                <p class="notification is-danger is-light">
-                                    { localize!("early-warning") }
-                                </p>
+        if let Some(connected) = self.connected {
+            let (game_foregrounded, contents) = match &self.route {
+                AppRoute::Game => {
+                    // Reveal the canvas
+                    (true, Html::default())
+                }
+                other => {
+                    (false, html! {
+                        <section class="section content">
+                            <div class="columns is-centered">
+                                <div class="column is-half">
+                                    <p class="notification is-danger is-light">
+                                        { localize!("early-warning") }
+                                    </p>
+                                </div>
                             </div>
-                        </div>
 
-                        { self.render_content(other) }
-                    </section>
-                })
-            }
-        };
-        let app_class = if game_foregrounded {
-            "in-game"
-        } else {
-            "out-of-game"
-        };
-        html! {
-            <div>
-                <div id="app" class=app_class>
-                    { self.navbar() }
-                    { contents }
+                            { self.render_content(other) }
+                        </section>
+                    })
+                }
+            };
+            let app_class = if game_foregrounded {
+                "in-game"
+            } else {
+                "out-of-game"
+            };
+            html! {
+                <div>
+                    <div id="app" class=app_class>
+                        { self.navbar() }
+                        { contents }
+                    </div>
+                    <Game set_title=set_title.clone() foregrounded=game_foregrounded rendering=self.rendering />
                 </div>
-                <Game set_title=set_title.clone() foregrounded=game_foregrounded rendering=self.rendering />
-            </div>
+            }
+        } else {
+            // TODO show a loading image
+            html!{ <div /> }
         }
     }
 
@@ -165,7 +222,7 @@ impl AppRouteRenderer {
         match route {
             AppRoute::Game => unreachable!(),
             AppRoute::Index => {
-                html! {<p>{"This is the home page. Cool aint it?"}</p>}
+                html! {<home_page::HomePage set_title=set_title.clone() user=self.user.clone() />}
             }
             AppRoute::NotFound => {
                 html! {<StaticPage title="Not Found" content=localize_html!("not-found") set_title=set_title.clone() />}

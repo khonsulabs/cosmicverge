@@ -13,7 +13,7 @@ opengl = ["glow"]
 
 [dependencies]
 cosmicverge-shared = "0.0.1"
-basws-yew = { version = "0.1.0-dev-8" }
+basws-yew = { version = "0.1.0" }
 yew = { version = "0.17", features = ["cbor"] }
 yew-router = "0.14"
 yew-bulma = "0.0.1"
@@ -33,6 +33,7 @@ unic-langid = "0.9"
 include_dir = "0.6"
 anyhow = "1"
 glam = "0.12"
+url = "2"
 
 [patch.crates-io]
 cosmicverge-shared = { path = "../shared" }

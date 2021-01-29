@@ -27,6 +27,7 @@ mod app;
 #[macro_use]
 pub mod strings;
 mod redraw_loop;
+mod client_api;
 
 static FRAME_COUNTER: OnceCell<Arc<Mutex<bool>>> = OnceCell::new();
 
