@@ -64,7 +64,7 @@ jobs:
           cargo build --bin server --release
 
       - name: Configure Production
-        if: github.ref == 'refs/heads/production'
+        if: github.ref == 'refs/heads/main'
         env:
           DOTENVFILE: ${{ secrets.DOTENVFILE }}
         run: echo "$DOTENVFILE" > .env
