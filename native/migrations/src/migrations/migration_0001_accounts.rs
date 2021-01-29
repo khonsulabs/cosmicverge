@@ -1,4 +1,5 @@
-use sqlx_simple_migrator::{Migration, migration_name};
+use sqlx_simple_migrator::{migration_name, Migration};
+
 use crate::migrations::{JONS_ACCOUNT_ID, JONS_TWITCH_ID};
 
 pub fn migration() -> Migration {
@@ -11,9 +12,7 @@ pub fn migration() -> Migration {
             )
         "#,
         )
-        .with_up(
-            "INSERT INTO accounts DEFAULT VALUES"
-        )
+        .with_up("INSERT INTO accounts DEFAULT VALUES")
         .with_down("DROP TABLE IF EXISTS accounts")
         .with_up(
             r#"

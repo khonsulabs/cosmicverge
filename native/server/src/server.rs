@@ -1,12 +1,12 @@
-use super::{database_refactor, twitch};
 use async_trait::async_trait;
+use basws_server::prelude::*;
 use chrono::{Duration, Utc};
 use cosmicverge_shared::{
-    cosmic_verge_protocol_version_requirements,
-    AuthenticatedUser, CosmicVergeRequest, CosmicVergeResponse, OAuthProvider,
+    cosmic_verge_protocol_version_requirements, AuthenticatedUser, CosmicVergeRequest,
+    CosmicVergeResponse, OAuthProvider,
 };
-use basws_server::prelude::*;
 
+use super::{database_refactor, twitch};
 
 #[derive(Debug)]
 pub struct ConnectedAccount {
@@ -15,13 +15,12 @@ pub struct ConnectedAccount {
 
 impl ConnectedAccount {
     pub async fn lookup(installation_id: Uuid) -> anyhow::Result<Self> {
-        let profile = database_refactor::get_profile_by_installation_id(database::pool(), installation_id)
-            .await?
-            .ok_or_else(|| anyhow::anyhow!("no profile found"))?;
+        let profile =
+            database_refactor::get_profile_by_installation_id(database::pool(), installation_id)
+                .await?
+                .ok_or_else(|| anyhow::anyhow!("no profile found"))?;
         Ok(Self {
-            user: AuthenticatedUser {
-                profile,
-            },
+            user: AuthenticatedUser { profile },
         })
     }
 }
@@ -57,14 +56,16 @@ impl ServerLogic for CosmicVergeServer {
             CosmicVergeRequest::AuthenticationUrl(provider) => match provider {
                 OAuthProvider::Twitch => {
                     if let Some(installation) = client.installation().await {
-                        Ok(RequestHandling::Respond(CosmicVergeResponse::AuthenticateAtUrl {
-                            url: twitch::authorization_url(installation.id),
-                        }))
+                        Ok(RequestHandling::Respond(
+                            CosmicVergeResponse::AuthenticateAtUrl {
+                                url: twitch::authorization_url(installation.id),
+                            },
+                        ))
                     } else {
                         anyhow::bail!("Requested authentication URL without being connected")
                     }
                 }
-            }
+            },
         }
     }
 
@@ -87,7 +88,8 @@ impl ServerLogic for CosmicVergeServer {
         _client: &ConnectedClient<Self>,
         installation_id: Option<Uuid>,
     ) -> anyhow::Result<InstallationConfig> {
-        let installation = database_refactor::lookup_or_create_installation(installation_id).await?;
+        let installation =
+            database_refactor::lookup_or_create_installation(installation_id).await?;
         Ok(InstallationConfig::from_vec(
             installation.id,
             installation.private_key.unwrap(),
@@ -101,11 +103,13 @@ impl ServerLogic for CosmicVergeServer {
         if let Some(account) = client.account().await {
             let account = account.read().await;
 
-            Ok(RequestHandling::Respond(CosmicVergeResponse::Authenticated(
-                account.user.clone(),
-            )))
+            Ok(RequestHandling::Respond(
+                CosmicVergeResponse::Authenticated(account.user.clone()),
+            ))
         } else {
-            Ok(RequestHandling::Respond(CosmicVergeResponse::Unauthenticated))
+            Ok(RequestHandling::Respond(
+                CosmicVergeResponse::Unauthenticated,
+            ))
         }
     }
 
@@ -117,7 +121,9 @@ impl ServerLogic for CosmicVergeServer {
         &self,
         _client: &ConnectedClient<Self>,
     ) -> anyhow::Result<RequestHandling<Self::Response>> {
-        Ok(RequestHandling::Respond(CosmicVergeResponse::Unauthenticated))
+        Ok(RequestHandling::Respond(
+            CosmicVergeResponse::Unauthenticated,
+        ))
     }
 
     async fn account_associated(&self, client: &ConnectedClient<Self>) -> anyhow::Result<()> {
@@ -127,8 +133,12 @@ impl ServerLogic for CosmicVergeServer {
                     let account = account.read().await;
                     account.id()
                 };
-                database_refactor::set_installation_account_id(database::pool(), installation.id, Some(account_id))
-                    .await?;
+                database_refactor::set_installation_account_id(
+                    database::pool(),
+                    installation.id,
+                    Some(account_id),
+                )
+                .await?;
                 return Ok(());
             }
         }

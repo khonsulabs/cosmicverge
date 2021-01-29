@@ -1,5 +1,5 @@
 use crossbeam::channel::Sender;
-use glam::{IVec2};
+use glam::IVec2;
 use web_sys::{HtmlCanvasElement, MouseEvent, WheelEvent};
 use yew::prelude::*;
 
@@ -66,7 +66,8 @@ impl Component for Game {
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let (view, space_sender) = space2d::SpaceView::new();
-        let loop_sender = redraw_loop::RedrawLoop::launch(view, redraw_loop::Configuration::default());
+        let loop_sender =
+            redraw_loop::RedrawLoop::launch(view, redraw_loop::Configuration::default());
         let component = Self {
             link,
             props,
@@ -85,20 +86,20 @@ impl Component for Game {
                 let amount = match event.delta_mode() {
                     WheelEvent::DOM_DELTA_PIXEL => delta,
                     WheelEvent::DOM_DELTA_LINE => delta * 20.,
-                        WheelEvent::DOM_DELTA_PAGE => delta * 50.,
+                    WheelEvent::DOM_DELTA_PAGE => delta * 50.,
                     other => {
                         error!("Unexpected mouse wheel event mode: {}", other);
-                        return false
-                    },
+                        return false;
+                    }
                 };
                 let _ = self.space_sender.send(space2d::Command::Zoom(amount));
             }
             Message::MouseDown(event) => {
                 self.update_mouse_buttons(event.button(), true);
 
-                self.mouse_buttons.mouse_down_start = Some(IVec2::new(event.client_x(), event.client_y()));
+                self.mouse_buttons.mouse_down_start =
+                    Some(IVec2::new(event.client_x(), event.client_y()));
                 self.mouse_buttons.last_mouse_location = None;
-
             }
             Message::MouseUp(event) => {
                 self.update_mouse_buttons(event.button(), false);
@@ -113,7 +114,9 @@ impl Component for Game {
                     self.mouse_buttons.last_mouse_location = Some(location);
 
                     if self.mouse_buttons.left {
-                        let _ = self.space_sender.send(space2d::Command::Pan(delta.as_f64()));
+                        let _ = self
+                            .space_sender
+                            .send(space2d::Command::Pan(delta.as_f64()));
                     }
                 }
             }
@@ -140,9 +143,13 @@ impl Component for Game {
             redraw = true;
             self.props.foregrounded = props.foregrounded;
             if props.foregrounded {
-                let _ = self.loop_sender.send(redraw_loop::Command::SetFramerateTarget(None));
+                let _ = self
+                    .loop_sender
+                    .send(redraw_loop::Command::SetFramerateTarget(None));
             } else {
-                let _ = self.loop_sender.send(redraw_loop::Command::SetFramerateTarget(Some(10.)));
+                let _ = self
+                    .loop_sender
+                    .send(redraw_loop::Command::SetFramerateTarget(Some(10.)));
             }
         }
 

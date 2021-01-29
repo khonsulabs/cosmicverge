@@ -1,7 +1,5 @@
 use crossbeam::channel::{self, Receiver, Sender};
-use wasm_bindgen::__rt::core::time::Duration;
-use wasm_bindgen::JsCast;
-use wasm_bindgen::prelude::*;
+use wasm_bindgen::{__rt::core::time::Duration, prelude::*, JsCast};
 use web_sys::Performance;
 
 pub trait Drawable: 'static {
@@ -47,7 +45,9 @@ impl Default for Configuration {
 }
 
 impl<D> RedrawLoop<D>
-    where D: Drawable {
+where
+    D: Drawable,
+{
     pub fn launch(drawable: D, config: Configuration) -> Sender<Command> {
         let (sender, receiver) = channel::unbounded();
 
@@ -151,8 +151,9 @@ impl<D> RedrawLoop<D>
         self.drawable.render_frame().unwrap();
 
         let now = self.config.performance.now();
-        let frame_duration =
-            Duration::from_millis((now - self.config.last_frame_time.unwrap_or(frame_start)) as u64);
+        let frame_duration = Duration::from_millis(
+            (now - self.config.last_frame_time.unwrap_or(frame_start)) as u64,
+        );
         self.config.last_frame_time = Some(frame_start);
 
         if let Some(framerate_target) = self.config.framerate_target {

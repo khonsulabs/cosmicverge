@@ -1,11 +1,9 @@
 use crossbeam::channel::{self, Receiver, Sender, TryRecvError};
 use glam::f64::DVec2;
-use wasm_bindgen::__rt::std::collections::HashMap;
-use wasm_bindgen::JsCast;
+use wasm_bindgen::{JsCast, __rt::std::collections::HashMap};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlImageElement};
 
-use crate::app::game::check_canvas_size;
-use crate::redraw_loop::Drawable;
+use crate::{app::game::check_canvas_size, redraw_loop::Drawable};
 
 pub enum Command {
     /// In pixels
@@ -28,27 +26,33 @@ pub struct SpaceView {
 impl SpaceView {
     pub fn new() -> (Self, Sender<Command>) {
         let (sender, receiver) = channel::unbounded();
-        (Self {
-            canvas: None,
-            context: None,
-            backdrop: None,
-            location_images: Default::default(),
-            look_at: DVec2::new(0., 0.),
-            zoom: 1.,
-            receiver,
-            solar_system: fake_solar_system(),
-        }, sender)
+        (
+            Self {
+                canvas: None,
+                context: None,
+                backdrop: None,
+                location_images: Default::default(),
+                look_at: DVec2::new(0., 0.),
+                zoom: 1.,
+                receiver,
+                solar_system: fake_solar_system(),
+            },
+            sender,
+        )
     }
 
     fn canvas(&mut self) -> Option<HtmlCanvasElement> {
         if self.canvas.is_none() {
-            self.canvas = Some(web_sys::window()
-                .unwrap()
-                .document()
-                .unwrap()
-                .get_element_by_id("glcanvas")
-                .unwrap()
-                .dyn_into::<web_sys::HtmlCanvasElement>().ok()?);
+            self.canvas = Some(
+                web_sys::window()
+                    .unwrap()
+                    .document()
+                    .unwrap()
+                    .get_element_by_id("glcanvas")
+                    .unwrap()
+                    .dyn_into::<web_sys::HtmlCanvasElement>()
+                    .ok()?,
+            );
         }
 
         self.canvas.clone()
@@ -56,16 +60,16 @@ impl SpaceView {
 
     fn context(&mut self) -> Option<CanvasRenderingContext2d> {
         if self.context.is_none() {
-            self.context = Some(
-                {
-                    let context = self.canvas()?
-                        .get_context("2d")
-                        .unwrap()
-                        .unwrap()
-                        .dyn_into::<CanvasRenderingContext2d>().ok()?;
-                    context
-                }
-            );
+            self.context = Some({
+                let context = self
+                    .canvas()?
+                    .get_context("2d")
+                    .unwrap()
+                    .unwrap()
+                    .dyn_into::<CanvasRenderingContext2d>()
+                    .ok()?;
+                context
+            });
         }
 
         self.context.clone()
@@ -122,7 +126,7 @@ impl Drawable for SpaceView {
 
                 context.set_image_smoothing_enabled(false);
 
-                let backdrop =  self.backdrop.as_ref().unwrap();
+                let backdrop = self.backdrop.as_ref().unwrap();
                 context.fill_rect(0., 0., size.x, size.y);
                 if backdrop.complete() {
                     // The backdrop is tiled and panned based on the look_at unaffected by zoom
@@ -140,7 +144,9 @@ impl Drawable for SpaceView {
                             x -= backdrop_width;
                         }
                         while x < size.x {
-                            if let Err(err) = context.draw_image_with_html_image_element(backdrop, x as f64, y as f64) {
+                            if let Err(err) = context
+                                .draw_image_with_html_image_element(backdrop, x as f64, y as f64)
+                            {
                                 error!("Error rendering backdrop: {:#?}", err);
                             }
                             x += backdrop_width;

@@ -1,15 +1,17 @@
+use cosmicverge_shared::{CosmicVergeResponse, UserProfile};
+use wasm_bindgen::__rt::std::sync::Arc;
 use yew::prelude::*;
 use yew_bulma::static_page::StaticPage;
 use yew_router::prelude::*;
 
-use crate::{app::{game::Game}, localize, localize_html};
-use crate::client_api::{ApiBridge, ApiAgent, AgentResponse, AgentMessage};
-use wasm_bindgen::__rt::std::sync::Arc;
-use cosmicverge_shared::{UserProfile, CosmicVergeResponse};
+use crate::{
+    app::game::Game,
+    client_api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
+    localize, localize_html,
+};
 
 mod game;
 mod home_page;
-
 
 #[derive(Switch, Clone, Debug, Eq, PartialEq)]
 pub enum AppRoute {
@@ -181,8 +183,9 @@ impl AppRouteRenderer {
                     // Reveal the canvas
                     (true, Html::default())
                 }
-                other => {
-                    (false, html! {
+                other => (
+                    false,
+                    html! {
                         <section class="section content">
                             <div class="columns is-centered">
                                 <div class="column is-half">
@@ -194,8 +197,8 @@ impl AppRouteRenderer {
 
                             { self.render_content(other) }
                         </section>
-                    })
-                }
+                    },
+                ),
             };
             let app_class = if game_foregrounded {
                 "in-game"
@@ -213,7 +216,7 @@ impl AppRouteRenderer {
             }
         } else {
             // TODO show a loading image
-            html!{ <div /> }
+            html! { <div /> }
         }
     }
 

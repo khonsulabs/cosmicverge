@@ -29,8 +29,8 @@ pub enum Error {
 
 impl JwtKey {
     pub fn parse_token<T>(&self, token: &str) -> Result<jsonwebtoken::TokenData<T>, Error>
-        where
-                for<'de> T: Deserialize<'de>,
+    where
+        for<'de> T: Deserialize<'de>,
     {
         if self.key_type != "RSA" {
             return Err(Error::NonRSAKey);

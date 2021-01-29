@@ -1,12 +1,13 @@
-use crate::{database_refactor, env, webserver_base_url};
+use std::convert::Infallible;
+
+use basws_server::prelude::Uuid;
 use chrono::{NaiveDateTime, Utc};
 use database::{pool, sqlx};
-use crate::jwk::JwtKey;
 use serde::{Deserialize, Serialize};
-use std::convert::Infallible;
 use url::Url;
 use warp::{Filter, Rejection};
-use basws_server::prelude::Uuid;
+
+use crate::{database_refactor, env, jwk::JwtKey, webserver_base_url};
 
 #[derive(Deserialize)]
 struct TwitchCallback {
@@ -54,8 +55,8 @@ pub fn authorization_url(installation_id: Uuid) -> String {
             // TODO add NONCE
         ],
     )
-        .unwrap()
-        .to_string()
+    .unwrap()
+    .to_string()
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -173,7 +174,7 @@ pub async fn login_twitch(installation_id: Uuid, code: String) -> Result<(), any
 
         // Create an account if it doesn't exist yet for this installation
         let account_id = if let Some(account) =
-        database_refactor::get_profile_by_installation_id(&mut tx, installation_id).await?
+            database_refactor::get_profile_by_installation_id(&mut tx, installation_id).await?
         {
             account.id
         } else {
@@ -181,20 +182,22 @@ pub async fn login_twitch(installation_id: Uuid, code: String) -> Result<(), any
                 "SELECT account_id FROM twitch_profiles WHERE twitch_profiles.id = $1",
                 user.id
             )
-                .fetch_one(&mut tx)
-                .await
+            .fetch_one(&mut tx)
+            .await
             {
                 row.account_id
             } else {
-                sqlx::query!(
-                    "INSERT INTO accounts DEFAULT VALUES RETURNING id"
-                )
+                sqlx::query!("INSERT INTO accounts DEFAULT VALUES RETURNING id")
                     .fetch_one(&mut tx)
                     .await?
                     .id
             };
-            database_refactor::set_installation_account_id(&mut tx, installation_id, Some(account_id))
-                .await?;
+            database_refactor::set_installation_account_id(
+                &mut tx,
+                installation_id,
+                Some(account_id),
+            )
+            .await?;
             account_id
         };
 

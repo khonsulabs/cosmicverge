@@ -1,6 +1,7 @@
+use std::env;
+
 use once_cell::sync::OnceCell;
 use sqlx::PgPool;
-use std::env;
 
 static POOL: OnceCell<PgPool> = OnceCell::new();
 

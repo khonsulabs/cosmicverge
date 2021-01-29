@@ -1,8 +1,13 @@
-use yew::prelude::*;
-use crate::{app::LoggedInUser, localize, localize_html};
 use std::sync::Arc;
-use crate::client_api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge};
-use cosmicverge_shared::{OAuthProvider, CosmicVergeRequest};
+
+use cosmicverge_shared::{CosmicVergeRequest, OAuthProvider};
+use yew::prelude::*;
+
+use crate::{
+    app::LoggedInUser,
+    client_api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
+    localize, localize_html,
+};
 
 pub struct HomePage {
     link: ComponentLink<Self>,
@@ -41,10 +46,9 @@ impl Component for HomePage {
     fn update(&mut self, msg: Self::Message) -> bool {
         match msg {
             Message::LogInWith(provider) => {
-                self.api
-                    .send(AgentMessage::Request(CosmicVergeRequest::AuthenticationUrl(
-                        provider,
-                    )));
+                self.api.send(AgentMessage::Request(
+                    CosmicVergeRequest::AuthenticationUrl(provider),
+                ));
                 false
             }
             Message::ApiMessage(msg) => match msg {

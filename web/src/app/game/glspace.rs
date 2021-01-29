@@ -1,8 +1,7 @@
 use glow::*;
 use wasm_bindgen::JsCast;
 
-use crate::redraw_loop::Drawable;
-use crate::app::game::check_canvas_size;
+use crate::{app::game::check_canvas_size, redraw_loop::Drawable};
 
 pub struct SpaceView {
     gl: Option<Context>,
@@ -10,9 +9,7 @@ pub struct SpaceView {
 
 impl SpaceView {
     pub fn new() -> Self {
-        Self {
-            gl: None
-        }
+        Self { gl: None }
     }
 
     fn gl(&self) -> &'_ Context {
@@ -38,14 +35,13 @@ impl Drawable for SpaceView {
                 .dyn_into::<web_sys::WebGl2RenderingContext>()
                 .unwrap();
 
-            self.gl = Some(
-                glow::Context::from_webgl2_context(webgl2_context)
-            );
+            self.gl = Some(glow::Context::from_webgl2_context(webgl2_context));
         }
 
         let shader_version = "#version 300 es";
         unsafe {
-            let vertex_array = self.gl()
+            let vertex_array = self
+                .gl()
                 .create_vertex_array()
                 .expect("Cannot create vertex array");
             self.gl().bind_vertex_array(Some(vertex_array));
@@ -79,10 +75,12 @@ impl Drawable for SpaceView {
             let mut shaders = Vec::with_capacity(shader_sources.len());
 
             for (shader_type, shader_source) in shader_sources.iter() {
-                let shader = self.gl()
+                let shader = self
+                    .gl()
                     .create_shader(*shader_type)
                     .expect("Cannot create shader");
-                self.gl().shader_source(shader, &format!("{}\n{}", shader_version, shader_source));
+                self.gl()
+                    .shader_source(shader, &format!("{}\n{}", shader_version, shader_source));
                 self.gl().compile_shader(shader);
                 if !self.gl().get_shader_compile_status(shader) {
                     panic!(self.gl().get_shader_info_log(shader));

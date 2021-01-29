@@ -1,17 +1,19 @@
-use crate::{database_refactor, server::ConnectedAccount, server::CosmicVergeServer};
-use basws_server::{Handle, Server};
-use database::{pool, sqlx};
-use cosmicverge_shared::CosmicVergeResponse;
-use sqlx::{Executor, postgres::PgListener};
 use std::collections::HashSet;
-use basws_server::prelude::Uuid;
+
+use basws_server::{prelude::Uuid, Handle, Server};
+use cosmicverge_shared::CosmicVergeResponse;
+use database::{pool, sqlx};
+use sqlx::{postgres::PgListener, Executor};
+
+use crate::{
+    database_refactor,
+    server::{ConnectedAccount, CosmicVergeServer},
+};
 
 pub async fn pg_notify_loop(websockets: Server<CosmicVergeServer>) -> Result<(), anyhow::Error> {
     let pool = pool();
     let mut listener = PgListener::connect_with(&pool).await?;
-    listener
-        .listen_all(vec!["installation_login"])
-        .await?;
+    listener.listen_all(vec!["installation_login"]).await?;
     while let Ok(notification) = listener.recv().await {
         info!(
             "Got notification: {} {}",
@@ -28,7 +30,10 @@ pub async fn pg_notify_loop(websockets: Server<CosmicVergeServer>) -> Result<(),
                     .await?;
 
                 websockets
-                    .send_to_installation_id(installation_id, CosmicVergeResponse::Authenticated(user))
+                    .send_to_installation_id(
+                        installation_id,
+                        CosmicVergeResponse::Authenticated(user),
+                    )
                     .await;
             }
         }

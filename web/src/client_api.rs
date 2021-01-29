@@ -1,8 +1,13 @@
 use basws_yew::{prelude::*, ClientLogic, ClientState, Error};
-use cosmicverge_shared::{cosmic_verge_protocol_version, CosmicVergeRequest, CosmicVergeResponse, UserProfile};
+use cosmicverge_shared::{
+    cosmic_verge_protocol_version, CosmicVergeRequest, CosmicVergeResponse, UserProfile,
+};
 use url::Url;
 use yew::Callback;
-use yew_router::{agent::RouteRequest, prelude::Route, prelude::RouteAgentBridge};
+use yew_router::{
+    agent::RouteRequest,
+    prelude::{Route, RouteAgentBridge},
+};
 
 pub type AgentMessage = basws_yew::AgentMessage<CosmicVergeRequest>;
 pub type AgentResponse = basws_yew::AgentResponse<CosmicVergeResponse>;
