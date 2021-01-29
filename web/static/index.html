@@ -4,15 +4,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Loading... - Cosmic Verge</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?CACHEBUSTER" />
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/fonts/icofont/icofont.min.css">
     <script type="module">
-      import init, { run_app } from "/pkg/web.js";
+      import init, { run_app } from "/pkg/web.js?CACHEBUSTER";
 
       async function run() {
-        await init();
+        await init('/pkg/web_bg.wasm?CACHEBUSTER');
         run_app();
       }
 

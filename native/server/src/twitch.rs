@@ -105,7 +105,7 @@ pub struct JwtClaims {
 }
 
 pub async fn login_twitch(installation_id: Uuid, code: String) -> Result<(), anyhow::Error> {
-    // Call itch.io API to get the user information
+    // Call twitch.tv API to get the user information
     let client = reqwest::Client::new();
     let tokens: TwitchTokenResponse = client
         .post("https://id.twitch.tv/oauth2/token")
@@ -146,6 +146,7 @@ pub async fn login_twitch(installation_id: Uuid, code: String) -> Result<(), any
     {
         anyhow::bail!("Invalid JWT Token");
     }
+    // TODO check nonce once added
 
     let response: TwitchUsersResponse = client
         .get("https://api.twitch.tv/helix/users")

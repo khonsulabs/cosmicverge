@@ -1,0 +1,14 @@
+FROM ubuntu:20.04
+
+RUN apt-get update \
+    && apt-get install -y libpq-dev ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY native/target/release/server .env ./
+COPY web/static/ private/assets/ ./static/
+
+EXPOSE 7879/tcp
+
+ENV RUST_BACKTRACE=1
+
+CMD ./server
