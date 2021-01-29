@@ -36,14 +36,9 @@ jobs:
           persist-credentials: true
           ssh-key: ${{ secrets.BOTSU_PRIVATE_SSH_KEY }}
 
-      - name: Configure Production
-        if: github.ref == 'refs/heads/production'
-        env:
-          DOTENVFILE: ${{ secrets.DOTENVFILE }}
-        run: echo "$DOTENVFILE" > .env
-
       - name: Run tests
         run: |
+          echo "DATABASE_URL=postgres://postgres:postgres@postgres:$POSTGRES_PORT/postgres" >> .env
           # cd web
           # cargo test --target wasm32-unknown-unknown --release --verbose
           cd native
@@ -53,22 +48,26 @@ jobs:
           # TODO delete once basws is updated with this env var change
           NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
           BASWS_CLIENT_ENCRYPTION_KEY: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
+          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
 
       - name: Build
         env:
-          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
           # TODO delete once basws is updated with this env var change
           NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
           BASWS_CLIENT_ENCRYPTION_KEY: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
         run: |
-          echo "DATABASE_URL=postgres://postgres:postgres@postgres:$POSTGRES_PORT/postgres" >> .env
-
           cd web
           sed -i s/CACHEBUSTER/`uuidgen`/g static/index.html
           cargo make build -p release
 
           cd ../native
           cargo build --bin server --release
+
+      - name: Configure Production
+        if: github.ref == 'refs/heads/production'
+        env:
+          DOTENVFILE: ${{ secrets.DOTENVFILE }}
+        run: echo "$DOTENVFILE" > .env
 
       - uses: kciter/aws-ecr-action@v1
         if: github.ref == 'refs/heads/main'
