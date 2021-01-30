@@ -156,7 +156,7 @@ impl Component for Game {
         match msg {
             Message::WheelEvent(event) => {
                 event.prevent_default();
-                let delta = event.delta_y() / 100.;
+                let delta = event.delta_y();
                 let amount = match event.delta_mode() {
                     WheelEvent::DOM_DELTA_PIXEL => delta,
                     WheelEvent::DOM_DELTA_LINE => delta * 20.,
@@ -166,6 +166,7 @@ impl Component for Game {
                         return false;
                     }
                 };
+                let amount = (amount / 1000.).min(1.).max(-1.);
                 let focus = Point2D::new(event.client_x(), event.client_y());
                 let _ = self
                     .space_sender
