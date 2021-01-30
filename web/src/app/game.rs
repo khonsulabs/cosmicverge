@@ -1,9 +1,13 @@
 use crossbeam::channel::Sender;
-use glam::IVec2;
+use euclid::Point2D;
 use web_sys::{HtmlCanvasElement, MouseEvent, WheelEvent};
 use yew::prelude::*;
 
+pub struct Pixels;
+pub struct Solar;
+
 use crate::{localize, redraw_loop};
+use std::collections::HashMap;
 
 #[cfg(name = "opengl")]
 mod glspace;
@@ -14,8 +18,8 @@ struct MouseButtons {
     pub left: bool,
     pub right: bool,
     pub middle: bool,
-    pub mouse_down_start: Option<IVec2>,
-    pub last_mouse_location: Option<IVec2>,
+    pub mouse_down_start: Option<Point2D<i32, Pixels>>,
+    pub last_mouse_location: Option<Point2D<i32, Pixels>>,
 }
 
 pub struct Game {
@@ -24,6 +28,12 @@ pub struct Game {
     loop_sender: Sender<redraw_loop::Command>,
     space_sender: Sender<space2d::Command>,
     mouse_buttons: MouseButtons,
+    touches: HashMap<i32, TouchState>,
+}
+
+struct TouchState {
+    start: Point2D<i32, Pixels>,
+    last_location: Option<Point2D<i32, Pixels>>,
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -36,6 +46,10 @@ pub struct Props {
 #[derive(Debug)]
 pub enum Message {
     WheelEvent(WheelEvent),
+    TouchStart(TouchEvent),
+    TouchEnd(TouchEvent),
+    TouchMove(TouchEvent),
+    TouchCancel(TouchEvent),
     MouseDown(MouseEvent),
     MouseUp(MouseEvent),
     MouseMove(MouseEvent),
@@ -74,6 +88,7 @@ impl Component for Game {
             loop_sender,
             space_sender,
             mouse_buttons: Default::default(),
+            touches: Default::default(),
         };
         component.update_title();
         component
@@ -82,6 +97,7 @@ impl Component for Game {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Message::WheelEvent(event) => {
+                event.prevent_default();
                 let delta = event.delta_y() / 100.;
                 let amount = match event.delta_mode() {
                     WheelEvent::DOM_DELTA_PIXEL => delta,
@@ -92,21 +108,27 @@ impl Component for Game {
                         return false;
                     }
                 };
-                let _ = self.space_sender.send(space2d::Command::Zoom(amount));
+                let focus = Point2D::new(event.client_x(), event.client_y());
+                let _ = self
+                    .space_sender
+                    .send(space2d::Command::Zoom(amount, focus.to_f64()));
             }
             Message::MouseDown(event) => {
+                event.prevent_default();
                 self.update_mouse_buttons(event.button(), true);
 
                 self.mouse_buttons.mouse_down_start =
-                    Some(IVec2::new(event.client_x(), event.client_y()));
+                    Some(Point2D::new(event.client_x(), event.client_y()));
                 self.mouse_buttons.last_mouse_location = None;
             }
             Message::MouseUp(event) => {
+                event.prevent_default();
                 self.update_mouse_buttons(event.button(), false);
             }
             Message::MouseMove(event) => {
                 if let Some(start) = self.mouse_buttons.mouse_down_start {
-                    let location = IVec2::new(event.client_x(), event.client_y());
+                    event.prevent_default();
+                    let location = Point2D::<i32, Pixels>::new(event.client_x(), event.client_y());
                     let delta = match self.mouse_buttons.last_mouse_location {
                         Some(last_mouse_location) => location - last_mouse_location,
                         None => location - start,
@@ -116,12 +138,107 @@ impl Component for Game {
                     if self.mouse_buttons.left {
                         let _ = self
                             .space_sender
-                            .send(space2d::Command::Pan(delta.as_f64()));
+                            .send(space2d::Command::Pan(delta.to_f64()));
                     }
                 }
             }
             Message::MouseEnter(_) => {}
             Message::MouseLeave(_) => {}
+            Message::TouchStart(event) => {
+                event.prevent_default();
+                let touches = event.changed_touches();
+                for i in 0..touches.length() {
+                    let touch = touches.get(i).unwrap();
+                    let start = Point2D::new(touch.client_x(), touch.client_y());
+                    self.touches.insert(
+                        touch.identifier(),
+                        TouchState {
+                            start,
+                            last_location: None,
+                        },
+                    );
+                }
+            }
+            Message::TouchCancel(event) | Message::TouchEnd(event) => {
+                event.prevent_default();
+                let touches = event.changed_touches();
+                for i in 0..touches.length() {
+                    let touch = touches.get(i).unwrap();
+                    self.touches.remove(&touch.identifier());
+                }
+            }
+            Message::TouchMove(event) => {
+                event.prevent_default();
+                let touches = event.touches();
+                if touches.length() == 1 {
+                    // Pan
+                    let touch = touches.get(0).unwrap();
+                    if let Some(touch_state) = self.touches.get_mut(&touch.identifier()) {
+                        let location =
+                            Point2D::<i32, Pixels>::new(touch.client_x(), touch.client_y());
+                        let delta = match touch_state.last_location {
+                            Some(last_mouse_location) => location - last_mouse_location,
+                            None => location - touch_state.start,
+                        };
+                        touch_state.last_location = Some(location);
+
+                        let _ = self
+                            .space_sender
+                            .send(space2d::Command::Pan(delta.to_f64()));
+                    }
+                } else if touches.length() == 2 {
+                    // Zoom
+                    let touch1 = touches.get(0).unwrap();
+                    let touch1_location =
+                        Point2D::<i32, Pixels>::new(touch1.client_x(), touch1.client_y());
+                    if let Some(old_touch1) = self.touches.get(&touch1.identifier()) {
+                        let touch2 = touches.get(1).unwrap();
+                        let touch2_location =
+                            Point2D::<i32, Pixels>::new(touch2.client_x(), touch2.client_y());
+                        if let Some(old_touch2) = self.touches.get(&touch2.identifier()) {
+                            let touch1_last_location =
+                                old_touch1.last_location.unwrap_or(old_touch1.start);
+                            let touch2_last_location =
+                                old_touch2.last_location.unwrap_or(old_touch2.start);
+                            let current_midpoint = (touch1_location.to_vector()
+                                + touch2_location.to_vector())
+                            .to_f64()
+                                / 2.;
+                            let old_midpoint = (touch1_last_location.to_vector()
+                                + touch2_last_location.to_vector())
+                            .to_f64()
+                                / 2.;
+
+                            let _ = self
+                                .space_sender
+                                .send(space2d::Command::Pan(current_midpoint - old_midpoint));
+
+                            let current_distance = touch1_location
+                                .to_f64()
+                                .distance_to(touch2_location.to_f64());
+                            let old_distance = touch1_last_location
+                                .to_f64()
+                                .distance_to(touch2_last_location.to_f64());
+                            let ratio = current_distance / old_distance - 1.;
+
+                            let _ = self
+                                .space_sender
+                                .send(space2d::Command::Zoom(ratio, current_midpoint.to_point()));
+                        }
+                    }
+                } else {
+                    error!("Only one or two fingers handled. Touch this less.")
+                }
+
+                let touches = event.changed_touches();
+                for i in 0..touches.length() {
+                    let touch = touches.get(i).unwrap();
+                    let location = Point2D::<i32, Pixels>::new(touch.client_x(), touch.client_y());
+                    if let Some(state) = self.touches.get_mut(&touch.identifier()) {
+                        state.last_location = Some(location);
+                    }
+                }
+            }
         }
 
         false
@@ -167,6 +284,10 @@ impl Component for Game {
                 onmousemove=self.link.callback(Message::MouseMove)
                 onmouseenter=self.link.callback(Message::MouseEnter)
                 onmouseleave=self.link.callback(Message::MouseLeave)
+                ontouchstart=self.link.callback(Message::TouchStart)
+                ontouchmove=self.link.callback(Message::TouchMove)
+                ontouchend=self.link.callback(Message::TouchEnd)
+                ontouchcancel=self.link.callback(Message::TouchCancel)
             />
         }
     }

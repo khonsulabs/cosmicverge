@@ -19,7 +19,7 @@ mod internal_macros {
 }
 
 #[cfg(debug_assertions)]
-const MAX_LOG_LEVEL: log::Level = log::Level::Trace;
+const MAX_LOG_LEVEL: log::Level = log::Level::Debug;
 #[cfg(not(debug_assertions))]
 const MAX_LOG_LEVEL: log::Level = log::Level::Info;
 
@@ -46,7 +46,7 @@ fn initialize_shared_helpers() {
 #[wasm_bindgen]
 pub fn run_app() -> Result<(), JsValue> {
     initialize_shared_helpers();
-    yew::App::<app::App>::new().mount_to_body();
+    yew::App::<app::App>::new().mount_as_body();
     yew::run_loop();
 
     Ok(())

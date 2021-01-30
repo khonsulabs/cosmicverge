@@ -206,17 +206,17 @@ impl AppRouteRenderer {
                 "out-of-game"
             };
             html! {
-                <div>
+                <body>
+                    { self.navbar() }
                     <div id="app" class=app_class>
-                        { self.navbar() }
                         { contents }
                     </div>
                     <Game set_title=set_title.clone() foregrounded=game_foregrounded rendering=self.rendering />
-                </div>
+                </body>
             }
         } else {
             // TODO show a loading image
-            html! { <div /> }
+            html! { <body /> }
         }
     }
 
