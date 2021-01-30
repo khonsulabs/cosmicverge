@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-uuid = { version = "*", features = ["v4", "serde"] }
-basws-shared = "0.1.0"
+uuid = { version = "0.8", features = ["v4", "serde"] }
+basws-shared = "0.1"
 thiserror = "1"
-chrono = { version = "*", features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"] }

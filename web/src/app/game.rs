@@ -9,6 +9,56 @@ pub struct Solar;
 use crate::{localize, redraw_loop};
 use std::collections::HashMap;
 
+#[derive(Debug, Clone)]
+pub struct SolarSystem {
+    pub name: String,
+    pub background: String,
+    pub locations: Vec<SolarSystemLocation>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SolarSystemLocation {
+    pub id: i64,
+    pub name: String,
+    pub image: String,
+    pub size: f64,
+    pub location: Point2D<f64, Solar>,
+    pub owned_by: Option<i64>,
+}
+
+pub fn fake_solar_system() -> SolarSystem {
+    SolarSystem {
+        name: String::from("SM-0-A9F4"),
+        background: String::from("/helianthusgames/Backgrounds/BlueStars.png"),
+        locations: vec![
+            SolarSystemLocation {
+                id: 1,
+                name: String::from("Sun"),
+                image: String::from("/helianthusgames/Suns/2.png"),
+                size: 128.,
+                location: Point2D::zero(),
+                owned_by: None,
+            },
+            SolarSystemLocation {
+                id: 2,
+                name: String::from("Earth"),
+                image: String::from("/helianthusgames/Terran_or_Earth-like/1.png"),
+                size: 32.,
+                location: Point2D::new(600., 0.),
+                owned_by: Some(1),
+            },
+            SolarSystemLocation {
+                id: 3,
+                name: String::from("Earth"),
+                image: String::from("/helianthusgames/Rocky/1.png"),
+                size: 24.,
+                location: Point2D::new(200., 200.),
+                owned_by: Some(1),
+            },
+        ],
+    }
+}
+
 #[cfg(name = "opengl")]
 mod glspace;
 mod space2d;
@@ -25,6 +75,7 @@ struct MouseButtons {
 pub struct Game {
     link: ComponentLink<Self>,
     props: Props,
+    solar_system: SolarSystem,
     loop_sender: Sender<redraw_loop::Command>,
     space_sender: Sender<space2d::Command>,
     mouse_buttons: MouseButtons,
@@ -89,7 +140,14 @@ impl Component for Game {
             space_sender,
             mouse_buttons: Default::default(),
             touches: Default::default(),
+            solar_system: fake_solar_system(),
         };
+        component
+            .space_sender
+            .send(space2d::Command::SetSolarSystem(Some(
+                component.solar_system.clone(),
+            )))
+            .unwrap();
         component.update_title();
         component
     }
@@ -276,19 +334,25 @@ impl Component for Game {
 
     fn view(&self) -> Html {
         html! {
-            <canvas
-                id="glcanvas"
-                onwheel=self.link.callback(Message::WheelEvent)
-                onmousedown=self.link.callback(Message::MouseDown)
-                onmouseup=self.link.callback(Message::MouseUp)
-                onmousemove=self.link.callback(Message::MouseMove)
-                onmouseenter=self.link.callback(Message::MouseEnter)
-                onmouseleave=self.link.callback(Message::MouseLeave)
-                ontouchstart=self.link.callback(Message::TouchStart)
-                ontouchmove=self.link.callback(Message::TouchMove)
-                ontouchend=self.link.callback(Message::TouchEnd)
-                ontouchcancel=self.link.callback(Message::TouchCancel)
-            />
+            <div id="game"
+                    onwheel=self.link.callback(Message::WheelEvent)
+                    onmousedown=self.link.callback(Message::MouseDown)
+                    onmouseup=self.link.callback(Message::MouseUp)
+                    onmousemove=self.link.callback(Message::MouseMove)
+                    onmouseenter=self.link.callback(Message::MouseEnter)
+                    onmouseleave=self.link.callback(Message::MouseLeave)
+                    ontouchstart=self.link.callback(Message::TouchStart)
+                    ontouchmove=self.link.callback(Message::TouchMove)
+                    ontouchend=self.link.callback(Message::TouchEnd)
+                    ontouchcancel=self.link.callback(Message::TouchCancel)>
+                <div id="hud">
+                    <div id="solar-system">
+                        <label>{ localize!("current-system") }</label>
+                        <div id="solar-system-name">{ &self.solar_system.name }</div>
+                    </div>
+                </div>
+                <canvas id="glcanvas" />
+            </div>
         }
     }
 

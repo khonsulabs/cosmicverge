@@ -45,15 +45,12 @@ jobs:
           cargo run --bin migrator --release
           cargo test --release --verbose
         env:
-          # TODO delete once basws is updated with this env var change
-          NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
-          BASWS_CLIENT_ENCRYPTION_KEY: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
+          # Fake value for the encryption key for this step, because any branch can run this
+          BASWS_CLIENT_ENCRYPTION_KEY: "abcdefghijklmnopqrstuvwxzy123456"
           POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
 
       - name: Build
         env:
-          # TODO delete once basws is updated with this env var change
-          NCOG_CLIENT_ENCRYPTION_KEY: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
           BASWS_CLIENT_ENCRYPTION_KEY: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
         run: |
           cd web

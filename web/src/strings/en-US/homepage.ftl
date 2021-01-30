@@ -19,3 +19,5 @@ storage-agreement = Signing in requires that ncog.id utilize Local Storage which
     By checking this checkbox, you permit ncog.id to store information in your browser that will be used to keep you logged in. You acknowledge that this software is under development and any and all data stored by ncog.id may be erased at any time. Khonsu Labs offers no warranties or guarantees on the functionality of this service at this time. Full international privacy law complaince will be part of ncog.id as development proceeds, but at this point in time it is too early to engage legal council over decisions that have yet to be made.
 
 i-agree = I Agree
+
+current-system = Current System

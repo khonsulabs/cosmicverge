@@ -3,13 +3,14 @@ use crossbeam::channel::{self, Receiver, Sender, TryRecvError};
 use wasm_bindgen::{JsCast, __rt::std::collections::HashMap};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlImageElement};
 
-use crate::app::game::{Pixels, Solar};
+use crate::app::game::{Pixels, Solar, SolarSystem};
 use euclid::{Point2D, Scale, Size2D, Vector2D};
 
 pub enum Command {
     Pan(Vector2D<f64, Pixels>),
     /// In percent relative to current zoom
     Zoom(f64, Point2D<f64, Pixels>),
+    SetSolarSystem(Option<SolarSystem>),
 }
 
 pub struct SpaceView {
@@ -17,7 +18,7 @@ pub struct SpaceView {
     context: Option<CanvasRenderingContext2d>,
     backdrop: Option<HtmlImageElement>,
     location_images: HashMap<i64, HtmlImageElement>,
-    solar_system: SolarSystem,
+    solar_system: Option<SolarSystem>,
     look_at: Point2D<f64, Solar>,
     zoom: f64,
     receiver: Receiver<Command>,
@@ -35,7 +36,7 @@ impl SpaceView {
                 look_at: Point2D::new(0., 0.),
                 zoom: 1.,
                 receiver,
-                solar_system: fake_solar_system(),
+                solar_system: None,
             },
             sender,
         )
@@ -82,6 +83,10 @@ impl SpaceView {
             Err(disconnected) => Err(disconnected)?,
         } {
             match event {
+                Command::SetSolarSystem(system) => {
+                    self.solar_system = system;
+                    self.load_solar_system_images();
+                }
                 Command::Zoom(fraction, focus) => {
                     info!("Zooming from {} by {} at {:?}", self.zoom, fraction, focus);
                     let scale = self.scale();
@@ -196,22 +201,29 @@ impl SpaceView {
         self.canvas()
             .map(|canvas| Size2D::new(canvas.client_width(), canvas.client_height()))
     }
+
+    fn load_solar_system_images(&mut self) {
+        self.location_images.clear();
+        if let Some(solar_system) = &self.solar_system {
+            self.backdrop = Some({
+                let image = HtmlImageElement::new().unwrap();
+                image.set_src(&solar_system.background);
+                image
+            });
+
+            for location in solar_system.locations.iter() {
+                let image = HtmlImageElement::new().unwrap();
+                image.set_src(&location.image);
+                self.location_images.insert(location.id, image);
+            }
+        } else {
+            self.backdrop = None;
+        }
+    }
 }
 
 impl Drawable for SpaceView {
     fn initialize(&mut self) -> anyhow::Result<()> {
-        self.backdrop = Some({
-            let image = HtmlImageElement::new().unwrap();
-            image.set_src(&self.solar_system.background);
-            image
-        });
-
-        for location in self.solar_system.locations.iter() {
-            let image = HtmlImageElement::new().unwrap();
-            image.set_src(&location.image);
-            self.location_images.insert(location.id, image);
-        }
-
         Ok(())
     }
 
@@ -260,20 +272,24 @@ impl Drawable for SpaceView {
                     }
                 }
 
-                for location in self.solar_system.locations.iter() {
-                    let image = &self.location_images[&location.id];
-                    if image.complete() {
-                        let render_radius = location.size * self.zoom;
-                        let render_center = center + location.location.to_vector() * scale;
+                if let Some(solar_system) = &self.solar_system {
+                    for location in solar_system.locations.iter() {
+                        let image = &self.location_images[&location.id];
+                        if image.complete() {
+                            let render_radius = location.size * self.zoom;
+                            let render_center = center + location.location.to_vector() * scale;
 
-                        if let Err(err) = context.draw_image_with_html_image_element_and_dw_and_dh(
-                            image,
-                            render_center.x - render_radius,
-                            render_center.y - render_radius,
-                            render_radius * 2.,
-                            render_radius * 2.,
-                        ) {
-                            error!("Error rendering sun: {:#?}", err);
+                            if let Err(err) = context
+                                .draw_image_with_html_image_element_and_dw_and_dh(
+                                    image,
+                                    render_center.x - render_radius,
+                                    render_center.y - render_radius,
+                                    render_radius * 2.,
+                                    render_radius * 2.,
+                                )
+                            {
+                                error!("Error rendering sun: {:#?}", err);
+                            }
                         }
                     }
                 }
@@ -285,53 +301,5 @@ impl Drawable for SpaceView {
 
     fn cleanup(&mut self) -> anyhow::Result<()> {
         Ok(())
-    }
-}
-
-pub struct SolarSystem {
-    pub name: String,
-    pub background: String,
-    pub locations: Vec<SolarSystemLocation>,
-}
-
-pub struct SolarSystemLocation {
-    pub id: i64,
-    pub name: String,
-    pub image: String,
-    pub size: f64,
-    pub location: Point2D<f64, Solar>,
-    pub owned_by: Option<i64>,
-}
-
-pub fn fake_solar_system() -> SolarSystem {
-    SolarSystem {
-        name: String::from("SM-0-A9F4"),
-        background: String::from("/helianthusgames/Backgrounds/BlueStars.png"),
-        locations: vec![
-            SolarSystemLocation {
-                id: 1,
-                name: String::from("Sun"),
-                image: String::from("/helianthusgames/Suns/2.png"),
-                size: 128.,
-                location: Point2D::zero(),
-                owned_by: None,
-            },
-            SolarSystemLocation {
-                id: 2,
-                name: String::from("Earth"),
-                image: String::from("/helianthusgames/Terran_or_Earth-like/1.png"),
-                size: 32.,
-                location: Point2D::new(600., 0.),
-                owned_by: Some(1),
-            },
-            SolarSystemLocation {
-                id: 3,
-                name: String::from("Earth"),
-                image: String::from("/helianthusgames/Rocky/1.png"),
-                size: 24.,
-                location: Point2D::new(200., 200.),
-                owned_by: Some(1),
-            },
-        ],
     }
 }
