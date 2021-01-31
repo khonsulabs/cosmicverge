@@ -1,5 +1,8 @@
 cosmic-verge = Cosmic Verge
 
+connecting = Connecting...
+cancel = Cancel
+
 navbar-label = main navigation
 navbar-menu-label = menu
 home = Home
@@ -21,3 +24,16 @@ storage-agreement = Signing in requires that Cosmic Verge utilize Local Storage 
 i-agree = I Agree
 
 current-system = Current System
+
+create-new-pilot = Create New Pilot
+select-pilot = Select a pilot
+no-pilots = You don't have any pilots yet.
+
+pilot-name = Pilot Name
+
+validation-error-not-present = required
+validation-error-not-absent = must be empty
+validation-error-invalid-valid = invalid value
+
+pilot-error-name-already-taken = That name is already in use
+pilot-error-invalid-name = Pilot names can only contain the letters A-Z, numbers 0-9, and spaces. (This is an intentional, temporary limitation.)

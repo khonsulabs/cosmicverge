@@ -1,34 +1,34 @@
 use async_trait::async_trait;
-use basws_server::prelude::*;
-use chrono::{Duration, Utc};
-use cosmicverge_shared::{
-    cosmic_verge_protocol_version_requirements, AuthenticatedUser, CosmicVergeRequest,
-    CosmicVergeResponse, OAuthProvider,
+
+use database::schema::{convert_db_pilots, Account, Installation, Pilot, PilotError};
+use database::{
+    basws_server::prelude::*,
+    cosmicverge_shared::{
+        cosmic_verge_protocol_version_requirements, CosmicVergeRequest, CosmicVergeResponse,
+        OAuthProvider,
+    },
 };
 
-use super::{database_refactor, twitch};
+use super::twitch;
 
 #[derive(Debug)]
 pub struct ConnectedAccount {
-    pub user: AuthenticatedUser,
+    pub account: Account,
 }
 
 impl ConnectedAccount {
     pub async fn lookup(installation_id: Uuid) -> anyhow::Result<Self> {
-        let profile =
-            database_refactor::get_profile_by_installation_id(database::pool(), installation_id)
-                .await?
-                .ok_or_else(|| anyhow::anyhow!("no profile found"))?;
-        Ok(Self {
-            user: AuthenticatedUser { profile },
-        })
+        let account = Account::find_by_installation_id(installation_id, database::pool())
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("no profile found"))?;
+        Ok(Self { account })
     }
 }
 
 impl Identifiable for ConnectedAccount {
     type Id = i64;
     fn id(&self) -> Self::Id {
-        self.user.profile.id
+        self.account.id
     }
 }
 
@@ -42,7 +42,7 @@ pub fn initialize() -> Server<CosmicVergeServer> {
 impl ServerLogic for CosmicVergeServer {
     type Request = CosmicVergeRequest;
     type Response = CosmicVergeResponse;
-    type Client = ();
+    type Client = Option<Pilot>;
     type Account = ConnectedAccount;
     type AccountId = i64;
 
@@ -66,6 +66,35 @@ impl ServerLogic for CosmicVergeServer {
                     }
                 }
             },
+            CosmicVergeRequest::SelectPilot(pilot_id) => {
+                if let Some(pilot) = Pilot::load(pilot_id, database::pool()).await? {
+                    self.select_pilot(pilot, client).await
+                } else {
+                    Ok(RequestHandling::Respond(CosmicVergeResponse::error(
+                        "not-found",
+                    )))
+                }
+            }
+            CosmicVergeRequest::CreatePilot { name } => {
+                if let Some(connected_account) = client.account().await {
+                    let connected_account = connected_account.read().await;
+                    match Pilot::create(connected_account.account.id, &name, database::pool()).await
+                    {
+                        Ok(pilot) => self.select_pilot(pilot, client).await,
+                        Err(PilotError::NameAlreadyTaken) => Ok(RequestHandling::Respond(
+                            CosmicVergeResponse::error("pilot-error-name-already-taken"),
+                        )),
+                        Err(PilotError::InvalidName) => Ok(RequestHandling::Respond(
+                            CosmicVergeResponse::error("pilot-error-invalid-name"),
+                        )),
+                        Err(PilotError::Database(db)) => Err(db.into()),
+                    }
+                } else {
+                    Ok(RequestHandling::Respond(CosmicVergeResponse::error(
+                        "unauthenticated",
+                    )))
+                }
+            }
         }
     }
 
@@ -88,8 +117,7 @@ impl ServerLogic for CosmicVergeServer {
         _client: &ConnectedClient<Self>,
         installation_id: Option<Uuid>,
     ) -> anyhow::Result<InstallationConfig> {
-        let installation =
-            database_refactor::lookup_or_create_installation(installation_id).await?;
+        let installation = Installation::load_or_create(installation_id).await?;
         Ok(InstallationConfig::from_vec(
             installation.id,
             installation.private_key.unwrap(),
@@ -101,10 +129,16 @@ impl ServerLogic for CosmicVergeServer {
         client: &ConnectedClient<Self>,
     ) -> anyhow::Result<RequestHandling<Self::Response>> {
         if let Some(account) = client.account().await {
-            let account = account.read().await;
+            let connected_account = account.read().await;
+            let pilots = convert_db_pilots(
+                Pilot::list_by_account_id(connected_account.account.id, database::pool()).await?,
+            );
 
             Ok(RequestHandling::Respond(
-                CosmicVergeResponse::Authenticated(account.user.clone()),
+                CosmicVergeResponse::Authenticated {
+                    user_id: connected_account.account.id,
+                    pilots,
+                },
             ))
         } else {
             Ok(RequestHandling::Respond(
@@ -133,10 +167,10 @@ impl ServerLogic for CosmicVergeServer {
                     let account = account.read().await;
                     account.id()
                 };
-                database_refactor::set_installation_account_id(
-                    database::pool(),
+                Installation::set_account_id_for_installation_id(
                     installation.id,
                     Some(account_id),
+                    database::pool(),
                 )
                 .await?;
                 return Ok(());
@@ -148,5 +182,23 @@ impl ServerLogic for CosmicVergeServer {
     async fn handle_websocket_error(&self, _err: warp::Error) -> ErrorHandling {
         println!("Error: {:?}", _err);
         ErrorHandling::Disconnect
+    }
+}
+
+impl CosmicVergeServer {
+    async fn select_pilot(
+        &self,
+        pilot: Pilot,
+        client: &ConnectedClient<Self>,
+    ) -> anyhow::Result<RequestHandling<CosmicVergeResponse>> {
+        let api_pilot = pilot.clone().into();
+        client
+            .map_client_mut(|client| {
+                *client = Some(pilot);
+            })
+            .await;
+        Ok(RequestHandling::Respond(CosmicVergeResponse::PilotChanged(
+            api_pilot,
+        )))
     }
 }

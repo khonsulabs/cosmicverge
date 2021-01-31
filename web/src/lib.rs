@@ -3,9 +3,6 @@
 #[macro_use]
 extern crate log;
 
-use std::sync::{Arc, Mutex};
-
-use once_cell::sync::OnceCell;
 use wasm_bindgen::prelude::*;
 
 #[macro_use]
@@ -29,25 +26,42 @@ pub mod strings;
 mod client_api;
 mod redraw_loop;
 
-static FRAME_COUNTER: OnceCell<Arc<Mutex<bool>>> = OnceCell::new();
-
-pub fn frame_counter() -> &'static Arc<Mutex<bool>> {
-    FRAME_COUNTER.get_or_init(|| Arc::new(Mutex::new(true)))
-}
-
-static APP_INITIALIZED: OnceCell<()> = OnceCell::new();
-fn initialize_shared_helpers() {
-    APP_INITIALIZED.get_or_init(|| {
-        wasm_logger::init(wasm_logger::Config::new(MAX_LOG_LEVEL));
-        std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-    });
-}
-
 #[wasm_bindgen]
 pub fn run_app() -> Result<(), JsValue> {
-    initialize_shared_helpers();
+    initialize();
+
     yew::App::<app::App>::new().mount_as_body();
     yew::run_loop();
 
     Ok(())
+}
+
+fn initialize() {
+    wasm_logger::init(wasm_logger::Config::new(MAX_LOG_LEVEL));
+    std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+
+    print_safety_warning();
+}
+
+fn print_safety_warning() {
+    web_sys::console::log_2(
+        &JsValue::from_str("%cBe Careful"),
+        &JsValue::from_str(
+            "color: rgb(241, 65, 100); background-color: rgb(60, 3, 16); font-size: 64px; padding: 16px;",
+        ),
+    );
+
+    web_sys::console::log_2(
+        &JsValue::from_str("%cIf you were told to type or paste anything in this window, that person is most\nlikely trying to hack you. This game is mostly open-source. If you're looking to\nlearn how it works, you can learn more easily by browsing the source code here:\n\nhttps://github.com/khonsulabs/cosmicverge\n\nFeel free to poke around in here, but take care not to break our terms of service:\n\nhttps://cosmicverge.com/terms-of-service"),
+        &JsValue::from_str(
+            "color: rgb(60, 3, 16);",
+        ),
+    );
+
+    web_sys::console::log_2(
+        &JsValue::from_str("%cFly Safe"),
+        &JsValue::from_str(
+            "color: #df0772; background-color: #352a55; font-size: 24px; padding: 16px;",
+        ),
+    );
 }

@@ -1,13 +1,14 @@
 use std::convert::Infallible;
 
-use basws_server::prelude::Uuid;
 use chrono::{NaiveDateTime, Utc};
-use database::{pool, sqlx};
 use serde::{Deserialize, Serialize};
 use url::Url;
 use warp::{Filter, Rejection};
 
-use crate::{database_refactor, env, jwk::JwtKey, webserver_base_url};
+use database::schema::{Account, Installation, OAuthToken, TwitchProfile};
+use database::{basws_server::prelude::Uuid, pool};
+
+use crate::{env, jwk::JwtKey, webserver_base_url};
 
 #[derive(Deserialize)]
 struct TwitchCallback {
@@ -174,49 +175,36 @@ pub async fn login_twitch(installation_id: Uuid, code: String) -> Result<(), any
         let mut tx = pg.begin().await?;
 
         // Create an account if it doesn't exist yet for this installation
-        let account_id = if let Some(account) =
-            database_refactor::get_profile_by_installation_id(&mut tx, installation_id).await?
+        let account = if let Some(account) =
+            Account::find_by_installation_id(installation_id, &mut tx).await?
         {
-            account.id
+            account
         } else {
-            let account_id = if let Ok(row) = sqlx::query!(
-                "SELECT account_id FROM twitch_profiles WHERE twitch_profiles.id = $1",
-                user.id
-            )
-            .fetch_one(&mut tx)
-            .await
-            {
-                row.account_id
-            } else {
-                sqlx::query!("INSERT INTO accounts DEFAULT VALUES RETURNING id")
-                    .fetch_one(&mut tx)
-                    .await?
-                    .id
-            };
-            database_refactor::set_installation_account_id(
-                &mut tx,
+            let account =
+                if let Some(account) = Account::find_by_twitch_id(&user.id, &mut tx).await? {
+                    account
+                } else {
+                    Account::create(&mut tx).await?
+                };
+            Installation::set_account_id_for_installation_id(
                 installation_id,
-                Some(account_id),
+                Some(account.id),
+                &mut tx,
             )
             .await?;
-            account_id
+            account
         };
 
-        // Create an twitch profile
-        sqlx::query!("INSERT INTO twitch_profiles (id, account_id, username) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET account_id = $2, username = $3 ",
-            user.id,
-            account_id,
-            display_name,
-        ).execute(&mut tx).await?;
+        TwitchProfile::associate(&user.id, account.id, &display_name, &mut tx).await?;
 
-        // Create an oauth_token
-        sqlx::query!("INSERT INTO oauth_tokens (account_id, service, access_token, refresh_token) VALUES ($1, $2, $3, $4) ON CONFLICT (account_id, service) DO UPDATE SET access_token = $3, refresh_token = $4",
-            account_id,
+        OAuthToken::update(
+            account.id,
             "twitch",
-            tokens.access_token,
-            tokens.refresh_token,
-
-        ).execute(&mut tx).await?;
+            &tokens.access_token,
+            tokens.refresh_token.as_deref(),
+            &mut tx,
+        )
+        .await?;
 
         tx.commit().await?;
     }

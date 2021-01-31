@@ -39,4 +39,4 @@ url = "2"
 cosmicverge-shared = { path = "../shared" }
 #basws-yew = { path = "../../basws/basws-yew" }
 #basws-shared = { path = "../../basws/basws-shared" }
-#yew-bulma = { path = "../../yew-bulma" }
+yew-bulma = { path = "../../yew-bulma" }

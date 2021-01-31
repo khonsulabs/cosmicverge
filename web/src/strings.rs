@@ -4,7 +4,9 @@ use fluent_templates::{fluent_bundle::FluentValue, loader::Loader};
 use include_dir::include_dir;
 use unic_langid::{langid, LanguageIdentifier};
 use yew::prelude::*;
+use yew_bulma::forms::FormField;
 use yew_bulma::markdown::render_markdown;
+use yew_bulma::validations::{FieldError, ValidationError};
 
 pub const US_ENGLISH: LanguageIdentifier = langid!("en-US");
 
@@ -70,4 +72,18 @@ pub trait Namable {
     fn localized_name(&self) -> String {
         localize!(&self.name())
     }
+}
+
+pub fn translate_error<T>(error: &FieldError<T>) -> String
+where
+    T: FormField,
+{
+    let key = match error.error {
+        ValidationError::NotPresent => "validation-error-not-present",
+        ValidationError::NotAbsent => "validation-error-not-absent",
+        ValidationError::InvalidValue => "validation-error-invalid-valid",
+        ValidationError::Custom(key) => key,
+    };
+
+    localize!(key)
 }

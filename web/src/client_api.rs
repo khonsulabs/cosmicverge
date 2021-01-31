@@ -1,13 +1,6 @@
 use basws_yew::{prelude::*, ClientLogic, ClientState, Error};
-use cosmicverge_shared::{
-    cosmic_verge_protocol_version, CosmicVergeRequest, CosmicVergeResponse, UserProfile,
-};
+use cosmicverge_shared::{cosmic_verge_protocol_version, CosmicVergeRequest, CosmicVergeResponse};
 use url::Url;
-use yew::Callback;
-use yew_router::{
-    agent::RouteRequest,
-    prelude::{Route, RouteAgentBridge},
-};
 
 pub type AgentMessage = basws_yew::AgentMessage<CosmicVergeRequest>;
 pub type AgentResponse = basws_yew::AgentResponse<CosmicVergeResponse>;
@@ -15,9 +8,7 @@ pub type ApiAgent = basws_yew::ApiAgent<CosmicVergeApiClient>;
 pub type ApiBridge = basws_yew::ApiBridge<CosmicVergeApiClient>;
 
 #[derive(Debug, Default)]
-pub struct CosmicVergeApiClient {
-    profile: Option<UserProfile>,
-}
+pub struct CosmicVergeApiClient;
 
 impl ClientLogic for CosmicVergeApiClient {
     type Request = CosmicVergeRequest;
@@ -55,19 +46,6 @@ impl ClientLogic for CosmicVergeApiClient {
                     .expect("Error setting location for redirect");
             }
             CosmicVergeResponse::Error { message } => error!("Error from server: {:?}", message),
-            CosmicVergeResponse::Authenticated(user) => {
-                self.profile = Some(user.profile);
-
-                // Go to pilot select
-                todo!()
-                // let window = web_sys::window().expect("Need a window");
-                // if let Ok(path) = window.location().pathname() {
-                //     if path.contains("/login") {
-                //         let mut agent = RouteAgentBridge::new(Callback::noop());
-                //         agent.send(RouteRequest::ReplaceRoute(Route::new_no_state("/")));
-                //     }
-                // }
-            }
             _ => {}
         }
 

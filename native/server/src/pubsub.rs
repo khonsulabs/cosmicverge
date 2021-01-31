@@ -1,14 +1,13 @@
-use std::collections::HashSet;
-
-use basws_server::{prelude::Uuid, Handle, Server};
-use cosmicverge_shared::CosmicVergeResponse;
-use database::{pool, sqlx};
 use sqlx::{postgres::PgListener, Executor};
 
-use crate::{
-    database_refactor,
-    server::{ConnectedAccount, CosmicVergeServer},
+use database::{
+    basws_server::{prelude::Uuid, Handle, Server},
+    cosmicverge_shared::CosmicVergeResponse,
+    pool, sqlx,
 };
+
+use crate::server::{ConnectedAccount, CosmicVergeServer};
+use database::schema::{convert_db_pilots, Pilot};
 
 pub async fn pg_notify_loop(websockets: Server<CosmicVergeServer>) -> Result<(), anyhow::Error> {
     let pool = pool();
@@ -24,15 +23,16 @@ pub async fn pg_notify_loop(websockets: Server<CosmicVergeServer>) -> Result<(),
             // The payload is the installation_id that logged in.
             let installation_id = Uuid::parse_str(notification.payload())?;
             if let Ok(account) = ConnectedAccount::lookup(installation_id).await {
-                let user = account.user.clone();
+                let user_id = account.account.id;
                 websockets
                     .associate_installation_with_account(installation_id, Handle::new(account))
                     .await?;
 
+                let pilots = convert_db_pilots(Pilot::list_by_account_id(user_id, pool).await?);
                 websockets
                     .send_to_installation_id(
                         installation_id,
-                        CosmicVergeResponse::Authenticated(user),
+                        CosmicVergeResponse::Authenticated { user_id, pilots },
                     )
                     .await;
             }

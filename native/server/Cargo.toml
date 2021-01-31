@@ -5,8 +5,6 @@ authors = ["Jonathan Johnson <jon@nilobject.com>"]
 edition = "2018"
 
 [dependencies]
-cosmicverge-shared = "0.0.1"
-basws-server = "0.1"
 tokio = { version = "1.0", features = ["full"] }
 warp = "0.3"
 futures = "0.3"

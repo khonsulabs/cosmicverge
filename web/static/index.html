@@ -24,5 +24,23 @@
   </head>
 
   <body>
+    <noscript>
+      <div class="container">
+        <div class="notification is-danger">
+          This game requires javascript to be enabled.
+        </div>
+      </div>
+    </noscript>
+    <div id="loading" class="is-hidden">
+      <div  class="container">
+        <h1 class="is-size-1 has-text-centered">Loading...</h1>
+        <progress class="progress is-large is-info" max="100" aria-hidden="true"></progress>
+      </div>
+    </div>
+    <script type="text/javascript">
+      document.addEventListener('DOMContentLoaded', function() {
+        document.querySelector("#loading").removeAttribute("class");
+      });
+    </script>
   </body>
 </html>

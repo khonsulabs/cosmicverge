@@ -1,4 +1,4 @@
-use cosmicverge_shared::{CosmicVergeResponse, UserProfile};
+use cosmicverge_shared::{CosmicVergeResponse, Pilot};
 use wasm_bindgen::__rt::std::sync::Arc;
 use yew::prelude::*;
 use yew_bulma::static_page::StaticPage;
@@ -52,7 +52,23 @@ pub struct App {
 
 #[derive(PartialEq, Debug)]
 pub struct LoggedInUser {
-    pub profile: UserProfile,
+    pub user_id: i64,
+    pub pilot: PilotingState,
+}
+
+impl LoggedInUser {
+    fn with_pilot(&self, pilot: Pilot) -> Option<Arc<Self>> {
+        Some(Arc::new(Self {
+            user_id: self.user_id,
+            pilot: PilotingState::Selected(pilot),
+        }))
+    }
+}
+
+#[derive(PartialEq, Debug)]
+pub enum PilotingState {
+    Unselected { available: Vec<Pilot> },
+    Selected(Pilot),
 }
 
 pub enum Message {
@@ -115,10 +131,17 @@ impl Component for App {
                     true
                 }
                 AgentResponse::Response(response) => match response {
-                    CosmicVergeResponse::Authenticated(user) => {
+                    CosmicVergeResponse::Authenticated { user_id, pilots } => {
                         self.user = Some(Arc::new(LoggedInUser {
-                            profile: user.profile,
+                            user_id,
+                            pilot: PilotingState::Unselected { available: pilots },
                         }));
+                        true
+                    }
+                    CosmicVergeResponse::PilotChanged(pilot) => {
+                        let user = self.user.as_ref().expect("The server should never send this without us being Authenticated first");
+
+                        self.user = user.with_pilot(pilot);
                         true
                     }
                     _ => false,
@@ -215,8 +238,14 @@ impl AppRouteRenderer {
                 </body>
             }
         } else {
-            // TODO show a loading image
-            html! { <body /> }
+            html! {
+                <body>
+                    <div class="container">
+                        <h1 class="is-size-1 has-text-centered">{ localize!("connecting") }</h1>
+                        <progress class="progress is-large is-info" max="100" aria-hidden="true"></progress>
+                    </div>
+                </body>
+            }
         }
     }
 

@@ -5,7 +5,6 @@ use std::{convert::Infallible, path::Path};
 
 use warp::{Filter, Reply};
 
-mod database_refactor;
 mod jwk;
 mod pubsub;
 mod server;
