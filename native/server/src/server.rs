@@ -87,6 +87,9 @@ impl ServerLogic for CosmicVergeServer {
                         Err(PilotError::InvalidName) => Ok(RequestHandling::Respond(
                             CosmicVergeResponse::error("pilot-error-invalid-name"),
                         )),
+                        Err(PilotError::TooManyPilots) => Ok(RequestHandling::Respond(
+                            CosmicVergeResponse::error("pilot-error-too-many-pilots"),
+                        )),
                         Err(PilotError::Database(db)) => Err(db.into()),
                     }
                 } else {

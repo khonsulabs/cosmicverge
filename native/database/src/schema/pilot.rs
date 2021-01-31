@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use cosmicverge_shared::MAX_PILOTS_PER_ACCOUNT;
 
 use crate::{sqlx, DatabaseError, SqlxResultExt};
 
@@ -26,6 +27,8 @@ pub enum PilotError {
     InvalidName,
     #[error("name already taken")]
     NameAlreadyTaken,
+    #[error("too many pilots")]
+    TooManyPilots,
     #[error("sql error {0}")]
     Database(#[from] DatabaseError),
 }
@@ -50,6 +53,20 @@ impl Pilot {
         executor: E,
     ) -> Result<Self, PilotError> {
         let mut e = executor.acquire().await?;
+        let existing_pilot_count = sqlx::query!(
+            "SELECT count(*) as pilot_count FROM pilots WHERE account_id = $1 GROUP BY account_id",
+            account_id
+        )
+        .fetch_one(&mut e)
+        .await
+        .map(|r| r.pilot_count)
+        .ok()
+        .flatten()
+        .unwrap_or_default();
+        if existing_pilot_count as usize >= MAX_PILOTS_PER_ACCOUNT {
+            return Err(PilotError::TooManyPilots);
+        }
+
         let name = Self::validate_and_clean_name(name, &mut e).await?;
         sqlx::query_as!(
         Self,
@@ -106,7 +123,8 @@ impl Pilot {
         name: &str,
         executor: E,
     ) -> Result<String, PilotError> {
-        let name = cosmicverge_shared::Pilot::cleanup_name(name).map_err(|_| PilotError::InvalidName)?;
+        let name =
+            cosmicverge_shared::Pilot::cleanup_name(name).map_err(|_| PilotError::InvalidName)?;
         if Self::find_by_name(&name, executor).await?.is_some() {
             return Err(PilotError::NameAlreadyTaken);
         }

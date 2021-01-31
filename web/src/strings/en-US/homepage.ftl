@@ -28,6 +28,7 @@ current-system = Current System
 create-new-pilot = Create New Pilot
 select-pilot = Select a pilot
 no-pilots = You don't have any pilots yet.
+pilot-select-intro = To limit name squatting, each account can only create two pilots. At this moment in time, names are not guaranteed to last until game release.
 
 pilot-name = Pilot Name
 
@@ -37,3 +38,4 @@ validation-error-invalid-valid = invalid value
 
 pilot-error-name-already-taken = That name is already in use
 pilot-error-invalid-name = Pilot names can only contain the letters A-Z, numbers 0-9, and spaces. (This is an intentional, temporary limitation.)
+pilot-error-too-many-pilots = Each account can only have two pilots for now.

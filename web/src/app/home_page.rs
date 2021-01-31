@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use cosmicverge_shared::{CosmicVergeRequest, CosmicVergeResponse, OAuthProvider, Pilot};
+use cosmicverge_shared::{
+    CosmicVergeRequest, CosmicVergeResponse, OAuthProvider, Pilot, MAX_PILOTS_PER_ACCOUNT,
+};
 use wasm_bindgen::__rt::std::borrow::Cow;
 use yew::prelude::*;
 use yew_bulma::prelude::*;
@@ -204,7 +206,7 @@ impl HomePage {
     fn select_pilot(&self, available_pilots: &Vec<Pilot>) -> Html {
         let pilots = if available_pilots.is_empty() {
             html! {
-                <div class="notification is-info">
+                <div class="notification">
                     { localize!("no-pilots") }
                 </div>
             }
@@ -215,16 +217,27 @@ impl HomePage {
                 .collect::<Html>()
         };
 
-        html! {
-            <div class="container content">
-                <Title>{ localize!("select-pilot") }</Title>
-                { self.error_message() }
-                { pilots }
+        let create_button = if available_pilots.len() < MAX_PILOTS_PER_ACCOUNT {
+            html! {
                 <div class="columns is-centered">
                     <button class="button is-primary" onclick=self.link.callback(|_| Message::NewPilot)>
                         { localize!("create-new-pilot") }
                     </button>
                 </div>
+            }
+        } else {
+            Default::default()
+        };
+
+        html! {
+            <div class="container content">
+                <Title>{ localize!("select-pilot") }</Title>
+                { self.error_message() }
+                <div class="notification is-warning">
+                    { localize!("pilot-select-intro") }
+                </div>
+                { pilots }
+                { create_button }
             </div>
         }
     }
@@ -248,35 +261,37 @@ impl HomePage {
             None
         };
 
+        let can_save = errors.is_none();
+
         html! {
             <div class="container content">
                 <Title>{ localize!("create-new-pilot") }</Title>
-                <form>
-                    { self.error_message() }
-                    <Field<PilotFields> field=PilotFields::Name errors=errors.clone()>
-                        <Label<PilotFields> text=localize!("pilot-name") field=PilotFields::Name />
-                        <TextInput<PilotFields,String>
-                            field=PilotFields::Name
-                            errors=errors.clone()
-                            storage=name.clone()
-                            readonly=sent_request
-                            on_value_changed=self.link.callback(|_| Message::FormChanged)
-                            />
-                    </Field<PilotFields>>
-                    <div class="field is-grouped is-grouped-right">
-                        <Button
-                            label=localize!("cancel")
-                            css_class="is-light"
-                            action=self.link.callback(|e: web_sys::MouseEvent| {e.prevent_default(); Message::ListPilots})
+                { self.error_message() }
+                <Field<PilotFields> field=PilotFields::Name errors=errors.clone()>
+                    <Label<PilotFields> text=localize!("pilot-name") field=PilotFields::Name />
+                    <TextInput<PilotFields,String>
+                        field=PilotFields::Name
+                        errors=errors.clone()
+                        storage=name.clone()
+                        readonly=sent_request
+                        on_value_changed=self.link.callback(|_| Message::FormChanged)
+                        autofocus=true
                         />
-                        <Button
-                            label=localize!("create-new-pilot")
-                            css_class="is-primary"
-                            action=self.link.callback(|e: web_sys::MouseEvent| {e.prevent_default(); Message::CreatePilot})
-                            processing=sent_request
-                        />
-                    </div>
-                </form>
+                </Field<PilotFields>>
+                <div class="field is-grouped is-grouped-right">
+                    <Button
+                        label=localize!("cancel")
+                        css_class="is-light"
+                        action=self.link.callback(|e: web_sys::MouseEvent| {e.prevent_default(); Message::ListPilots})
+                    />
+                    <Button
+                        label=localize!("create-new-pilot")
+                        css_class="is-primary"
+                        action=self.link.callback(|e: web_sys::MouseEvent| {e.prevent_default(); Message::CreatePilot})
+                        processing=sent_request
+                        disabled=!can_save
+                    />
+                </div>
             </div>
         }
     }

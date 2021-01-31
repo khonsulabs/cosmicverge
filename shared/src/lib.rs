@@ -3,6 +3,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub const MAX_PILOTS_PER_ACCOUNT: usize = 2;
+
 pub fn cosmic_verge_protocol_version() -> Version {
     Version::parse("0.0.1").unwrap()
 }

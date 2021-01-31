@@ -18,5 +18,4 @@ pub fn migration() -> Migration {
             "ALTER TABLE installations ADD COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT now()",
         )
         .with_down("ALTER TABLE installations DROP COLUMN IF EXISTS created_at")
-        .debug()
 }

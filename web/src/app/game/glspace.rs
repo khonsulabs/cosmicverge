@@ -111,7 +111,7 @@ impl Drawable for SpaceView {
             .unwrap()
             .document()
             .unwrap()
-            .get_element_by_id("glcanvas") // TODO this should be a configuration
+            .get_element_by_id("glcanvas")
             .unwrap()
             .dyn_into::<web_sys::HtmlCanvasElement>()
             .unwrap();

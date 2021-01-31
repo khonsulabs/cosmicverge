@@ -228,7 +228,9 @@ impl Drawable for SpaceView {
     }
 
     fn render_frame(&mut self) -> anyhow::Result<()> {
-        self.receive_commands()?;
+        if self.receive_commands().is_err() {
+            return Ok(());
+        }
 
         if let Some(canvas) = self.canvas() {
             if let Some(context) = self.context() {

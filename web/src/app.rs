@@ -200,7 +200,7 @@ impl AppRouteRenderer {
     fn render(&self) -> Html {
         let set_title = self.link.callback(Message::SetTitle);
 
-        if let Some(connected) = self.connected {
+        if self.connected.unwrap_or_default() {
             let (game_foregrounded, contents) = match &self.route {
                 AppRoute::Game => {
                     // Reveal the canvas
