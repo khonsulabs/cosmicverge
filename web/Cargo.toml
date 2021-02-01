@@ -33,7 +33,6 @@ fluent-templates = "0.5"
 unic-langid = "0.9"
 include_dir = "0.6"
 anyhow = "1"
-euclid = "0.22"
 url = "2"
 
 [patch.crates-io]

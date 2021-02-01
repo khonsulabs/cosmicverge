@@ -1,64 +1,14 @@
+use std::collections::HashMap;
+
+use cosmicverge_shared::{
+    euclid::Point2D,
+    solar_systems::{universe, Named, Pixels, SolarSystem, SolarSystemId},
+};
 use crossbeam::channel::Sender;
-use euclid::Point2D;
 use web_sys::{HtmlCanvasElement, MouseEvent, WheelEvent};
 use yew::prelude::*;
 
-pub struct Pixels;
-pub struct Solar;
-
-use std::collections::HashMap;
-
 use crate::{localize, redraw_loop};
-
-#[derive(Debug, Clone)]
-pub struct SolarSystem {
-    pub name: String,
-    pub background: String,
-    pub locations: Vec<SolarSystemLocation>,
-}
-
-#[derive(Debug, Clone)]
-pub struct SolarSystemLocation {
-    pub id: i64,
-    pub name: String,
-    pub image: String,
-    pub size: f64,
-    pub location: Point2D<f64, Solar>,
-    pub owned_by: Option<i64>,
-}
-
-pub fn fake_solar_system() -> SolarSystem {
-    SolarSystem {
-        name: String::from("SM-0-A9F4"),
-        background: String::from("/helianthusgames/Backgrounds/BlueStars.png"),
-        locations: vec![
-            SolarSystemLocation {
-                id: 1,
-                name: String::from("Sun"),
-                image: String::from("/helianthusgames/Suns/2.png"),
-                size: 128.,
-                location: Point2D::zero(),
-                owned_by: None,
-            },
-            SolarSystemLocation {
-                id: 2,
-                name: String::from("Earth"),
-                image: String::from("/helianthusgames/Terran_or_Earth-like/1.png"),
-                size: 32.,
-                location: Point2D::new(600., 0.),
-                owned_by: Some(1),
-            },
-            SolarSystemLocation {
-                id: 3,
-                name: String::from("Earth"),
-                image: String::from("/helianthusgames/Rocky/1.png"),
-                size: 24.,
-                location: Point2D::new(200., 200.),
-                owned_by: Some(1),
-            },
-        ],
-    }
-}
 
 #[cfg(name = "opengl")]
 mod glspace;
@@ -76,7 +26,7 @@ struct MouseButtons {
 pub struct Game {
     link: ComponentLink<Self>,
     props: Props,
-    solar_system: SolarSystem,
+    solar_system: &'static SolarSystem,
     loop_sender: Sender<redraw_loop::Command>,
     space_sender: Sender<space2d::Command>,
     mouse_buttons: MouseButtons,
@@ -134,6 +84,7 @@ impl Component for Game {
         let (view, space_sender) = space2d::SpaceView::new();
         let loop_sender =
             redraw_loop::RedrawLoop::launch(view, redraw_loop::Configuration::default());
+
         let component = Self {
             link,
             props,
@@ -141,7 +92,7 @@ impl Component for Game {
             space_sender,
             mouse_buttons: Default::default(),
             touches: Default::default(),
-            solar_system: fake_solar_system(),
+            solar_system: universe().get(&SolarSystemId::SM0A9F4),
         };
         component
             .space_sender
@@ -350,7 +301,7 @@ impl Component for Game {
                 <div id="hud">
                     <div id="solar-system">
                         <label>{ localize!("current-system") }</label>
-                        <div id="solar-system-name">{ &self.solar_system.name }</div>
+                        <div id="solar-system-name">{ &self.solar_system.id.name() }</div>
                     </div>
                 </div>
                 <canvas id="glcanvas" />

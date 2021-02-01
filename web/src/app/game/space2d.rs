@@ -1,18 +1,18 @@
+use cosmicverge_shared::{
+    euclid::{Point2D, Scale, Size2D, Vector2D},
+    solar_systems::{Pixels, Solar, SolarSystem},
+};
 use crossbeam::channel::{self, Receiver, Sender, TryRecvError};
-use euclid::{Point2D, Scale, Size2D, Vector2D};
 use wasm_bindgen::{JsCast, __rt::std::collections::HashMap};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlImageElement};
 
-use crate::{
-    app::game::{check_canvas_size, Pixels, Solar, SolarSystem},
-    redraw_loop::Drawable,
-};
+use crate::{app::game::check_canvas_size, redraw_loop::Drawable};
 
 pub enum Command {
     Pan(Vector2D<f64, Pixels>),
     /// In percent relative to current zoom
     Zoom(f64, Point2D<f64, Pixels>),
-    SetSolarSystem(Option<SolarSystem>),
+    SetSolarSystem(Option<&'static SolarSystem>),
 }
 
 pub struct SpaceView {
@@ -20,7 +20,7 @@ pub struct SpaceView {
     context: Option<CanvasRenderingContext2d>,
     backdrop: Option<HtmlImageElement>,
     location_images: HashMap<i64, HtmlImageElement>,
-    solar_system: Option<SolarSystem>,
+    solar_system: Option<&'static SolarSystem>,
     look_at: Point2D<f64, Solar>,
     zoom: f64,
     receiver: Receiver<Command>,
@@ -206,17 +206,18 @@ impl SpaceView {
 
     fn load_solar_system_images(&mut self) {
         self.location_images.clear();
+
         if let Some(solar_system) = &self.solar_system {
-            self.backdrop = Some({
+            self.backdrop = solar_system.background.map(|url| {
                 let image = HtmlImageElement::new().unwrap();
-                image.set_src(&solar_system.background);
+                image.set_src(url);
                 image
             });
 
-            for location in solar_system.locations.iter() {
+            for (id, location) in solar_system.locations.iter() {
                 let image = HtmlImageElement::new().unwrap();
-                image.set_src(&location.image);
-                self.location_images.insert(location.id, image);
+                image.set_src(location.image);
+                self.location_images.insert(*id, image);
             }
         } else {
             self.backdrop = None;
@@ -277,8 +278,8 @@ impl Drawable for SpaceView {
                 }
 
                 if let Some(solar_system) = &self.solar_system {
-                    for location in solar_system.locations.iter() {
-                        let image = &self.location_images[&location.id];
+                    for (id, location) in solar_system.locations.iter() {
+                        let image = &self.location_images[id];
                         if image.complete() {
                             let render_radius = location.size * self.zoom;
                             let render_center = center + location.location.to_vector() * scale;

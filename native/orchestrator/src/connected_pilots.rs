@@ -6,6 +6,8 @@ use redis::{aio::MultiplexedConnection, AsyncCommands, RedisError};
 use serde::{Deserialize, Serialize};
 use tokio::time::Duration;
 
+use crate::redis_lock::RedisLock;
+
 #[derive(Serialize, Deserialize, Debug)]
 struct ConnectedPilotInfo {
     connected_at: DateTime<Utc>,
@@ -47,10 +49,9 @@ pub(crate) async fn manager_loop(mut connection: MultiplexedConnection) -> Resul
                 .await?;
         }
 
-        // This ensures that only one server will enter this block every 20 seconds
-        if redis::cmd("SET")
-            .arg(&["connected_pilots_cleaner", "locked", "EX", "20", "NX"])
-            .query_async(&mut connection)
+        if RedisLock::named("connected_pilots_cleaner")
+            .expire_after_secs(30)
+            .acquire(&mut connection)
             .await?
         {
             let mut disconnected = HashSet::new();
@@ -78,14 +79,20 @@ pub(crate) async fn manager_loop(mut connection: MultiplexedConnection) -> Resul
                     .query_async(&mut connection)
                     .await?
             }
+        }
 
+        if RedisLock::named("connected_pilots_counter")
+            .expire_after_secs(5)
+            .acquire(&mut connection)
+            .await?
+        {
             let connected_pilots_count: usize = connection.hlen("connected_pilots").await?;
             connection
                 .publish("connected_pilots_count", connected_pilots_count)
                 .await?;
         }
 
-        tokio::time::sleep(Duration::from_secs(30)).await
+        tokio::time::sleep(Duration::from_secs(1)).await
     }
 }
 
