@@ -1,3 +1,5 @@
+mod version;
+
 use basws_shared::{Version, VersionReq};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -51,9 +53,17 @@ pub struct Pilot {
     pub created_at: DateTime<Utc>,
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum PilotNameError {
+    #[error("invalid character")]
+    InvalidCharacter,
+    #[error("too long")]
+    TooLong,
+}
+
 impl Pilot {
     // TODO unit test
-    pub fn cleanup_name(name: &str) -> Result<String, ()> {
+    pub fn cleanup_name(name: &str) -> Result<String, PilotNameError> {
         enum ParseState {
             InWord,
             AfterSpace,
@@ -71,7 +81,7 @@ impl Pilot {
                     }
                     parse_state = Some(ParseState::AfterSpace);
                 } else {
-                    return Err(());
+                    return Err(PilotNameError::InvalidCharacter);
                 }
             } else {
                 parse_state = Some(ParseState::InWord);
@@ -80,7 +90,11 @@ impl Pilot {
             cleaned.push(c)
         }
 
-        Ok(cleaned)
+        if cleaned.len() > 40 {
+            Err(PilotNameError::TooLong)
+        } else {
+            Ok(cleaned)
+        }
     }
 }
 

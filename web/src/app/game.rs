@@ -6,8 +6,9 @@ use yew::prelude::*;
 pub struct Pixels;
 pub struct Solar;
 
-use crate::{localize, redraw_loop};
 use std::collections::HashMap;
+
+use crate::{localize, redraw_loop};
 
 #[derive(Debug, Clone)]
 pub struct SolarSystem {

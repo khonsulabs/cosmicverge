@@ -1,9 +1,8 @@
 use basws_server::prelude::{InstallationConfig, Uuid};
-
+use chrono::{DateTime, Utc};
 use migrations::sqlx;
 
 use crate::pool;
-use chrono::{DateTime, Utc};
 
 #[derive(Debug)]
 pub struct Installation {

@@ -3,10 +3,10 @@ extern crate tracing;
 
 use std::{convert::Infallible, path::Path};
 
+use database::cosmicverge_shared::current_git_revision;
 use once_cell::sync::OnceCell;
-use warp::{Filter, Reply};
-
 use orchestrator::redis::aio::MultiplexedConnection;
+use warp::{Filter, Reply};
 
 mod jwk;
 mod pubsub;
@@ -39,7 +39,7 @@ fn webserver_base_url() -> warp::http::uri::Builder {
 async fn main() {
     dotenv::dotenv().expect("Error initializing environment");
     initialize_logging();
-    info!("server starting up");
+    info!("server starting up - rev {}", current_git_revision!());
 
     info!("connecting to database");
     database::initialize().await;

@@ -1,5 +1,4 @@
 use basws_server::prelude::Uuid;
-
 use migrations::sqlx;
 
 #[derive(Debug, Clone)]

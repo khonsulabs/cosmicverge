@@ -1,16 +1,18 @@
-use futures::StreamExt as _;
-use tokio::time::Duration;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-use database::schema::{convert_db_pilots, Pilot};
 use database::{
     basws_server::{prelude::Uuid, Handle, Server},
     cosmicverge_shared::CosmicVergeResponse,
+    schema::{convert_db_pilots, Pilot},
 };
-use orchestrator::redis::{aio::Connection, AsyncCommands};
-use orchestrator::{connect_to_redis, redis};
+use futures::StreamExt as _;
+use orchestrator::{
+    connect_to_redis, redis,
+    redis::{aio::Connection, AsyncCommands},
+};
+use tokio::time::Duration;
 
 use crate::server::{ConnectedAccount, CosmicVergeServer};
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub async fn pg_notify_loop(websockets: Server<CosmicVergeServer>) -> Result<(), anyhow::Error> {
     loop {

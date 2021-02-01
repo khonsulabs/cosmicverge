@@ -1,12 +1,14 @@
 use std::convert::Infallible;
 
 use chrono::{NaiveDateTime, Utc};
+use database::{
+    basws_server::prelude::Uuid,
+    pool,
+    schema::{Account, Installation, OAuthToken, TwitchProfile},
+};
 use serde::{Deserialize, Serialize};
 use url::Url;
 use warp::{Filter, Rejection};
-
-use database::schema::{Account, Installation, OAuthToken, TwitchProfile};
-use database::{basws_server::prelude::Uuid, pool};
 
 use crate::{env, jwk::JwtKey, webserver_base_url};
 

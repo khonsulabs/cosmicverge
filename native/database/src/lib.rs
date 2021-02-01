@@ -1,10 +1,9 @@
-pub use basws_server;
-pub use cosmicverge_shared;
-
 pub use ::migrations::{
     initialize, migrations, pool,
     sqlx::{self, database::HasStatement, Database, Execute, Executor},
 };
+pub use basws_server;
+pub use cosmicverge_shared;
 
 pub mod schema;
 

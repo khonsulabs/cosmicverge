@@ -2,8 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Utc};
 use once_cell::sync::OnceCell;
-use redis::aio::MultiplexedConnection;
-use redis::{AsyncCommands, RedisError};
+use redis::{aio::MultiplexedConnection, AsyncCommands, RedisError};
 use serde::{Deserialize, Serialize};
 use tokio::time::Duration;
 

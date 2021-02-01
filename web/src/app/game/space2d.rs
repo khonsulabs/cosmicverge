@@ -1,10 +1,12 @@
-use crate::{app::game::check_canvas_size, redraw_loop::Drawable};
 use crossbeam::channel::{self, Receiver, Sender, TryRecvError};
+use euclid::{Point2D, Scale, Size2D, Vector2D};
 use wasm_bindgen::{JsCast, __rt::std::collections::HashMap};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlImageElement};
 
-use crate::app::game::{Pixels, Solar, SolarSystem};
-use euclid::{Point2D, Scale, Size2D, Vector2D};
+use crate::{
+    app::game::{check_canvas_size, Pixels, Solar, SolarSystem},
+    redraw_loop::Drawable,
+};
 
 pub enum Command {
     Pan(Vector2D<f64, Pixels>),

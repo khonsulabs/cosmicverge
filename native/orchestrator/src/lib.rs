@@ -2,8 +2,7 @@
 extern crate log;
 
 pub use redis;
-use redis::aio::MultiplexedConnection;
-use redis::RedisError;
+use redis::{aio::MultiplexedConnection, RedisError};
 use tokio::time::Duration;
 
 pub mod connected_pilots;

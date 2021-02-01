@@ -7,12 +7,11 @@ use wasm_bindgen::__rt::std::borrow::Cow;
 use yew::prelude::*;
 use yew_bulma::prelude::*;
 
-use crate::app::PilotingState;
-use crate::strings::translate_error;
 use crate::{
-    app::LoggedInUser,
+    app::{LoggedInUser, PilotingState},
     client_api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
     localize, localize_html,
+    strings::translate_error,
 };
 
 pub struct HomePage {

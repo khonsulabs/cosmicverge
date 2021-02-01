@@ -1,17 +1,15 @@
 use async_trait::async_trait;
-
-use database::schema::{convert_db_pilots, Account, Installation, Pilot, PilotError};
 use database::{
     basws_server::prelude::*,
     cosmicverge_shared::{
         cosmic_verge_protocol_version_requirements, CosmicVergeRequest, CosmicVergeResponse,
         OAuthProvider,
     },
+    schema::{convert_db_pilots, Account, Installation, Pilot, PilotError},
 };
 
-use crate::pubsub::connected_pilots_count;
-
 use super::twitch;
+use crate::pubsub::connected_pilots_count;
 
 #[derive(Debug)]
 pub struct ConnectedAccount {

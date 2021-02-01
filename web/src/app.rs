@@ -168,7 +168,7 @@ impl Component for App {
         let navbar_expanded = self.navbar_expanded;
         let connected = self.connected;
         let connected_pilots = self.connected_pilots;
-
+        let redirect = Router::redirect(|_| AppRoute::Index);
         html! {
             <Router<AppRoute>
                 render = Router::render(move |route: AppRoute| {
@@ -183,6 +183,7 @@ impl Component for App {
                     };
                     app.render()
                 })
+                redirect = redirect
             />
         }
     }

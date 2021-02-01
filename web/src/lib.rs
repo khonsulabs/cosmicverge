@@ -3,6 +3,8 @@
 #[macro_use]
 extern crate log;
 
+use chrono::NaiveDateTime;
+use cosmicverge_shared::{current_git_revision, current_git_timestamp};
 use wasm_bindgen::prelude::*;
 
 #[macro_use]
@@ -33,14 +35,16 @@ pub fn run_app() -> Result<(), JsValue> {
     yew::App::<app::App>::new().mount_as_body();
     yew::run_loop();
 
+    print_safety_warning();
+
+    print_version_info();
+
     Ok(())
 }
 
 fn initialize() {
     wasm_logger::init(wasm_logger::Config::new(MAX_LOG_LEVEL));
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-
-    print_safety_warning();
 }
 
 fn print_safety_warning() {
@@ -56,6 +60,18 @@ fn print_safety_warning() {
         &JsValue::from_str(
             "color: rgb(60, 3, 16);",
         ),
+    );
+}
+
+fn print_version_info() {
+    let date = NaiveDateTime::from_timestamp(current_git_timestamp!(), 0);
+    web_sys::console::log_2(
+        &JsValue::from_str(&format!(
+            "%cCosmic Verge rev {} from {} is now running.",
+            current_git_revision!(),
+            date.format("%Y-%m-%d %H:%M:%S UTC").to_string()
+        )),
+        &JsValue::from_str("color: #0188a5"),
     );
 
     web_sys::console::log_2(

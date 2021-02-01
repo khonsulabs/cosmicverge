@@ -101,9 +101,24 @@ checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
 name = "basws-shared"
-version = "0.1.1"
+version = "0.1.2"
+dependencies = [
+ "chrono",
+ "js-sys",
+ "rand",
+ "semver",
+ "serde",
+ "serde_derive",
+ "sha2",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
+name = "basws-shared"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "062bfeeefdeef666e11390e3b2324edcc5f3497b6b108cf889c6a21da9d4e79c"
+checksum = "44a6f1eea46c780231ec85860154b5555d23520b322d7edb1f64d6427ccdc6f4"
 dependencies = [
  "chrono",
  "js-sys",
@@ -118,15 +133,13 @@ dependencies = [
 
 [[package]]
 name = "basws-yew"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80894c78d6a3937062b318930668349d649945cb576c5b003f2f1c4e6692bcd6"
+version = "0.1.2"
 dependencies = [
  "aead",
  "aes-gcm",
  "anyhow",
  "base64",
- "basws-shared",
+ "basws-shared 0.1.2",
  "rand",
  "serde",
  "serde_cbor",
@@ -256,7 +269,7 @@ checksum = "28b9d6de7f49e22cf97ad17fc4036ece69300032f45f78f30b4a4482cdc3f4a6"
 name = "cosmicverge-shared"
 version = "0.0.1"
 dependencies = [
- "basws-shared",
+ "basws-shared 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono",
  "serde",
  "thiserror",

@@ -4,9 +4,11 @@ use fluent_templates::{fluent_bundle::FluentValue, loader::Loader};
 use include_dir::include_dir;
 use unic_langid::{langid, LanguageIdentifier};
 use yew::prelude::*;
-use yew_bulma::forms::FormField;
-use yew_bulma::markdown::render_markdown;
-use yew_bulma::validations::{FieldError, ValidationError};
+use yew_bulma::{
+    forms::FormField,
+    markdown::render_markdown,
+    validations::{FieldError, ValidationError},
+};
 
 pub const US_ENGLISH: LanguageIdentifier = langid!("en-US");
 
