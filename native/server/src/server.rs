@@ -9,6 +9,8 @@ use database::{
     },
 };
 
+use crate::pubsub::connected_pilots_count;
+
 use super::twitch;
 
 #[derive(Debug)]
@@ -158,9 +160,12 @@ impl ServerLogic for CosmicVergeServer {
         &self,
         _client: &ConnectedClient<Self>,
     ) -> anyhow::Result<RequestHandling<Self::Response>> {
-        Ok(RequestHandling::Respond(
+        Ok(RequestHandling::Batch(vec![
             CosmicVergeResponse::Unauthenticated,
-        ))
+            CosmicVergeResponse::ServerStatus {
+                connected_pilots: connected_pilots_count(),
+            },
+        ]))
     }
 
     async fn account_associated(&self, client: &ConnectedClient<Self>) -> anyhow::Result<()> {
@@ -185,6 +190,20 @@ impl ServerLogic for CosmicVergeServer {
     async fn handle_websocket_error(&self, _err: warp::Error) -> ErrorHandling {
         println!("Error: {:?}", _err);
         ErrorHandling::Disconnect
+    }
+
+    async fn client_timings_updated(
+        &self,
+        client: &ConnectedClient<Self>,
+    ) -> anyhow::Result<RequestHandling<Self::Response>> {
+        if let Some(pilot_id) = client
+            .map_client(|client| client.as_ref().map(|p| p.id))
+            .await
+        {
+            orchestrator::connected_pilots::note(pilot_id).await;
+        }
+
+        Ok(RequestHandling::NoResponse)
     }
 }
 

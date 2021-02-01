@@ -27,6 +27,7 @@ pub enum OAuthProvider {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum CosmicVergeResponse {
+    ServerStatus { connected_pilots: usize },
     AuthenticateAtUrl { url: String },
     Authenticated { user_id: i64, pilots: Vec<Pilot> },
     Unauthenticated,

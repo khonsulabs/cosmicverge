@@ -48,6 +48,7 @@ pub struct App {
     user: Option<Arc<LoggedInUser>>,
     navbar_expanded: bool,
     connected: Option<bool>,
+    connected_pilots: Option<usize>,
 }
 
 #[derive(PartialEq, Debug)]
@@ -102,6 +103,7 @@ impl Component for App {
             navbar_expanded: false,
             user: None,
             connected: None,
+            connected_pilots: None,
         }
     }
 
@@ -131,6 +133,10 @@ impl Component for App {
                     true
                 }
                 AgentResponse::Response(response) => match response {
+                    CosmicVergeResponse::ServerStatus { connected_pilots } => {
+                        self.connected_pilots = Some(connected_pilots);
+                        true
+                    }
                     CosmicVergeResponse::Authenticated { user_id, pilots } => {
                         self.user = Some(Arc::new(LoggedInUser {
                             user_id,
@@ -161,6 +167,7 @@ impl Component for App {
         let rendering = self.rendering;
         let navbar_expanded = self.navbar_expanded;
         let connected = self.connected;
+        let connected_pilots = self.connected_pilots;
 
         html! {
             <Router<AppRoute>
@@ -171,6 +178,7 @@ impl Component for App {
                         rendering,
                         navbar_expanded,
                         connected,
+                        connected_pilots,
                         user: user.clone(),
                     };
                     app.render()
@@ -194,6 +202,7 @@ struct AppRouteRenderer {
     link: ComponentLink<App>,
     rendering: bool,
     navbar_expanded: bool,
+    connected_pilots: Option<usize>,
 }
 
 impl AppRouteRenderer {
@@ -263,6 +272,15 @@ impl AppRouteRenderer {
     }
 
     fn navbar(&self) -> Html {
+        let connected_pilots = if let Some(connected_pilots) = self.connected_pilots {
+            html! {
+                <div class="navbar-item">
+                    { localize!("connected-pilots", "count" => connected_pilots) }
+                </div>
+            }
+        } else {
+            Default::default()
+        };
         html! {
             <nav class=format!("navbar is-fixed-top {}", self.navbar_menu_expanded_class()) role="navigation" aria-label=localize!("navbar-label")>
                 <div class="navbar-brand">
@@ -290,6 +308,7 @@ impl AppRouteRenderer {
                         <div class="navbar-item">
                             <button class="button" onclick=self.link.callback(|_| Message::ToggleRendering)>{ self.rendering_icon() }</button>
                         </div>
+                        { connected_pilots }
                     </div>
                 </div>
             </nav>

@@ -3,7 +3,10 @@ extern crate tracing;
 
 use std::{convert::Infallible, path::Path};
 
+use once_cell::sync::OnceCell;
 use warp::{Filter, Reply};
+
+use orchestrator::redis::aio::MultiplexedConnection;
 
 mod jwk;
 mod pubsub;
@@ -48,11 +51,17 @@ async fn main() {
     let websocket_server = server::initialize();
     let notify_server = websocket_server.clone();
 
+    info!("Connecting to redis");
+    let redis = orchestrator::connect_to_redis_multiplex().await.unwrap();
+    let _ = SHARED_REDIS_CONNECTION.set(redis);
+
     tokio::spawn(async {
         pubsub::pg_notify_loop(notify_server)
             .await
             .expect("Error on pubsub thread")
     });
+
+    tokio::spawn(orchestrator::orchestrate());
 
     let auth = twitch::callback();
     let websocket_route = warp::path!("ws")
@@ -121,4 +130,11 @@ pub fn initialize_logging() {
         .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE)
         .try_init()
         .unwrap();
+}
+
+static SHARED_REDIS_CONNECTION: OnceCell<MultiplexedConnection> = OnceCell::new();
+pub async fn redis() -> &'static MultiplexedConnection {
+    SHARED_REDIS_CONNECTION
+        .get()
+        .expect("use of redis() before initialized")
 }

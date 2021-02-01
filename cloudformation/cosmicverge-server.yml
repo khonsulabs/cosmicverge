@@ -24,8 +24,8 @@ Resources:
       SecurityGroupIngress:
         - SourceSecurityGroupId: !Ref loadBalancerSecurityGroup
           IpProtocol: tcp
-          FromPort: 7878
-          ToPort: 7878
+          FromPort: 7879
+          ToPort: 7879
       VpcId: !Ref VpcId
 
   rdsSecurityGroup:
@@ -66,22 +66,42 @@ Resources:
       VPCSecurityGroups:
         - !Ref rdsSecurityGroup
 
+  redisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Cosmic Verge Redis Cache Security Group
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: "6379"
+          ToPort: "6379"
+          SourceSecurityGroupId: !Ref taskSecurityGroup
+      VpcId: !Ref VpcId
+
+  redisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      CacheSubnetGroupName: cosmicverge-redis-subnets
+      Description: Cosmic Verge Redis Cache Subnet Group
+      SubnetIds: !Ref PrivateSubnetIds
+
+  redisCacheCluster:
+    Type: AWS::ElastiCache::CacheCluster
+    Properties:
+      AutoMinorVersionUpgrade: true
+      CacheNodeType: cache.t2.micro
+      CacheSubnetGroupName: !Ref redisSubnetGroup
+      ClusterName: cosmicverge-redis
+      Engine: redis
+      EngineVersion: 6.x
+      NumCacheNodes: 1
+      Port: 6379
+      VpcSecurityGroupIds:
+        - !GetAtt [redisSecurityGroup, GroupId]
+
   ecrRepository:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: "khonsulabs/cosmicverge"
-      # RepositoryPolicyText:
-      #   Version: "2012-10-17"
-      #   Statement:
-      #     - Sid: AllowPull
-      #       Effect: Allow
-      #       Principal:
-      #         AWS: !Ref AllowedPullRoles
-      #       Action:
-      #         - "ecr:GetAuthorizationToken"
-      #         - "ecr:BatchCheckLayerAvailability"
-      #         - "ecr:BatchGetImage"
-      #         - "ecr:GetDownloadUrlForLayer"
 
   releasesBucket:
     Type: AWS::S3::Bucket
@@ -245,8 +265,8 @@ Resources:
               awslogs-region: !Ref "AWS::Region"
               awslogs-stream-prefix: server
           PortMappings:
-            - ContainerPort: 7878
-              HostPort: 7878
+            - ContainerPort: 7879
+              HostPort: 7879
               Protocol: tcp
       Cpu: 256
       Family: cosmicverge
@@ -276,7 +296,7 @@ Resources:
             - !Ref taskSecurityGroup
       LoadBalancers:
         - ContainerName: cosmicverge-server
-          ContainerPort: 7878
+          ContainerPort: 7879
           TargetGroupArn: !Ref targetGroup
 
   loadBalancerSecurityGroup:

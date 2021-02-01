@@ -1,6 +1,10 @@
 cosmic-verge = Cosmic Verge
 
 connecting = Connecting...
+connected-pilots = {$count} {$count ->
+    [one] pilot online
+    *[other] pilots online
+}
 cancel = Cancel
 
 navbar-label = main navigation

@@ -1,0 +1,101 @@
+use std::collections::{HashMap, HashSet};
+
+use chrono::{DateTime, Utc};
+use once_cell::sync::OnceCell;
+use redis::aio::MultiplexedConnection;
+use redis::{AsyncCommands, RedisError};
+use serde::{Deserialize, Serialize};
+use tokio::time::Duration;
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ConnectedPilotInfo {
+    connected_at: DateTime<Utc>,
+    last_seen_at: DateTime<Utc>,
+}
+
+impl Default for ConnectedPilotInfo {
+    fn default() -> Self {
+        let now = Utc::now();
+        Self {
+            connected_at: now,
+            last_seen_at: now,
+        }
+    }
+}
+
+pub(crate) async fn manager_loop(mut connection: MultiplexedConnection) -> Result<(), RedisError> {
+    let pilot_reader = connection_channel().1.clone();
+    loop {
+        let mut new_pilots = HashSet::new();
+        while let Ok(pilot_id) = pilot_reader.try_recv() {
+            new_pilots.insert(pilot_id);
+        }
+
+        if !new_pilots.is_empty() {
+            info!("{} pilots connected", new_pilots.len());
+            let entries = new_pilots
+                .into_iter()
+                .map(|pilot_id| {
+                    (
+                        pilot_id.to_string(),
+                        serde_json::to_string(&ConnectedPilotInfo::default()).unwrap(),
+                    )
+                })
+                .collect::<Vec<_>>();
+
+            connection
+                .hset_multiple("connected_pilots", &entries)
+                .await?;
+        }
+
+        // This ensures that only one server will enter this block every 20 seconds
+        if redis::cmd("SET")
+            .arg(&["connected_pilots_cleaner", "locked", "EX", "20", "NX"])
+            .query_async(&mut connection)
+            .await?
+        {
+            let mut disconnected = HashSet::new();
+            let cutoff = Utc::now() - chrono::Duration::minutes(1);
+            let connected_pilots: HashMap<i64, String> =
+                connection.hgetall("connected_pilots").await?;
+            for (pilot_id, payload) in connected_pilots {
+                if let Ok(info) = serde_json::from_str::<ConnectedPilotInfo>(&payload) {
+                    if info.last_seen_at > cutoff {
+                        continue;
+                    }
+                }
+
+                disconnected.insert(pilot_id.to_string());
+            }
+
+            if !disconnected.is_empty() {
+                info!("{} pilots disconnected", disconnected.len());
+
+                let mut args = Vec::with_capacity(disconnected.len() + 1);
+                args.push(String::from("connected_pilots"));
+                args.extend(disconnected);
+                redis::cmd("HDEL")
+                    .arg(args.as_slice())
+                    .query_async(&mut connection)
+                    .await?
+            }
+
+            let connected_pilots_count: usize = connection.hlen("connected_pilots").await?;
+            connection
+                .publish("connected_pilots_count", connected_pilots_count)
+                .await?;
+        }
+
+        tokio::time::sleep(Duration::from_secs(30)).await
+    }
+}
+
+fn connection_channel() -> &'static (async_channel::Sender<i64>, async_channel::Receiver<i64>) {
+    static REUSED_CHANNEL: OnceCell<(async_channel::Sender<i64>, async_channel::Receiver<i64>)> =
+        OnceCell::new();
+    REUSED_CHANNEL.get_or_init(async_channel::unbounded)
+}
+
+pub async fn note(pilot_id: i64) {
+    let _ = connection_channel().0.send(pilot_id).await;
+}
