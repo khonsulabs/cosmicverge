@@ -1,15 +1,18 @@
+use crate::{
+    orchestrator::{connected_pilots, location_store::LocationStore},
+    pubsub::connected_pilots_count,
+    twitch,
+};
 use async_trait::async_trait;
+use cosmicverge_shared::protocol::ActivePilot;
 use database::{
     basws_server::prelude::*,
-    cosmicverge_shared::{
+    cosmicverge_shared::protocol::{
         cosmic_verge_protocol_version_requirements, CosmicVergeRequest, CosmicVergeResponse,
         OAuthProvider,
     },
     schema::{convert_db_pilots, Account, Installation, Pilot, PilotError},
 };
-
-use super::twitch;
-use crate::pubsub::connected_pilots_count;
 
 #[derive(Debug)]
 pub struct ConnectedAccount {
@@ -53,6 +56,14 @@ impl ServerLogic for CosmicVergeServer {
         _server: &Server<Self>,
     ) -> anyhow::Result<RequestHandling<Self::Response>> {
         match request {
+            CosmicVergeRequest::Fly(action) => {
+                if let Some(pilot_id) = client.map_client(|c| c.as_ref().map(|p| p.id)).await {
+                    LocationStore::set_piloting_action(pilot_id, &action).await?;
+                    Ok(RequestHandling::NoResponse)
+                } else {
+                    anyhow::bail!("attempted to fly without having a pilot selected")
+                }
+            }
             CosmicVergeRequest::AuthenticationUrl(provider) => match provider {
                 OAuthProvider::Twitch => {
                     if let Some(installation) = client.installation().await {
@@ -198,7 +209,7 @@ impl ServerLogic for CosmicVergeServer {
             .map_client(|client| client.as_ref().map(|p| p.id))
             .await
         {
-            orchestrator::connected_pilots::note(pilot_id).await;
+            connected_pilots::note(pilot_id).await;
         }
 
         Ok(RequestHandling::NoResponse)
@@ -212,13 +223,18 @@ impl CosmicVergeServer {
         client: &ConnectedClient<Self>,
     ) -> anyhow::Result<RequestHandling<CosmicVergeResponse>> {
         let api_pilot = pilot.clone().into();
+        let info = LocationStore::lookup(pilot.id).await;
         client
             .map_client_mut(|client| {
                 *client = Some(pilot);
             })
             .await;
         Ok(RequestHandling::Respond(CosmicVergeResponse::PilotChanged(
-            api_pilot,
+            ActivePilot {
+                pilot: api_pilot,
+                location: info.location,
+                action: info.action,
+            },
         )))
     }
 }

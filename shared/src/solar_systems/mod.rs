@@ -4,6 +4,7 @@ use euclid::Point2D;
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::ToPrimitive;
 use once_cell::sync::OnceCell;
+use serde::{Serialize, Deserialize};
 
 mod sm0a9f4;
 
@@ -15,7 +16,7 @@ pub struct Universe {
 
 pub fn universe() -> &'static Universe {
     static UNIVERSE: OnceCell<Universe> = OnceCell::new();
-    UNIVERSE.get_or_init(|| Universe::cosmic_verge())
+    UNIVERSE.get_or_init(Universe::cosmic_verge)
 }
 
 impl Universe {
@@ -54,7 +55,7 @@ impl Universe {
             .flatten()
     }
 
-    pub fn systems(&self) -> impl Iterator<Item = &SolarSystem> {
+    pub fn systems(&self) -> impl Iterator<Item=&SolarSystem> {
         self.solar_systems.values()
     }
 }
@@ -63,7 +64,7 @@ impl Universe {
 pub struct SolarSystem {
     pub id: SolarSystemId,
     pub background: Option<&'static str>,
-    pub locations: HashMap<i64, SolarSystemLocation>,
+    pub locations: HashMap<i64, SolarSystemObject>,
 }
 
 impl SolarSystem {
@@ -75,14 +76,14 @@ impl SolarSystem {
         }
     }
 
-    fn with_location<F: FnOnce(SolarSystemLocation) -> SolarSystemLocation, ID: NamedLocation>(
+    fn define_object<F: FnOnce(SolarSystemObject) -> SolarSystemObject, ID: NamedLocation>(
         mut self,
         id: ID,
         image: &'static str,
         size: f64,
         initializer: F,
     ) -> Self {
-        let location = initializer(SolarSystemLocation::new(id, image, size));
+        let location = initializer(SolarSystemObject::new(id, image, size));
         self.locations.insert(location.id.id(), location);
         self
     }
@@ -94,7 +95,7 @@ impl SolarSystem {
 }
 
 #[derive(Debug)]
-pub struct SolarSystemLocation {
+pub struct SolarSystemObject {
     pub id: Box<dyn NamedLocation>,
     pub image: &'static str,
     pub size: f64,
@@ -102,7 +103,7 @@ pub struct SolarSystemLocation {
     pub owned_by: Option<Box<dyn NamedLocation>>,
 }
 
-impl SolarSystemLocation {
+impl SolarSystemObject {
     fn new<ID: NamedLocation>(id: ID, image: &'static str, size: f64) -> Self {
         Self {
             id: Box::new(id),
@@ -136,20 +137,20 @@ pub trait Named {
     fn name(&self) -> &'static str;
 }
 
-pub trait NamedLocation: Identifiable + Named + Send + Sync + std::fmt::Debug + 'static {}
+pub trait NamedLocation: Identifiable + Named  + Send + Sync + std::fmt::Debug + 'static {}
 
 impl<T> Identifiable for T
-where
-    T: ToPrimitive,
+    where
+        T: ToPrimitive,
 {
     fn id(&self) -> i64 {
         self.to_i64().unwrap()
     }
 }
 
-impl<T> NamedLocation for T where T: Identifiable + Named + Send + Sync + std::fmt::Debug + 'static {}
+impl<T> NamedLocation for T where T: Identifiable + Named  + Send + Sync + std::fmt::Debug + 'static {}
 
-#[derive(Debug, Hash, PartialEq, Eq, Copy, Clone, FromPrimitive, ToPrimitive)]
+#[derive(Serialize, Deserialize, Debug, Hash, PartialEq, Eq, Copy, Clone, strum_macros::EnumCount, FromPrimitive, ToPrimitive)]
 pub enum SolarSystemId {
     SM0A9F4,
 }

@@ -1,14 +1,33 @@
 use cosmicverge_shared::{
     euclid::{Point2D, Scale, Size2D, Vector2D},
+    protocol::{
+        ActivePilot, CosmicVergeRequest, PilotLocation, PilotingAction, SolarSystemLocation,
+    },
     solar_systems::{Pixels, Solar, SolarSystem},
 };
 use crossbeam::channel::{self, Receiver, Sender, TryRecvError};
-use wasm_bindgen::{JsCast, __rt::std::collections::HashMap};
+use std::collections::HashMap;
+use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlImageElement};
+use yew::{Bridged, Callback};
 
-use crate::{app::game::check_canvas_size, redraw_loop::Drawable};
+use crate::{
+    app::game::check_canvas_size,
+    client_api::{AgentMessage, ApiAgent, ApiBridge},
+    redraw_loop::Drawable,
+};
+
+use super::Button;
 
 pub enum Command {
+    SetPilot(ActivePilot),
+
+    HandleClick {
+        button: Button,
+        count: i64,
+        location: Point2D<i32, Pixels>,
+    },
+
     Pan(Vector2D<f64, Pixels>),
     /// In percent relative to current zoom
     Zoom(f64, Point2D<f64, Pixels>),
@@ -24,10 +43,13 @@ pub struct SpaceView {
     look_at: Point2D<f64, Solar>,
     zoom: f64,
     receiver: Receiver<Command>,
+    active_pilot: Option<ActivePilot>,
+    api: ApiBridge,
 }
 
 impl SpaceView {
     pub fn new() -> (Self, Sender<Command>) {
+        let api = ApiAgent::bridge(Callback::noop());
         let (sender, receiver) = channel::unbounded();
         (
             Self {
@@ -39,6 +61,8 @@ impl SpaceView {
                 zoom: 1.,
                 receiver,
                 solar_system: None,
+                active_pilot: None,
+                api,
             },
             sender,
         )
@@ -64,14 +88,12 @@ impl SpaceView {
     fn context(&mut self) -> Option<CanvasRenderingContext2d> {
         if self.context.is_none() {
             self.context = Some({
-                let context = self
-                    .canvas()?
+                self.canvas()?
                     .get_context("2d")
                     .unwrap()
                     .unwrap()
                     .dyn_into::<CanvasRenderingContext2d>()
-                    .ok()?;
-                context
+                    .ok()?
             });
         }
 
@@ -82,9 +104,13 @@ impl SpaceView {
         while let Some(event) = match self.receiver.try_recv() {
             Ok(command) => Some(command),
             Err(TryRecvError::Empty) => None,
-            Err(disconnected) => Err(disconnected)?,
+            Err(disconnected) => return Err(disconnected.into()),
         } {
             match event {
+                Command::SetPilot(active_pilot) => {
+                    info!("SetPilot");
+                    self.active_pilot = Some(active_pilot);
+                }
                 Command::SetSolarSystem(system) => {
                     self.solar_system = system;
                     self.load_solar_system_images();
@@ -109,30 +135,32 @@ impl SpaceView {
 
                         info!("focus_offset: {:?}, focus_solar: {:?}, new_focus_loc: {:?}, pixel_delta: {:?}, solar_delta: {:?}", focus_offset, focus_solar, new_focus_location, pixel_delta, solar_delta);
 
-                        self.look_at -= solar_delta;
-                        // let new_focus_solar = self.look_at + focus_offset / new_scale;
-                        // let top_left_solar = Point2D::<f64, Pixels>::zero() / scale;
-                        //
-                        // info!(
-                        //     "focus_offset: {:?}, focus_solar: {:?}, new_focus_solar: {:?}",
-                        //     focus_offset, focus_solar, new_focus_solar
-                        // );
-                        // self.look_at +=
-                        //     (new_focus_solar.to_vector() - self.look_at.to_vector()) / 2.;
-
-                        // let world_focus = self.convert_canvas_to_world(focus.to_f64()).unwrap();
-                        // let world_focus_in_new_zoom = world_focus + world_focus * fraction;
-                        // info!(
-                        //     "Focus offset: {:?}, New Zoom: {}, new_zoom_focus: {:?}",
-                        //     focus_offset, new_zoom, world_focus_in_new_zoom
-                        // );
-                        // self.look_at += focus_offset / new_zoom - focus_offset / self.zoom;
-                        //- (focus_offset * self.zoom - focus_offset * new_zoom);
+                        self.look_at += solar_delta;
                     }
                     self.zoom = new_zoom;
                 }
                 Command::Pan(amount) => {
-                    self.look_at += amount / self.scale();
+                    self.look_at -= amount / self.scale();
+                }
+                Command::HandleClick {
+                    button,
+                    count,
+                    location,
+                } => {
+                    if count == 2 && button == Button::Left {
+                        if let Some(location) = self.convert_canvas_to_world(location.to_f64()) {
+                            if let Some(pilot) = &self.active_pilot {
+                                let request = CosmicVergeRequest::Fly(PilotingAction::NavigateTo(
+                                    PilotLocation {
+                                        location: SolarSystemLocation::InSpace(location),
+                                        system: pilot.location.system,
+                                    },
+                                ));
+                                info!("Navigation request {:#?}", request);
+                                self.api.send(AgentMessage::Request(request));
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -244,7 +272,7 @@ impl Drawable for SpaceView {
                 let size = Size2D::<_, Pixels>::new(canvas.client_width(), canvas.client_height())
                     .to_f64();
                 let canvas_center = (size.to_vector() / 2.).to_point();
-                let center = canvas_center + self.look_at.to_vector() * scale;
+                let center = canvas_center - self.look_at.to_vector() * scale;
 
                 context.set_image_smoothing_enabled(false);
 
@@ -252,7 +280,7 @@ impl Drawable for SpaceView {
                 context.fill_rect(0., 0., size.width, size.height);
                 if backdrop.complete() {
                     // The backdrop is tiled and panned based on the look_at unaffected by zoom
-                    let backdrop_center = canvas_center + self.look_at.to_vector() * scale * 0.1;
+                    let backdrop_center = canvas_center - self.look_at.to_vector() * scale * 0.1;
                     let size = size.ceil().to_i32();
                     let backdrop_width = backdrop.width() as i32;
                     let backdrop_height = backdrop.height() as i32;

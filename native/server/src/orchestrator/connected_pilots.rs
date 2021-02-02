@@ -24,6 +24,9 @@ impl Default for ConnectedPilotInfo {
     }
 }
 
+// These type aliases are just to help code readability.
+pub type PilotId = i64;
+
 pub(crate) async fn manager_loop(mut connection: MultiplexedConnection) -> Result<(), RedisError> {
     let pilot_reader = connection_channel().1.clone();
     loop {
@@ -56,7 +59,7 @@ pub(crate) async fn manager_loop(mut connection: MultiplexedConnection) -> Resul
         {
             let mut disconnected = HashSet::new();
             let cutoff = Utc::now() - chrono::Duration::minutes(1);
-            let connected_pilots: HashMap<i64, String> =
+            let connected_pilots: HashMap<PilotId, String> =
                 connection.hgetall("connected_pilots").await?;
             for (pilot_id, payload) in connected_pilots {
                 if let Ok(info) = serde_json::from_str::<ConnectedPilotInfo>(&payload) {
@@ -96,12 +99,17 @@ pub(crate) async fn manager_loop(mut connection: MultiplexedConnection) -> Resul
     }
 }
 
-fn connection_channel() -> &'static (async_channel::Sender<i64>, async_channel::Receiver<i64>) {
-    static REUSED_CHANNEL: OnceCell<(async_channel::Sender<i64>, async_channel::Receiver<i64>)> =
-        OnceCell::new();
+fn connection_channel() -> &'static (
+    async_channel::Sender<PilotId>,
+    async_channel::Receiver<PilotId>,
+) {
+    static REUSED_CHANNEL: OnceCell<(
+        async_channel::Sender<PilotId>,
+        async_channel::Receiver<PilotId>,
+    )> = OnceCell::new();
     REUSED_CHANNEL.get_or_init(async_channel::unbounded)
 }
 
-pub async fn note(pilot_id: i64) {
+pub async fn note(pilot_id: PilotId) {
     let _ = connection_channel().0.send(pilot_id).await;
 }

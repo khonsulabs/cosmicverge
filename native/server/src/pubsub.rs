@@ -1,18 +1,16 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
-
+use crate::{
+    connect_to_redis,
+    server::{ConnectedAccount, CosmicVergeServer},
+};
 use database::{
     basws_server::{prelude::Uuid, Handle, Server},
-    cosmicverge_shared::CosmicVergeResponse,
+    cosmicverge_shared::protocol::CosmicVergeResponse,
     schema::{convert_db_pilots, Pilot},
 };
 use futures::StreamExt as _;
-use orchestrator::{
-    connect_to_redis, redis,
-    redis::{aio::Connection, AsyncCommands},
-};
+use redis::{aio::Connection, AsyncCommands};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::time::Duration;
-
-use crate::server::{ConnectedAccount, CosmicVergeServer};
 
 pub async fn pg_notify_loop(websockets: Server<CosmicVergeServer>) -> Result<(), anyhow::Error> {
     loop {

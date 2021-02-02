@@ -1,4 +1,4 @@
-use cosmicverge_shared::{CosmicVergeResponse, Pilot};
+use cosmicverge_shared::protocol::{ActivePilot, CosmicVergeResponse, Pilot};
 use wasm_bindgen::__rt::std::sync::Arc;
 use yew::prelude::*;
 use yew_bulma::static_page::StaticPage;
@@ -58,7 +58,7 @@ pub struct LoggedInUser {
 }
 
 impl LoggedInUser {
-    fn with_pilot(&self, pilot: Pilot) -> Option<Arc<Self>> {
+    fn with_pilot(&self, pilot: ActivePilot) -> Option<Arc<Self>> {
         Some(Arc::new(Self {
             user_id: self.user_id,
             pilot: PilotingState::Selected(pilot),
@@ -69,7 +69,7 @@ impl LoggedInUser {
 #[derive(PartialEq, Debug)]
 pub enum PilotingState {
     Unselected { available: Vec<Pilot> },
-    Selected(Pilot),
+    Selected(ActivePilot),
 }
 
 pub enum Message {
@@ -144,10 +144,10 @@ impl Component for App {
                         }));
                         true
                     }
-                    CosmicVergeResponse::PilotChanged(pilot) => {
+                    CosmicVergeResponse::PilotChanged(active_pilot) => {
                         let user = self.user.as_ref().expect("The server should never send this without us being Authenticated first");
 
-                        self.user = user.with_pilot(pilot);
+                        self.user = user.with_pilot(active_pilot);
                         true
                     }
                     _ => false,

@@ -1,5 +1,5 @@
 [workspace]
-members = ["server", "database", "migrations", "orchestrator"]
+members = ["server", "database", "migrations"]
 
 [patch.crates-io]
 cosmicverge-shared = { path = "../shared" }

@@ -1,5 +1,7 @@
 use basws_yew::{prelude::*, ClientLogic, ClientState, Error};
-use cosmicverge_shared::{cosmic_verge_protocol_version, CosmicVergeRequest, CosmicVergeResponse};
+use cosmicverge_shared::protocol::{
+    cosmic_verge_protocol_version, CosmicVergeRequest, CosmicVergeResponse,
+};
 use url::Url;
 
 pub type AgentMessage = basws_yew::AgentMessage<CosmicVergeRequest>;

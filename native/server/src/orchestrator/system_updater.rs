@@ -10,9 +10,9 @@ use redis::{
     AsyncCommands,
 };
 
-use crate::{connect_to_redis, redis_lock::RedisLock};
+use crate::{connect_to_redis, orchestrator::location_store::LocationStore, redis_lock::RedisLock};
 
-pub async fn pg_notify_loop(shared_connection: MultiplexedConnection) -> Result<(), anyhow::Error> {
+pub async fn run(shared_connection: MultiplexedConnection) -> Result<(), anyhow::Error> {
     loop {
         match connect_to_redis().await {
             Ok(connection) => {
@@ -51,6 +51,8 @@ pub async fn wait_for_ready_to_process(
             "waking up system_updater - world timestamp {}",
             current_timestamp
         );
+
+        LocationStore::refresh().await?;
 
         loop {
             // We could ask for multiple members in the same query depending on how we decide to scale

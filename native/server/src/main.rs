@@ -5,11 +5,13 @@ use std::{convert::Infallible, path::Path};
 
 use database::cosmicverge_shared::current_git_revision;
 use once_cell::sync::OnceCell;
-use orchestrator::redis::aio::MultiplexedConnection;
+use redis::aio::MultiplexedConnection;
 use warp::{Filter, Reply};
 
 mod jwk;
+mod orchestrator;
 mod pubsub;
+mod redis_lock;
 mod server;
 mod twitch;
 
@@ -52,7 +54,7 @@ async fn main() {
     let notify_server = websocket_server.clone();
 
     info!("Connecting to redis");
-    let redis = orchestrator::connect_to_redis_multiplex().await.unwrap();
+    let redis = connect_to_redis_multiplex().await.unwrap();
     let _ = SHARED_REDIS_CONNECTION.set(redis);
 
     tokio::spawn(async {
@@ -137,4 +139,19 @@ pub async fn redis() -> &'static MultiplexedConnection {
     SHARED_REDIS_CONNECTION
         .get()
         .expect("use of redis() before initialized")
+}
+
+pub async fn connect_to_redis_multiplex(
+) -> Result<redis::aio::MultiplexedConnection, redis::RedisError> {
+    redis::Client::open(std::env::var("REDIS_URL").expect("REDIS_URL not found"))
+        .unwrap()
+        .get_multiplexed_tokio_connection()
+        .await
+}
+
+pub async fn connect_to_redis() -> Result<redis::aio::Connection, redis::RedisError> {
+    redis::Client::open(std::env::var("REDIS_URL").expect("REDIS_URL not found"))
+        .unwrap()
+        .get_tokio_connection()
+        .await
 }

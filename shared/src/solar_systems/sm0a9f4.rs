@@ -23,13 +23,13 @@ impl Named for SM0A9F4 {
 pub fn system() -> SolarSystem {
     SolarSystem::new(SolarSystemId::SM0A9F4)
         .with_background("/helianthusgames/Backgrounds/BlueStars.png")
-        .with_location(
+        .define_object(
             SM0A9F4::Sun,
             "/helianthusgames/Suns/2.png",
             128.,
             |location| location,
         )
-        .with_location(
+        .define_object(
             SM0A9F4::Earth,
             "/helianthusgames/Terran_or_Earth-like/1.png",
             32.,
@@ -39,7 +39,7 @@ pub fn system() -> SolarSystem {
                     .owned_by(SM0A9F4::Earth)
             },
         )
-        .with_location(
+        .define_object(
             SM0A9F4::Mercury,
             "/helianthusgames/Rocky/1.png",
             24.,

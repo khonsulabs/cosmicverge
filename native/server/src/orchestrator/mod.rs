@@ -1,32 +1,16 @@
-#[macro_use]
-extern crate log;
+// TODO this should be refactored into a "PeriodicService" structure that can be reused for driving
+//   systems in similar ways to how this piloting one is being set up
 
 use cosmicverge_shared::solar_systems::{universe, Identifiable};
-pub use redis;
-use redis::{aio::MultiplexedConnection, RedisError};
+use redis::{self, aio::MultiplexedConnection, RedisError};
 use tokio::time::Duration;
 use uuid::Uuid;
 
-use crate::redis_lock::RedisLock;
+use crate::{connect_to_redis_multiplex, redis_lock::RedisLock};
 
 pub mod connected_pilots;
-mod redis_lock;
+pub mod location_store;
 mod system_updater;
-
-pub async fn connect_to_redis_multiplex(
-) -> Result<redis::aio::MultiplexedConnection, redis::RedisError> {
-    redis::Client::open(std::env::var("REDIS_URL").expect("REDIS_URL not found"))
-        .unwrap()
-        .get_multiplexed_tokio_connection()
-        .await
-}
-
-pub async fn connect_to_redis() -> Result<redis::aio::Connection, redis::RedisError> {
-    redis::Client::open(std::env::var("REDIS_URL").expect("REDIS_URL not found"))
-        .unwrap()
-        .get_tokio_connection()
-        .await
-}
 
 pub async fn orchestrate() {
     let orchestrator = Orchestrator::new();
@@ -34,7 +18,10 @@ pub async fn orchestrate() {
         match connect_to_redis_multiplex().await {
             // TODO  This should spawn loops for each of these out... at the point we have a connection it will continue to try to reconnect in the background, so it can be its own loop
             Ok(connection) => {
-                tokio::spawn(system_updater::pg_notify_loop(connection.clone()));
+                tokio::spawn(system_updater::run(connection.clone()));
+                tokio::spawn(location_store::LocationStore::initialize(
+                    connection.clone(),
+                ));
                 let c2 = connection.clone();
                 match tokio::try_join!(
                     orchestrator.run(connection),

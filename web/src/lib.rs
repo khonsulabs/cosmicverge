@@ -1,3 +1,4 @@
+#![allow(clippy::single_match)]
 #![recursion_limit = "8192"]
 #[allow(unused_imports)]
 #[macro_use]

@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use cosmicverge_shared::MAX_PILOTS_PER_ACCOUNT;
+use cosmicverge_shared::{protocol, MAX_PILOTS_PER_ACCOUNT};
 
 use crate::{sqlx, DatabaseError, SqlxResultExt};
 
@@ -11,9 +11,9 @@ pub struct Pilot {
     pub created_at: DateTime<Utc>,
 }
 
-impl Into<cosmicverge_shared::Pilot> for Pilot {
-    fn into(self) -> cosmicverge_shared::Pilot {
-        cosmicverge_shared::Pilot {
+impl Into<protocol::Pilot> for Pilot {
+    fn into(self) -> protocol::Pilot {
+        protocol::Pilot {
             id: self.id,
             created_at: self.created_at,
             name: self.name,
@@ -123,8 +123,7 @@ impl Pilot {
         name: &str,
         executor: E,
     ) -> Result<String, PilotError> {
-        let name =
-            cosmicverge_shared::Pilot::cleanup_name(name).map_err(|_| PilotError::InvalidName)?;
+        let name = protocol::Pilot::cleanup_name(name).map_err(|_| PilotError::InvalidName)?;
         if Self::find_by_name(&name, executor).await?.is_some() {
             return Err(PilotError::NameAlreadyTaken);
         }
@@ -133,6 +132,6 @@ impl Pilot {
     }
 }
 
-pub fn convert_db_pilots(pilots: Vec<Pilot>) -> Vec<cosmicverge_shared::Pilot> {
+pub fn convert_db_pilots(pilots: Vec<Pilot>) -> Vec<protocol::Pilot> {
     pilots.into_iter().map(|p| p.into()).collect()
 }
