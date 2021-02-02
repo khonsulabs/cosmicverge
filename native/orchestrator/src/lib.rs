@@ -1,16 +1,17 @@
 #[macro_use]
 extern crate log;
 
-use chrono::Utc;
+use cosmicverge_shared::solar_systems::{universe, Identifiable};
 pub use redis;
 use redis::{aio::MultiplexedConnection, RedisError};
 use tokio::time::Duration;
 use uuid::Uuid;
 
-use crate::{redis::AsyncCommands, redis_lock::RedisLock};
+use crate::redis_lock::RedisLock;
 
 pub mod connected_pilots;
 mod redis_lock;
+mod system_updater;
 
 pub async fn connect_to_redis_multiplex(
 ) -> Result<redis::aio::MultiplexedConnection, redis::RedisError> {
@@ -31,11 +32,13 @@ pub async fn orchestrate() {
     let orchestrator = Orchestrator::new();
     loop {
         match connect_to_redis_multiplex().await {
+            // TODO  This should spawn loops for each of these out... at the point we have a connection it will continue to try to reconnect in the background, so it can be its own loop
             Ok(connection) => {
+                tokio::spawn(system_updater::pg_notify_loop(connection.clone()));
                 let c2 = connection.clone();
                 match tokio::try_join!(
                     orchestrator.run(connection),
-                    connected_pilots::manager_loop(c2)
+                    connected_pilots::manager_loop(c2),
                 ) {
                     Ok(_) => unreachable!(),
                     Err(err) => {
@@ -67,21 +70,55 @@ impl Orchestrator {
 
     async fn run(&self, mut connection: MultiplexedConnection) -> Result<(), RedisError> {
         loop {
-            let now = Utc::now();
-            connection
-                .hset("orchestrators", self.id.to_string(), now.timestamp())
-                .await?;
-
             // Each solar system just needs to update once a second. This loop needs to be stable
             // and update once a second, but there's no guarantee that ticks will line up between systems
             if RedisLock::named("system_queuer")
-                .expire_after_msecs(9997)
+                .expire_after_msecs(1000)
                 .acquire(&mut connection)
                 .await?
-            {}
+            {
+                // Get the server time and the world timestamp incremented by one
+                let ((server_timestamp, _nanoseconds), next_timestamp): ((i64, u32), i64) =
+                    redis::pipe()
+                        .cmd("TIME")
+                        .cmd("INCR")
+                        .arg("world_timestamp")
+                        .query_async(&mut connection)
+                        .await?;
 
-            // Picked a prime number below 100 to try to ensure one server will hit the lock at almost exactly the moment it is freed
-            tokio::time::sleep(Duration::from_millis(97)).await
+                // Insert all the IDs into a set, and then publish a notification saying there is stuff to do
+                let mut pipe = redis::pipe();
+                let mut pipe = &mut pipe;
+                pipe = pipe.cmd("SADD").arg("systems_to_process");
+                for system_id in universe().systems().map(|s| s.id.id()) {
+                    pipe = pipe.arg(system_id);
+                }
+                pipe = pipe.ignore();
+
+                // If we've lost time, just catch up to the real-world timestamp by jumping
+                // All of the "physics" updates will be done in a one-second increment, this
+                // just adjusts the official server time
+                let current_timestamp = if server_timestamp != next_timestamp {
+                    warn!(
+                        "time drifted (server {}) to (manual {})",
+                        next_timestamp, server_timestamp
+                    );
+                    pipe = pipe.cmd("SET").arg("world_timestamp").arg(server_timestamp);
+                    server_timestamp
+                } else {
+                    next_timestamp
+                };
+
+                // Publish the notification to the workers that will process the set as a queue
+                pipe = pipe
+                    .cmd("PUBLISH")
+                    .arg("systems_ready_to_process")
+                    .arg(current_timestamp.to_string());
+
+                pipe.query_async(&mut connection).await?;
+                info!("Queued systems for update, timestamp {}", current_timestamp);
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await
         }
     }
 }

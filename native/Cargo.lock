@@ -1252,6 +1252,7 @@ dependencies = [
  "async-channel",
  "chrono",
  "cosmicverge-shared",
+ "futures",
  "log",
  "once_cell",
  "redis",

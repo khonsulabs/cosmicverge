@@ -8,6 +8,13 @@ pub struct RedisLock {
 }
 
 impl RedisLock {
+    pub fn new(name: String) -> Self {
+        Self {
+            key: Cow::from(name),
+            expire_after_msec: 1000,
+        }
+    }
+
     pub fn named(name: &'static str) -> Self {
         Self {
             key: Cow::from(name),

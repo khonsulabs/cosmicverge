@@ -53,6 +53,10 @@ impl Universe {
             .map(|id| self.solar_systems.get(id))
             .flatten()
     }
+
+    pub fn systems(&self) -> impl Iterator<Item = &SolarSystem> {
+        self.solar_systems.values()
+    }
 }
 
 #[derive(Debug)]
