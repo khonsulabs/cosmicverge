@@ -392,6 +392,7 @@ dependencies = [
  "basws-shared",
  "chrono",
  "euclid",
+ "log",
  "num-derive",
  "num-traits",
  "once_cell",

@@ -2,6 +2,8 @@ use std::time::Duration;
 
 use cosmicverge_shared::{
     num_traits::FromPrimitive,
+    protocol::{PilotLocation, PilotedShip, SolarSystemLocation},
+    solar_system_simulation::SolarSystemSimulation,
     solar_systems::{universe, SolarSystemId},
 };
 use futures::StreamExt as _;
@@ -55,38 +57,89 @@ pub async fn wait_for_ready_to_process(
         LocationStore::refresh().await?;
 
         loop {
-            // We could ask for multiple members in the same query depending on how we decide to scale
-            // By asking for a few random members, we would be more likely to not have to have multiple
-            // return trips to redis due to contention. However, it seems like it would be better to
-            // have multiple async waiting tasks per worker than it would be to juggle that issue.
-            // The benefit of this design is that if a worker crashes mid-update, another will try to update
-            // it again a little bit later. Having a system where we pre-assign systems to each server means
-            // a server crashing causes a much bigger impact because the rebalance has to happen mid-world-update,
-            let system_id: Option<i64> =
-                shared_connection.srandmember("systems_to_process").await?;
-            match system_id {
-                Some(system_id) => {
-                    if RedisLock::new(format!("system_update_{}", system_id))
-                        .expire_after_msecs(20)
-                        .acquire(&mut shared_connection)
-                        .await?
-                    {
-                        // Process server update
-                        let system = universe().get(
-                            &SolarSystemId::from_i64(system_id).expect("invalid solar system id"),
-                        );
-                        info!("updating {:?}", system.id);
+            // TODO magic number needs to be a configuration
+            let system_ids: Vec<i64> = shared_connection
+                .srandmember_multiple("systems_to_process", 3)
+                .await?;
+            if system_ids.is_empty() {
+                break;
+            }
 
-                        shared_connection
-                            .srem("systems_to_process", system_id)
-                            .await?;
+            for system_id in system_ids {
+                if RedisLock::new(format!("system_update_{}", system_id))
+                    .expire_after_msecs(20)
+                    .acquire(&mut shared_connection)
+                    .await?
+                {
+                    // Process server update
+                    let system = universe()
+                        .get(&SolarSystemId::from_i64(system_id).expect("invalid solar system id"));
+                    info!("updating {:?}", system.id);
+
+                    let mut simulation = SolarSystemSimulation::default();
+                    // TODO limit to pilots *connected*
+                    let pilots_in_system = LocationStore::pilots_in_system(system.id).await;
+                    let ships = futures::future::join_all(pilots_in_system.into_iter().map(
+                        |pilot_id| async move {
+                            let cache = LocationStore::lookup(pilot_id).await;
+                            if let SolarSystemLocation::InSpace(location) = cache.location.location
+                            {
+                                Some(PilotedShip {
+                                    pilot_id,
+                                    location,
+                                    ship: cache.ship,
+                                    action: cache.action,
+                                    physics: cache.physics,
+                                })
+                            } else {
+                                None
+                            }
+                        },
+                    ))
+                    .await;
+
+                    simulation.add_ships(ships.into_iter().filter_map(|s| s));
+                    simulation.step(0.001);
+                    simulation.step(0.999);
+
+                    let mut pipe = redis::pipe();
+                    let mut pipe = &mut pipe;
+
+                    for ship in simulation.get_ship_info() {
+                        info!("Post update ship: {:#?}", ship);
+                        let location = PilotLocation {
+                            system: system.id,
+                            location: SolarSystemLocation::InSpace(ship.location),
+                        };
+                        pipe = pipe
+                            .cmd("HSET")
+                            .arg("pilot_locations")
+                            .arg(ship.pilot_id)
+                            .arg(serde_json::to_string(&location).unwrap());
+                        pipe = pipe
+                            .cmd("HSET")
+                            .arg("pilot_physics")
+                            .arg(ship.pilot_id)
+                            .arg(serde_json::to_string(&ship.physics).unwrap());
                     }
+
+                    pipe = pipe.cmd("srem").arg("systems_to_process").arg(system_id);
+                    pipe.query_async(&mut shared_connection).await?;
                 }
-                None => break,
             }
         }
 
-        info!("system_updater completed");
+        LocationStore::refresh().await?;
+
+        if RedisLock::named("system_update_completed")
+            .expire_after_msecs(900)
+            .acquire(&mut shared_connection)
+            .await?
+        {
+            shared_connection
+                .publish("system_update_complete", current_timestamp.to_string())
+                .await?;
+        }
     }
 
     Ok(())

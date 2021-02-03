@@ -1,14 +1,17 @@
 use cosmicverge_shared::{
     euclid::{Point2D, Scale, Size2D, Vector2D},
     protocol::{
-        ActivePilot, CosmicVergeRequest, PilotLocation, PilotingAction, SolarSystemLocation,
+        ActivePilot, CosmicVergeRequest, PilotLocation, PilotedShip, PilotingAction,
+        SolarSystemLocation,
     },
-    solar_systems::{Pixels, Solar, SolarSystem},
+    ships::{hangar, ShipId},
+    solar_system_simulation::SolarSystemSimulation,
+    solar_systems::{Pixels, Solar, SolarSystem, SolarSystemId},
 };
 use crossbeam::channel::{self, Receiver, Sender, TryRecvError};
 use std::collections::HashMap;
 use wasm_bindgen::JsCast;
-use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlImageElement};
+use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlImageElement, Performance};
 use yew::{Bridged, Callback};
 
 use crate::{
@@ -32,37 +35,53 @@ pub enum Command {
     /// In percent relative to current zoom
     Zoom(f64, Point2D<f64, Pixels>),
     SetSolarSystem(Option<&'static SolarSystem>),
+
+    UpdateSolarSystem {
+        solar_system: SolarSystemId,
+        ships: Vec<PilotedShip>,
+    },
 }
 
 pub struct SpaceView {
+    performance: Performance,
     canvas: Option<HtmlCanvasElement>,
     context: Option<CanvasRenderingContext2d>,
     backdrop: Option<HtmlImageElement>,
     location_images: HashMap<i64, HtmlImageElement>,
+    ship_images: HashMap<ShipId, HtmlImageElement>,
     solar_system: Option<&'static SolarSystem>,
     look_at: Point2D<f64, Solar>,
     zoom: f64,
     receiver: Receiver<Command>,
     active_pilot: Option<ActivePilot>,
     api: ApiBridge,
+    simulation_system: Option<SolarSystemId>,
+    simulation: Option<SolarSystemSimulation>,
+    last_physics_update: Option<f64>,
 }
 
 impl SpaceView {
     pub fn new() -> (Self, Sender<Command>) {
+        let performance = web_sys::window().unwrap().performance().unwrap();
         let api = ApiAgent::bridge(Callback::noop());
         let (sender, receiver) = channel::unbounded();
         (
             Self {
+                performance,
                 canvas: None,
                 context: None,
                 backdrop: None,
                 location_images: Default::default(),
+                ship_images: Default::default(),
                 look_at: Point2D::new(0., 0.),
                 zoom: 1.,
                 receiver,
                 solar_system: None,
                 active_pilot: None,
                 api,
+                simulation_system: None,
+                simulation: None,
+                last_physics_update: None,
             },
             sender,
         )
@@ -133,8 +152,6 @@ impl SpaceView {
                         let pixel_delta = new_focus_location.to_vector() - focus.to_vector();
                         let solar_delta = pixel_delta / new_scale;
 
-                        info!("focus_offset: {:?}, focus_solar: {:?}, new_focus_loc: {:?}, pixel_delta: {:?}, solar_delta: {:?}", focus_offset, focus_solar, new_focus_location, pixel_delta, solar_delta);
-
                         self.look_at += solar_delta;
                     }
                     self.zoom = new_zoom;
@@ -156,11 +173,23 @@ impl SpaceView {
                                         system: pilot.location.system,
                                     },
                                 ));
-                                info!("Navigation request {:#?}", request);
                                 self.api.send(AgentMessage::Request(request));
                             }
                         }
                     }
+                }
+                Command::UpdateSolarSystem {
+                    ships,
+                    solar_system,
+                } => {
+                    self.simulation_system = Some(solar_system);
+                    let mut simulation = SolarSystemSimulation::default();
+                    simulation.add_ships(ships);
+
+                    self.last_physics_update = None;
+                    // TODO add step for half round trip time
+
+                    self.simulation = Some(simulation);
                 }
             }
         }
@@ -267,6 +296,15 @@ impl Drawable for SpaceView {
             if let Some(context) = self.context() {
                 check_canvas_size(&canvas);
 
+                let now = self.performance.now();
+                if let Some(last_physics_timestamp_ms) = self.last_physics_update {
+                    let elapsed = (now - last_physics_timestamp_ms) / 1000.;
+                    if let Some(simulation) = &mut self.simulation {
+                        simulation.step(elapsed);
+                    }
+                }
+                self.last_physics_update = Some(now);
+
                 let scale = self.scale();
 
                 let size = Size2D::<_, Pixels>::new(canvas.client_width(), canvas.client_height())
@@ -322,6 +360,35 @@ impl Drawable for SpaceView {
                                 )
                             {
                                 error!("Error rendering sun: {:#?}", err);
+                            }
+                        }
+                    }
+
+                    if let Some(simulation_system) = self.simulation_system {
+                        if simulation_system == solar_system.id {
+                            for ship in self.simulation.as_ref().unwrap().get_ship_info() {
+                                let ship_spec = hangar().load(&ship.ship.ship);
+                                let image =
+                                    self.ship_images.entry(ship_spec.id).or_insert_with(|| {
+                                        let image = HtmlImageElement::new().unwrap();
+                                        image.set_src(ship_spec.image);
+                                        image
+                                    });
+                                if image.complete() {
+                                    let render_radius = (image.width() as f64 / 2.) * self.zoom;
+                                    let render_center = center + ship.location.to_vector() * scale;
+                                    if let Err(err) = context
+                                        .draw_image_with_html_image_element_and_dw_and_dh(
+                                            image,
+                                            render_center.x - render_radius,
+                                            render_center.y - render_radius,
+                                            render_radius * 2.,
+                                            render_radius * 2.,
+                                        )
+                                    {
+                                        error!("Error rendering ship: {:#?}", err);
+                                    }
+                                }
                             }
                         }
                     }

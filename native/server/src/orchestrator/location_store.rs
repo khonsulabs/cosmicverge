@@ -1,12 +1,13 @@
 use std::{collections::HashMap, sync::Arc};
 
 use cosmicverge_shared::{
-    protocol::{PilotLocation, PilotingAction},
+    protocol::{PilotLocation, PilotPhysics, PilotingAction, ShipInformation},
     solar_systems::SolarSystemId,
     strum::EnumCount,
 };
 use once_cell::sync::OnceCell;
 use redis::{aio::MultiplexedConnection, AsyncCommands};
+use serde::Deserialize;
 use tokio::sync::RwLock;
 
 use crate::orchestrator::connected_pilots::PilotId;
@@ -48,40 +49,38 @@ impl LocationStore {
 
     async fn fetch_cache_from_redis(&self) -> Result<LocationCache, redis::RedisError> {
         let mut redis = self.redis.clone();
-        let (locations, actions) = redis::pipe()
+        let (pilots, locations, actions, physics, ships) = redis::pipe()
+            .cmd("HKEYS")
+            .arg("connected_pilots")
             .cmd("HGETALL")
             .arg("pilot_locations")
             .cmd("HGETALL")
             .arg("pilot_actions")
+            .cmd("HGETALL")
+            .arg("pilot_physics")
+            .cmd("HGETALL")
+            .arg("pilot_ships")
             .query_async(&mut redis)
             .await?;
+        let pilots: Vec<i64> = pilots;
         let locations: HashMap<PilotId, String> = locations;
         let actions: HashMap<PilotId, String> = actions;
+        let physics: HashMap<PilotId, String> = physics;
+        let ships: HashMap<PilotId, String> = ships;
 
         let mut pilot_cache = HashMap::new();
-        for (pilot_id, location) in locations {
-            let location = serde_json::from_str::<PilotLocation>(&location).unwrap_or_default();
-            let action = match actions.get(&pilot_id) {
-                Some(action) => serde_json::from_str(action).unwrap_or_default(),
-                None => PilotingAction::default(),
-            };
-
-            pilot_cache.insert(pilot_id, PilotCache { location, action });
-        }
-
-        // It's possible for pilots to not have an initialized position, but have an action set
-        for (pilot_id, action) in actions {
-            if pilot_cache.contains_key(&pilot_id) {
-                continue;
-            }
-
-            let action = serde_json::from_str(&action).unwrap_or_default();
-
+        for pilot_id in pilots {
+            let location = parse_value_from_pilot_json_map(pilot_id, &locations);
+            let action = parse_value_from_pilot_json_map(pilot_id, &actions);
+            let physics = parse_value_from_pilot_json_map(pilot_id, &physics);
+            let ship = parse_value_from_pilot_json_map(pilot_id, &ships);
             pilot_cache.insert(
                 pilot_id,
                 PilotCache {
+                    location,
                     action,
-                    location: Default::default(),
+                    physics,
+                    ship,
                 },
             );
         }
@@ -141,10 +140,22 @@ impl LocationStore {
 pub struct PilotCache {
     pub location: PilotLocation,
     pub action: PilotingAction,
+    pub ship: ShipInformation,
+    pub physics: PilotPhysics,
 }
 
 #[derive(Default)]
 struct LocationCache {
     system_pilots: HashMap<SolarSystemId, Vec<PilotId>>,
     pilot_cache: HashMap<PilotId, PilotCache>,
+}
+
+fn parse_value_from_pilot_json_map<'de, T: Deserialize<'de> + Default>(
+    pilot_id: PilotId,
+    json_map: &'de HashMap<PilotId, String>,
+) -> T {
+    match json_map.get(&pilot_id) {
+        Some(json) => serde_json::from_str(json).unwrap_or_default(),
+        None => T::default(),
+    }
 }

@@ -5,6 +5,10 @@ authors = ["Jonathan Johnson <jon@nilobject.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = []
+wasm = ["rapier2d-f64/wasm-bindgen"]
+
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 uuid = { version = "0.8", features = ["v4", "serde"] }
@@ -18,3 +22,4 @@ num-derive = "0.3"
 strum = "0.20"
 strum_macros = "0.20"
 rapier2d-f64 = "0.5"
+log = "0.4"

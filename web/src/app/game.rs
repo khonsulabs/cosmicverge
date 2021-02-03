@@ -361,10 +361,17 @@ impl Component for Game {
             Message::ApiMessage(message) => match message {
                 AgentResponse::Response(response) => match response {
                     CosmicVergeResponse::PilotChanged(active_pilot) => {
-                        info!("PilotChanged");
                         let _ = self
                             .space_sender
                             .send(space2d::Command::SetPilot(active_pilot));
+                    }
+                    CosmicVergeResponse::SpaceUpdate {
+                        ships, location, ..
+                    } => {
+                        let _ = self.space_sender.send(space2d::Command::UpdateSolarSystem {
+                            ships,
+                            solar_system: location.system,
+                        });
                     }
                     _ => {}
                 },

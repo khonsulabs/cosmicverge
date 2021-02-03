@@ -1,10 +1,13 @@
 use basws_shared::{Version, VersionReq};
 use chrono::{DateTime, Utc};
-use euclid::Point2D;
+use euclid::{Point2D, Vector2D};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::solar_systems::{Solar, SolarSystemId};
+use crate::{
+    ships::ShipId,
+    solar_systems::{Solar, SolarSystemId},
+};
 
 pub fn cosmic_verge_protocol_version() -> Version {
     Version::parse("0.0.1").unwrap()
@@ -42,8 +45,10 @@ pub enum CosmicVergeResponse {
     },
     Unauthenticated,
     PilotChanged(ActivePilot),
-    SolarSystemUpdate {
+    SpaceUpdate {
         timestamp: i64,
+        location: PilotLocation,
+        action: PilotingAction,
         ships: Vec<PilotedShip>,
     },
 
@@ -158,9 +163,10 @@ impl Default for PilotingAction {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PilotedShip {
     pub pilot_id: i64,
-    pub ship_id: i64,
+    pub ship: ShipInformation,
     pub location: Point2D<f64, Solar>,
     pub action: PilotingAction,
+    pub physics: PilotPhysics,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -168,4 +174,26 @@ pub struct ActivePilot {
     pub pilot: Pilot,
     pub location: PilotLocation,
     pub action: PilotingAction,
+}
+
+#[derive(Default, Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub struct PilotPhysics {
+    pub rotation: f64,
+    pub linear_velocity: Vector2D<f64, Solar>,
+    pub angular_velocity: f64,
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub struct ShipInformation {
+    pub ship: ShipId,
+    pub mass_of_cargo: f64,
+}
+
+impl Default for ShipInformation {
+    fn default() -> Self {
+        Self {
+            ship: ShipId::Shuttle,
+            mass_of_cargo: 0.,
+        }
+    }
 }

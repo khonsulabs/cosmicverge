@@ -4,7 +4,7 @@ use euclid::Point2D;
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::ToPrimitive;
 use once_cell::sync::OnceCell;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 mod sm0a9f4;
 
@@ -55,7 +55,7 @@ impl Universe {
             .flatten()
     }
 
-    pub fn systems(&self) -> impl Iterator<Item=&SolarSystem> {
+    pub fn systems(&self) -> impl Iterator<Item = &SolarSystem> {
         self.solar_systems.values()
     }
 }
@@ -137,20 +137,33 @@ pub trait Named {
     fn name(&self) -> &'static str;
 }
 
-pub trait NamedLocation: Identifiable + Named  + Send + Sync + std::fmt::Debug + 'static {}
+pub trait NamedLocation: Identifiable + Named + Send + Sync + std::fmt::Debug + 'static {}
 
 impl<T> Identifiable for T
-    where
-        T: ToPrimitive,
+where
+    T: ToPrimitive,
 {
     fn id(&self) -> i64 {
         self.to_i64().unwrap()
     }
 }
 
-impl<T> NamedLocation for T where T: Identifiable + Named  + Send + Sync + std::fmt::Debug + 'static {}
+impl<T> NamedLocation for T where T: Identifiable + Named + Send + Sync + std::fmt::Debug + 'static {}
 
-#[derive(Serialize, Deserialize, Debug, Hash, PartialEq, Eq, Copy, Clone, strum_macros::EnumCount, FromPrimitive, ToPrimitive)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Hash,
+    PartialEq,
+    Eq,
+    Copy,
+    Clone,
+    strum_macros::EnumCount,
+    strum_macros::EnumIter,
+    FromPrimitive,
+    ToPrimitive,
+)]
 pub enum SolarSystemId {
     SM0A9F4,
 }
