@@ -4,3 +4,4 @@ shared/Cargo.lock
 .idea
 web/static/styles.css*
 .env
+.vscode
