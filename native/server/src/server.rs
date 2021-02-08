@@ -109,6 +109,17 @@ impl ServerLogic for CosmicVergeServer {
                     )))
                 }
             }
+            // TODO this should use a cache
+            CosmicVergeRequest::GetPilotInformation(pilot_id) => {
+                match Pilot::load(pilot_id, database::pool()).await? {
+                    Some(pilot) => Ok(RequestHandling::Respond(
+                        CosmicVergeResponse::PilotInformation(pilot.into()),
+                    )),
+                    None => Ok(RequestHandling::Respond(CosmicVergeResponse::error(
+                        "pilot not found",
+                    ))),
+                }
+            }
         }
     }
 

@@ -49,7 +49,7 @@ pub async fn wait_for_ready_to_process(
     while let Some(message) = stream.next().await {
         let current_timestamp: i64 = message.get_payload()?;
 
-        info!(
+        debug!(
             "waking up system_updater - world timestamp {}",
             current_timestamp
         );
@@ -74,7 +74,7 @@ pub async fn wait_for_ready_to_process(
                     // Process server update
                     let system = universe()
                         .get(&SolarSystemId::from_i64(system_id).expect("invalid solar system id"));
-                    info!("updating {:?}", system.id);
+                    debug!("updating {:?}", system.id);
 
                     let mut simulation = SolarSystemSimulation::default();
                     // TODO limit to pilots *connected*
@@ -82,11 +82,9 @@ pub async fn wait_for_ready_to_process(
                     let ships = futures::future::join_all(pilots_in_system.into_iter().map(
                         |pilot_id| async move {
                             let cache = LocationStore::lookup(pilot_id).await;
-                            if let SolarSystemLocation::InSpace(location) = cache.location.location
-                            {
+                            if let SolarSystemLocation::InSpace(_) = cache.location.location {
                                 Some(PilotedShip {
                                     pilot_id,
-                                    location,
                                     ship: cache.ship,
                                     action: cache.action,
                                     physics: cache.physics,
@@ -99,17 +97,16 @@ pub async fn wait_for_ready_to_process(
                     .await;
 
                     simulation.add_ships(ships.into_iter().filter_map(|s| s));
-                    simulation.step(0.001);
-                    simulation.step(0.999);
+                    // simulation.step(0.0);
+                    simulation.step(1.0);
 
                     let mut pipe = redis::pipe();
                     let mut pipe = &mut pipe;
 
                     for ship in simulation.get_ship_info() {
-                        info!("Post update ship: {:#?}", ship);
                         let location = PilotLocation {
                             system: system.id,
-                            location: SolarSystemLocation::InSpace(ship.location),
+                            location: SolarSystemLocation::InSpace(ship.physics.location),
                         };
                         pipe = pipe
                             .cmd("HSET")

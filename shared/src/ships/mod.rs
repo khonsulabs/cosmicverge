@@ -40,6 +40,10 @@ impl Hangar {
 pub struct ShipSpecification {
     pub id: ShipId,
     pub image: &'static str,
+    pub mass: f64,
+    pub thruster_force: f32,
+    pub rotor_force: f32,
+    pub mass_radius: f32,
 }
 #[derive(
     Serialize,

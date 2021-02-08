@@ -6,6 +6,7 @@ use std::{convert::Infallible, path::Path};
 use database::cosmicverge_shared::current_git_revision;
 use once_cell::sync::OnceCell;
 use redis::aio::MultiplexedConnection;
+use uuid::Uuid;
 use warp::{Filter, Reply};
 
 mod jwk;
@@ -100,9 +101,20 @@ async fn main() {
     let base_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_owned());
     let base_dir = Path::new(&base_dir);
     let static_path = base_dir.join(STATIC_FOLDER_PATH);
-    let index_path = static_path.join("index.html");
+    let index_path = static_path.join("bootstrap.html");
 
-    let spa = warp::get().and(warp::fs::dir(static_path).or(warp::fs::file(index_path)));
+    #[cfg(debug_assertions)]
+    let index_handler = warp::get().map(move || {
+        // To make the cache expire in debug mode, we're going to always change CACHEBUSTER in the file
+        let contents = std::fs::read(&index_path).unwrap();
+        let contents = String::from_utf8(contents).unwrap();
+        let contents = contents.replace("CACHEBUSTER", &Uuid::new_v4().to_string());
+        warp::reply::with_header(contents, "Content-Type", "text/html").into_response()
+    });
+    #[cfg(not(debug_assertions))]
+    let index_handler = warp::fs::file(index_path);
+
+    let spa = warp::get().and(warp::fs::dir(static_path).or(index_handler));
 
     #[cfg(debug_assertions)]
     let routes = {

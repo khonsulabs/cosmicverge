@@ -10,13 +10,14 @@ use cosmicverge_shared::{
 };
 use crossbeam::channel::{self, Receiver, Sender, TryRecvError};
 use std::collections::HashMap;
-use wasm_bindgen::JsCast;
+use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlImageElement, Performance};
 use yew::{Bridged, Callback};
 
 use crate::{
     app::game::check_canvas_size,
-    client_api::{AgentMessage, ApiAgent, ApiBridge},
+    client_api::{self, AgentMessage, ApiAgent, ApiBridge},
+    extended_text_metrics::ExtendedTextMetrics,
     redraw_loop::Drawable,
 };
 
@@ -31,10 +32,12 @@ pub enum Command {
         location: Point2D<i32, Pixels>,
     },
 
-    Pan(Vector2D<f64, Pixels>),
+    Pan(Vector2D<f32, Pixels>),
     /// In percent relative to current zoom
-    Zoom(f64, Point2D<f64, Pixels>),
+    Zoom(f32, Point2D<f32, Pixels>),
     SetSolarSystem(Option<&'static SolarSystem>),
+
+    UpdateServerRoundtripTime(f64),
 
     UpdateSolarSystem {
         solar_system: SolarSystemId,
@@ -50,14 +53,15 @@ pub struct SpaceView {
     location_images: HashMap<i64, HtmlImageElement>,
     ship_images: HashMap<ShipId, HtmlImageElement>,
     solar_system: Option<&'static SolarSystem>,
-    look_at: Point2D<f64, Solar>,
-    zoom: f64,
+    look_at: Point2D<f32, Solar>,
+    zoom: f32,
     receiver: Receiver<Command>,
     active_pilot: Option<ActivePilot>,
     api: ApiBridge,
     simulation_system: Option<SolarSystemId>,
     simulation: Option<SolarSystemSimulation>,
     last_physics_update: Option<f64>,
+    server_roundtrip_time: Option<f64>,
 }
 
 impl SpaceView {
@@ -82,6 +86,7 @@ impl SpaceView {
                 simulation_system: None,
                 simulation: None,
                 last_physics_update: None,
+                server_roundtrip_time: None,
             },
             sender,
         )
@@ -127,7 +132,6 @@ impl SpaceView {
         } {
             match event {
                 Command::SetPilot(active_pilot) => {
-                    info!("SetPilot");
                     self.active_pilot = Some(active_pilot);
                 }
                 Command::SetSolarSystem(system) => {
@@ -139,10 +143,10 @@ impl SpaceView {
                     let scale = self.scale();
                     let new_zoom = self.zoom + self.zoom * fraction;
                     let new_zoom = new_zoom.min(10.).max(0.1);
-                    let new_scale = Scale::<f64, Solar, Pixels>::new(new_zoom);
+                    let new_scale = Scale::<f32, Solar, Pixels>::new(new_zoom);
 
                     if let Some(center) = self.canvas_center() {
-                        let focus = focus.to_f64();
+                        let focus = focus.to_f32();
                         let focus_offset = focus.to_vector() - center.to_vector();
                         let focus_solar = self.look_at + focus_offset / scale;
 
@@ -165,7 +169,7 @@ impl SpaceView {
                     location,
                 } => {
                     if count == 2 && button == Button::Left {
-                        if let Some(location) = self.convert_canvas_to_world(location.to_f64()) {
+                        if let Some(location) = self.convert_canvas_to_world(location.to_f32()) {
                             if let Some(pilot) = &self.active_pilot {
                                 let request = CosmicVergeRequest::Fly(PilotingAction::NavigateTo(
                                     PilotLocation {
@@ -184,12 +188,18 @@ impl SpaceView {
                 } => {
                     self.simulation_system = Some(solar_system);
                     let mut simulation = SolarSystemSimulation::default();
-                    simulation.add_ships(ships);
+                    simulation.add_ships(ships.into_iter());
 
                     self.last_physics_update = None;
-                    // TODO add step for half round trip time
+
+                    if let Some(server_roundtrip_time) = self.server_roundtrip_time {
+                        simulation.step(server_roundtrip_time as f32 / 2.);
+                    }
 
                     self.simulation = Some(simulation);
+                }
+                Command::UpdateServerRoundtripTime(server_roundtrip_time) => {
+                    self.server_roundtrip_time = Some(server_roundtrip_time)
                 }
             }
         }
@@ -197,30 +207,30 @@ impl SpaceView {
         Ok(())
     }
 
-    fn scale(&self) -> Scale<f64, Solar, Pixels> {
+    fn scale(&self) -> Scale<f32, Solar, Pixels> {
         Scale::new(self.zoom)
     }
 
     fn convert_canvas_to_world(
         &mut self,
-        canvas_location: Point2D<f64, Pixels>,
-    ) -> Option<Point2D<f64, Solar>> {
+        canvas_location: Point2D<f32, Pixels>,
+    ) -> Option<Point2D<f32, Solar>> {
         self.convert_canvas_to_world_with_scale(canvas_location, self.scale())
     }
 
     fn convert_canvas_to_world_with_scale(
         &mut self,
-        canvas_location: Point2D<f64, Pixels>,
-        scale: Scale<f64, Solar, Pixels>,
-    ) -> Option<Point2D<f64, Solar>> {
+        canvas_location: Point2D<f32, Pixels>,
+        scale: Scale<f32, Solar, Pixels>,
+    ) -> Option<Point2D<f32, Solar>> {
         self.canvas_center().map(move |canvas_center| {
             let relative_location = canvas_location - canvas_center;
             let result = self.look_at + relative_location / scale;
 
-            info!(
-                "convert_canvas_to_world({:?}) - {:?} - {:?} - {:?} = {:?}",
-                canvas_location, canvas_center, self.look_at, self.zoom, result
-            );
+            // info!(
+            //     "convert_canvas_to_world({:?}) - {:?} - {:?} - {:?} = {:?}",
+            //     canvas_location, canvas_center, self.look_at, self.zoom, result
+            // );
 
             result
         })
@@ -228,32 +238,32 @@ impl SpaceView {
 
     fn convert_world_to_canvas(
         &mut self,
-        world_location: Point2D<f64, Solar>,
-    ) -> Option<Point2D<f64, Pixels>> {
+        world_location: Point2D<f32, Solar>,
+    ) -> Option<Point2D<f32, Pixels>> {
         self.convert_world_to_canvas_with_scale(world_location, self.scale())
     }
 
     fn convert_world_to_canvas_with_scale(
         &mut self,
-        world_location: Point2D<f64, Solar>,
-        scale: Scale<f64, Solar, Pixels>,
-    ) -> Option<Point2D<f64, Pixels>> {
+        world_location: Point2D<f32, Solar>,
+        scale: Scale<f32, Solar, Pixels>,
+    ) -> Option<Point2D<f32, Pixels>> {
         self.canvas_center().map(move |canvas_center| {
             let relative_location = world_location - self.look_at.to_vector();
             let result = canvas_center + relative_location.to_vector() * scale;
 
-            info!(
-                "convert_world_to_canvas({:?}) - {:?} - {:?} - {:?} = {:?}",
-                world_location, canvas_center, self.look_at, self.zoom, result
-            );
+            // info!(
+            //     "convert_world_to_canvas({:?}) - {:?} - {:?} - {:?} = {:?}",
+            //     world_location, canvas_center, self.look_at, self.zoom, result
+            // );
 
             result
         })
     }
 
-    fn canvas_center(&mut self) -> Option<Point2D<f64, Pixels>> {
+    fn canvas_center(&mut self) -> Option<Point2D<f32, Pixels>> {
         self.canvas_size()
-            .map(|s| (s.to_f64().to_vector() / 2.).to_point())
+            .map(|s| (s.to_f32().to_vector() / 2.).to_point())
     }
 
     fn canvas_size(&mut self) -> Option<Size2D<i32, Pixels>> {
@@ -298,9 +308,9 @@ impl Drawable for SpaceView {
 
                 let now = self.performance.now();
                 if let Some(last_physics_timestamp_ms) = self.last_physics_update {
-                    let elapsed = (now - last_physics_timestamp_ms) / 1000.;
                     if let Some(simulation) = &mut self.simulation {
-                        simulation.step(elapsed);
+                        let elapsed = (now - last_physics_timestamp_ms) / 1000.;
+                        simulation.step(elapsed as f32);
                     }
                 }
                 self.last_physics_update = Some(now);
@@ -308,14 +318,16 @@ impl Drawable for SpaceView {
                 let scale = self.scale();
 
                 let size = Size2D::<_, Pixels>::new(canvas.client_width(), canvas.client_height())
-                    .to_f64();
+                    .to_f32();
                 let canvas_center = (size.to_vector() / 2.).to_point();
                 let center = canvas_center - self.look_at.to_vector() * scale;
 
                 context.set_image_smoothing_enabled(false);
 
+                context.set_fill_style(&JsValue::from_str("#000"));
+
                 let backdrop = self.backdrop.as_ref().unwrap();
-                context.fill_rect(0., 0., size.width, size.height);
+                context.fill_rect(0., 0., size.width as f64, size.height as f64);
                 if backdrop.complete() {
                     // The backdrop is tiled and panned based on the look_at unaffected by zoom
                     let backdrop_center = canvas_center - self.look_at.to_vector() * scale * 0.1;
@@ -347,8 +359,9 @@ impl Drawable for SpaceView {
                     for (id, location) in solar_system.locations.iter() {
                         let image = &self.location_images[id];
                         if image.complete() {
-                            let render_radius = location.size * self.zoom;
-                            let render_center = center + location.location.to_vector() * scale;
+                            let render_radius = (location.size * self.zoom) as f64;
+                            let render_center =
+                                (center + location.location.to_vector().to_f32() * scale).to_f64();
 
                             if let Err(err) = context
                                 .draw_image_with_html_image_element_and_dw_and_dh(
@@ -366,6 +379,11 @@ impl Drawable for SpaceView {
 
                     if let Some(simulation_system) = self.simulation_system {
                         if simulation_system == solar_system.id {
+                            context.save();
+                            context.set_font("18px Orbitron, sans-serif");
+                            context.set_fill_style(&JsValue::from_str("#df0772"));
+                            context.set_shadow_blur(2.0);
+                            context.set_shadow_color("#000");
                             for ship in self.simulation.as_ref().unwrap().get_ship_info() {
                                 let ship_spec = hangar().load(&ship.ship.ship);
                                 let image =
@@ -375,21 +393,44 @@ impl Drawable for SpaceView {
                                         image
                                     });
                                 if image.complete() {
-                                    let render_radius = (image.width() as f64 / 2.) * self.zoom;
-                                    let render_center = center + ship.location.to_vector() * scale;
+                                    let render_radius =
+                                        (image.width() as f64 / 2.) * self.zoom as f64;
+                                    let render_center = center.to_f64()
+                                        + (ship.location.to_vector() * scale).to_f64();
+                                    context.save();
+                                    context.translate(render_center.x, render_center.y).unwrap();
+                                    context
+                                        .rotate(ship.physics.rotation.signed().get() as f64)
+                                        .unwrap();
                                     if let Err(err) = context
                                         .draw_image_with_html_image_element_and_dw_and_dh(
                                             image,
-                                            render_center.x - render_radius,
-                                            render_center.y - render_radius,
+                                            -render_radius,
+                                            -render_radius,
                                             render_radius * 2.,
                                             render_radius * 2.,
                                         )
                                     {
                                         error!("Error rendering ship: {:#?}", err);
                                     }
+                                    context.restore();
+
+                                    if let Some(pilot) =
+                                        client_api::pilot_information(ship.pilot_id, &mut self.api)
+                                    {
+                                        let text_metrics = ExtendedTextMetrics::from(
+                                            context.measure_text(&pilot.name).unwrap(),
+                                        );
+
+                                        let _ = context.fill_text(
+                                            &pilot.name,
+                                            render_center.x - text_metrics.width() / 2.,
+                                            render_center.y + render_radius + text_metrics.height(),
+                                        );
+                                    }
                                 }
                             }
+                            context.restore();
                         }
                     }
                 }

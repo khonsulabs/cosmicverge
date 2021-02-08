@@ -80,7 +80,7 @@ impl SolarSystem {
         mut self,
         id: ID,
         image: &'static str,
-        size: f64,
+        size: f32,
         initializer: F,
     ) -> Self {
         let location = initializer(SolarSystemObject::new(id, image, size));
@@ -98,13 +98,13 @@ impl SolarSystem {
 pub struct SolarSystemObject {
     pub id: Box<dyn NamedLocation>,
     pub image: &'static str,
-    pub size: f64,
-    pub location: Point2D<f64, Solar>,
+    pub size: f32,
+    pub location: Point2D<f32, Solar>,
     pub owned_by: Option<Box<dyn NamedLocation>>,
 }
 
 impl SolarSystemObject {
-    fn new<ID: NamedLocation>(id: ID, image: &'static str, size: f64) -> Self {
+    fn new<ID: NamedLocation>(id: ID, image: &'static str, size: f32) -> Self {
         Self {
             id: Box::new(id),
             image,
@@ -114,7 +114,7 @@ impl SolarSystemObject {
         }
     }
 
-    fn located_at(mut self, location: Point2D<f64, Solar>) -> Self {
+    fn located_at(mut self, location: Point2D<f32, Solar>) -> Self {
         self.location = location;
         self
     }

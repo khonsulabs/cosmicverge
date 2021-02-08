@@ -176,6 +176,12 @@ impl Component for HomePage {
                         <p>{"Welcome Back "}{ &active_pilot.pilot.name }</p>
                     }
                 }
+                PilotingState::Reconnecting => {
+                    // TODO localize
+                    html! {
+                        <p>{"Reconnecting..."}</p>
+                    }
+                }
             }
         } else {
             html! {

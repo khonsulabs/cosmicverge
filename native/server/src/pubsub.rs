@@ -51,7 +51,7 @@ async fn wait_for_messages(
     let mut stream = pubsub.on_message();
     while let Some(message) = stream.next().await {
         let payload: String = message.get_payload()?;
-        info!(
+        debug!(
             "Got notification: {} {}",
             message.get_channel_name(),
             payload
@@ -145,9 +145,8 @@ async fn load_system_ships(system_id: SolarSystemId) -> Vec<PilotedShip> {
         let cache = LocationStore::lookup(pilot_id).await;
 
         match cache.location.location {
-            SolarSystemLocation::InSpace(location) => Some(PilotedShip {
+            SolarSystemLocation::InSpace(_) => Some(PilotedShip {
                 pilot_id,
-                location,
                 ship: cache.ship,
                 action: cache.action,
                 physics: cache.physics,

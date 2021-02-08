@@ -209,7 +209,7 @@ impl Component for Game {
             }
             Message::WheelEvent(event) => {
                 event.prevent_default();
-                let delta = event.delta_y();
+                let delta = event.delta_y() as f32;
                 let amount = match event.delta_mode() {
                     WheelEvent::DOM_DELTA_PIXEL => delta,
                     WheelEvent::DOM_DELTA_LINE => delta * 20.,
@@ -223,7 +223,7 @@ impl Component for Game {
                 let focus = Point2D::new(event.client_x(), event.client_y());
                 let _ = self
                     .space_sender
-                    .send(space2d::Command::Zoom(amount, focus.to_f64()));
+                    .send(space2d::Command::Zoom(amount, focus.to_f32()));
             }
             Message::MouseDown(event) => {
                 event.prevent_default();
@@ -252,7 +252,7 @@ impl Component for Game {
                     if self.mouse_buttons.left {
                         let _ = self
                             .space_sender
-                            .send(space2d::Command::Pan(delta.to_f64()));
+                            .send(space2d::Command::Pan(delta.to_f32()));
                     }
                 }
             }
@@ -303,7 +303,7 @@ impl Component for Game {
 
                         let _ = self
                             .space_sender
-                            .send(space2d::Command::Pan(delta.to_f64()));
+                            .send(space2d::Command::Pan(delta.to_f32()));
                     }
                 } else if touches.length() == 2 {
                     // Zoom
@@ -321,11 +321,11 @@ impl Component for Game {
                                 old_touch2.last_location.unwrap_or(old_touch2.start);
                             let current_midpoint = (touch1_location.to_vector()
                                 + touch2_location.to_vector())
-                            .to_f64()
+                            .to_f32()
                                 / 2.;
                             let old_midpoint = (touch1_last_location.to_vector()
                                 + touch2_last_location.to_vector())
-                            .to_f64()
+                            .to_f32()
                                 / 2.;
 
                             let _ = self
@@ -333,11 +333,11 @@ impl Component for Game {
                                 .send(space2d::Command::Pan(current_midpoint - old_midpoint));
 
                             let current_distance = touch1_location
-                                .to_f64()
-                                .distance_to(touch2_location.to_f64());
+                                .to_f32()
+                                .distance_to(touch2_location.to_f32());
                             let old_distance = touch1_last_location
-                                .to_f64()
-                                .distance_to(touch2_last_location.to_f64());
+                                .to_f32()
+                                .distance_to(touch2_last_location.to_f32());
                             let ratio = current_distance / old_distance - 1.;
 
                             let _ = self
@@ -359,6 +359,11 @@ impl Component for Game {
                 }
             }
             Message::ApiMessage(message) => match message {
+                AgentResponse::RoundtripUpdated(roundtrip) => {
+                    let _ = self
+                        .space_sender
+                        .send(space2d::Command::UpdateServerRoundtripTime(roundtrip));
+                }
                 AgentResponse::Response(response) => match response {
                     CosmicVergeResponse::PilotChanged(active_pilot) => {
                         let _ = self
