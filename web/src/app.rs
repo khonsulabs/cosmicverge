@@ -1,14 +1,16 @@
 use cosmicverge_shared::protocol::{ActivePilot, CosmicVergeRequest, CosmicVergeResponse, Pilot};
-use wasm_bindgen::__rt::std::sync::Arc;
+use std::sync::Arc;
+use wasm_bindgen::JsCast;
 use yew::prelude::*;
 use yew_bulma::static_page::StaticPage;
-use yew_router::prelude::*;
+use yew_router::{agent::RouteAgentDispatcher, prelude::*};
 
 use crate::{
     app::game::Game,
     client_api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
     localize, localize_html,
 };
+use yew_router::agent::RouteRequest;
 
 mod game;
 mod home_page;
@@ -50,6 +52,7 @@ pub struct App {
     navbar_expanded: bool,
     connected: Option<bool>,
     connected_pilots: Option<usize>,
+    router: RouteAgentDispatcher<()>,
 }
 
 #[derive(PartialEq, Debug)]
@@ -79,6 +82,7 @@ pub enum Message {
     SetTitle(String),
     ToggleNavbar,
     ToggleRendering,
+    ForegroundGame,
 }
 
 fn set_document_title(title: &str) {
@@ -96,11 +100,13 @@ impl Component for App {
     fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let callback = link.callback(Message::WsMessage);
         let api = ApiAgent::bridge(callback);
+        let router = RouteAgentDispatcher::new();
         set_document_title(&localize!("cosmic-verge"));
 
         Self {
             link,
             api,
+            router,
             rendering: true,
             navbar_expanded: false,
             user: None,
@@ -123,6 +129,11 @@ impl Component for App {
             Message::ToggleRendering => {
                 self.rendering = !self.rendering;
                 true
+            }
+            Message::ForegroundGame => {
+                self.router
+                    .send(RouteRequest::ChangeRoute(Route::from(AppRoute::Game)));
+                false
             }
             Message::WsMessage(message) => match message {
                 AgentResponse::Disconnected => {
@@ -259,7 +270,7 @@ impl AppRouteRenderer {
                     <div id="app" class=app_class>
                         { contents }
                     </div>
-                    <Game set_title=set_title.clone() foregrounded=game_foregrounded rendering=self.rendering />
+                    <Game set_title=set_title.clone() should_foreground=self.link.callback(|_| Message::ForegroundGame) foregrounded=game_foregrounded rendering=self.rendering />
                 </body>
             }
         } else {
@@ -300,7 +311,7 @@ impl AppRouteRenderer {
         html! {
             <nav class=format!("navbar is-fixed-top {}", self.navbar_menu_expanded_class()) role="navigation" aria-label=localize!("navbar-label")>
                 <div class="navbar-brand">
-                    <RouterAnchor<AppRoute> classes="navbar-item" route=AppRoute::Index>
+                    <RouterAnchor<AppRoute> classes="navbar-item" route=AppRoute::Game>
                         { localize!("cosmic-verge") }
                     </RouterAnchor<AppRoute>>
 

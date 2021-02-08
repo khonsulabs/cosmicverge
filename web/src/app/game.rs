@@ -83,6 +83,7 @@ struct TouchState {
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
     pub set_title: Callback<String>,
+    pub should_foreground: Callback<()>,
     pub foregrounded: bool,
     pub rendering: bool,
 }
@@ -226,6 +227,7 @@ impl Component for Game {
                     .send(space2d::Command::Zoom(amount, focus.to_f32()));
             }
             Message::MouseDown(event) => {
+                self.foreground_if_needed();
                 event.prevent_default();
                 let location = Point2D::new(event.client_x(), event.client_y());
                 self.update_mouse_buttons(event.button(), true, location);
@@ -264,6 +266,7 @@ impl Component for Game {
                 self.mouse_location = None;
             }
             Message::TouchStart(event) => {
+                self.foreground_if_needed();
                 event.prevent_default();
                 let touches = event.changed_touches();
                 for i in 0..touches.length() {
@@ -449,6 +452,12 @@ impl Component for Game {
 impl Game {
     fn update_title(&self) {
         self.props.set_title.emit(localize!("cosmic-verge"));
+    }
+
+    fn foreground_if_needed(&self) {
+        if !self.props.foregrounded {
+            self.props.should_foreground.emit(());
+        }
     }
 }
 
