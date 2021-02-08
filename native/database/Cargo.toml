@@ -20,3 +20,11 @@ either = "*"
 async-trait = "0.1"
 maplit = "1"
 thiserror = "1"
+sqlx = { version = "0.5", default-features = false, features = [
+    "macros",
+    "postgres",
+    "runtime-tokio-rustls",
+    "uuid",
+    "chrono",
+    "json",
+] }

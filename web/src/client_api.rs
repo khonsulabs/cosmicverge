@@ -1,11 +1,38 @@
+use once_cell::sync::OnceCell;
+use std::{collections::HashMap, sync::RwLock};
+
 use basws_yew::{prelude::*, ClientLogic, ClientState, Error};
-use cosmicverge_shared::{cosmic_verge_protocol_version, CosmicVergeRequest, CosmicVergeResponse};
+use cosmicverge_shared::protocol::{
+    cosmic_verge_protocol_version, CosmicVergeRequest, CosmicVergeResponse, Pilot,
+};
 use url::Url;
 
 pub type AgentMessage = basws_yew::AgentMessage<CosmicVergeRequest>;
 pub type AgentResponse = basws_yew::AgentResponse<CosmicVergeResponse>;
 pub type ApiAgent = basws_yew::ApiAgent<CosmicVergeApiClient>;
 pub type ApiBridge = basws_yew::ApiBridge<CosmicVergeApiClient>;
+
+static PILOT_CACHE: OnceCell<RwLock<HashMap<i64, Pilot>>> = OnceCell::new();
+
+fn cache_pilot_information(pilot: Pilot) {
+    let mut cache = PILOT_CACHE
+        .get_or_init(|| RwLock::new(Default::default()))
+        .write()
+        .unwrap();
+    cache.insert(pilot.id, pilot);
+}
+
+pub fn pilot_information(pilot_id: i64, api: &mut ApiBridge) -> Option<Pilot> {
+    if let Some(cache) = PILOT_CACHE.get() {
+        let cache = cache.read().unwrap();
+        if let Some(pilot) = cache.get(&pilot_id) {
+            return Some(pilot.clone());
+        }
+    }
+
+    api.send(AgentMessage::Request(CosmicVergeRequest::GetPilotInformation(pilot_id)));
+    None
+}
 
 #[derive(Debug, Default)]
 pub struct CosmicVergeApiClient;
@@ -44,6 +71,9 @@ impl ClientLogic for CosmicVergeApiClient {
                     .location()
                     .set_href(&url)
                     .expect("Error setting location for redirect");
+            }
+            CosmicVergeResponse::PilotInformation(pilot) => {
+                cache_pilot_information(pilot);
             }
             CosmicVergeResponse::Error { message } => error!("Error from server: {:?}", message),
             _ => {}

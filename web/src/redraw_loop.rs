@@ -158,14 +158,11 @@ where
 
         if let Some(framerate_target) = self.config.framerate_target {
             let target_duration = Duration::from_secs_f64(1.0 / framerate_target);
-            match target_duration.checked_sub(frame_duration) {
-                Some(sleep_amount) => {
-                    // Only sleep if we know we have more than a few ms to spare
-                    if sleep_amount.as_millis() > 3 {
-                        return self.sleep_before_frame(sleep_amount);
-                    }
+            if let Some(sleep_amount) = target_duration.checked_sub(frame_duration) {
+                // Only sleep if we know we have more than a few ms to spare
+                if sleep_amount.as_millis() > 3 {
+                    return self.sleep_before_frame(sleep_amount);
                 }
-                None => {}
             }
         }
         self.request_animation_frame()

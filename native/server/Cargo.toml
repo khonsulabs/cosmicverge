@@ -6,8 +6,8 @@ edition = "2018"
 build = "../../build.rs"
 
 [dependencies]
+cosmicverge-shared = "0.0.1"
 database = { path = "../database" }
-orchestrator = { path = "../orchestrator" }
 tokio = { version = "1.0", features = ["full"] }
 warp = "0.3"
 futures = "0.3"
@@ -27,3 +27,12 @@ jsonwebtoken = "7"
 url = "2.1"
 reqwest = { version = "0.11", features = ["json"] }
 once_cell = "1"
+redis = { version = "0.19", default-features = false, features = [
+    "connection-manager",
+    "aio",
+    "tls",
+    "tokio-comp",
+    "tokio-native-tls-comp"
+] }
+async-channel = "1"
+uuid = { version = "0.8", features = ["v4", "serde"] }

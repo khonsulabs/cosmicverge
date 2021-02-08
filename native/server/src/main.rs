@@ -5,11 +5,14 @@ use std::{convert::Infallible, path::Path};
 
 use database::cosmicverge_shared::current_git_revision;
 use once_cell::sync::OnceCell;
-use orchestrator::redis::aio::MultiplexedConnection;
+use redis::aio::MultiplexedConnection;
+use uuid::Uuid;
 use warp::{Filter, Reply};
 
 mod jwk;
+mod orchestrator;
 mod pubsub;
+mod redis_lock;
 mod server;
 mod twitch;
 
@@ -52,7 +55,7 @@ async fn main() {
     let notify_server = websocket_server.clone();
 
     info!("Connecting to redis");
-    let redis = orchestrator::connect_to_redis_multiplex().await.unwrap();
+    let redis = connect_to_redis_multiplex().await.unwrap();
     let _ = SHARED_REDIS_CONNECTION.set(redis);
 
     tokio::spawn(async {
@@ -98,9 +101,20 @@ async fn main() {
     let base_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_owned());
     let base_dir = Path::new(&base_dir);
     let static_path = base_dir.join(STATIC_FOLDER_PATH);
-    let index_path = static_path.join("index.html");
+    let index_path = static_path.join("bootstrap.html");
 
-    let spa = warp::get().and(warp::fs::dir(static_path).or(warp::fs::file(index_path)));
+    #[cfg(debug_assertions)]
+    let index_handler = warp::get().map(move || {
+        // To make the cache expire in debug mode, we're going to always change CACHEBUSTER in the file
+        let contents = std::fs::read(&index_path).unwrap();
+        let contents = String::from_utf8(contents).unwrap();
+        let contents = contents.replace("CACHEBUSTER", &Uuid::new_v4().to_string());
+        warp::reply::with_header(contents, "Content-Type", "text/html").into_response()
+    });
+    #[cfg(not(debug_assertions))]
+    let index_handler = warp::fs::file(index_path);
+
+    let spa = warp::get().and(warp::fs::dir(static_path).or(index_handler));
 
     #[cfg(debug_assertions)]
     let routes = {
@@ -137,4 +151,19 @@ pub async fn redis() -> &'static MultiplexedConnection {
     SHARED_REDIS_CONNECTION
         .get()
         .expect("use of redis() before initialized")
+}
+
+pub async fn connect_to_redis_multiplex(
+) -> Result<redis::aio::MultiplexedConnection, redis::RedisError> {
+    redis::Client::open(std::env::var("REDIS_URL").expect("REDIS_URL not found"))
+        .unwrap()
+        .get_multiplexed_tokio_connection()
+        .await
+}
+
+pub async fn connect_to_redis() -> Result<redis::aio::Connection, redis::RedisError> {
+    redis::Client::open(std::env::var("REDIS_URL").expect("REDIS_URL not found"))
+        .unwrap()
+        .get_tokio_connection()
+        .await
 }

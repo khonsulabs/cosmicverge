@@ -4,6 +4,7 @@ use euclid::Point2D;
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::ToPrimitive;
 use once_cell::sync::OnceCell;
+use serde::{Deserialize, Serialize};
 
 mod sm0a9f4;
 
@@ -15,7 +16,7 @@ pub struct Universe {
 
 pub fn universe() -> &'static Universe {
     static UNIVERSE: OnceCell<Universe> = OnceCell::new();
-    UNIVERSE.get_or_init(|| Universe::cosmic_verge())
+    UNIVERSE.get_or_init(Universe::cosmic_verge)
 }
 
 impl Universe {
@@ -63,7 +64,7 @@ impl Universe {
 pub struct SolarSystem {
     pub id: SolarSystemId,
     pub background: Option<&'static str>,
-    pub locations: HashMap<i64, SolarSystemLocation>,
+    pub locations: HashMap<i64, SolarSystemObject>,
 }
 
 impl SolarSystem {
@@ -75,14 +76,14 @@ impl SolarSystem {
         }
     }
 
-    fn with_location<F: FnOnce(SolarSystemLocation) -> SolarSystemLocation, ID: NamedLocation>(
+    fn define_object<F: FnOnce(SolarSystemObject) -> SolarSystemObject, ID: NamedLocation>(
         mut self,
         id: ID,
         image: &'static str,
-        size: f64,
+        size: f32,
         initializer: F,
     ) -> Self {
-        let location = initializer(SolarSystemLocation::new(id, image, size));
+        let location = initializer(SolarSystemObject::new(id, image, size));
         self.locations.insert(location.id.id(), location);
         self
     }
@@ -94,16 +95,16 @@ impl SolarSystem {
 }
 
 #[derive(Debug)]
-pub struct SolarSystemLocation {
+pub struct SolarSystemObject {
     pub id: Box<dyn NamedLocation>,
     pub image: &'static str,
-    pub size: f64,
-    pub location: Point2D<f64, Solar>,
+    pub size: f32,
+    pub location: Point2D<f32, Solar>,
     pub owned_by: Option<Box<dyn NamedLocation>>,
 }
 
-impl SolarSystemLocation {
-    fn new<ID: NamedLocation>(id: ID, image: &'static str, size: f64) -> Self {
+impl SolarSystemObject {
+    fn new<ID: NamedLocation>(id: ID, image: &'static str, size: f32) -> Self {
         Self {
             id: Box::new(id),
             image,
@@ -113,7 +114,7 @@ impl SolarSystemLocation {
         }
     }
 
-    fn located_at(mut self, location: Point2D<f64, Solar>) -> Self {
+    fn located_at(mut self, location: Point2D<f32, Solar>) -> Self {
         self.location = location;
         self
     }
@@ -149,7 +150,20 @@ where
 
 impl<T> NamedLocation for T where T: Identifiable + Named + Send + Sync + std::fmt::Debug + 'static {}
 
-#[derive(Debug, Hash, PartialEq, Eq, Copy, Clone, FromPrimitive, ToPrimitive)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Hash,
+    PartialEq,
+    Eq,
+    Copy,
+    Clone,
+    strum_macros::EnumCount,
+    strum_macros::EnumIter,
+    FromPrimitive,
+    ToPrimitive,
+)]
 pub enum SolarSystemId {
     SM0A9F4,
 }

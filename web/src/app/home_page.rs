@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use cosmicverge_shared::{
-    CosmicVergeRequest, CosmicVergeResponse, OAuthProvider, Pilot, MAX_PILOTS_PER_ACCOUNT,
+    protocol::{CosmicVergeRequest, CosmicVergeResponse, OAuthProvider, Pilot},
+    MAX_PILOTS_PER_ACCOUNT,
 };
 use wasm_bindgen::__rt::std::borrow::Cow;
 use yew::prelude::*;
@@ -169,10 +170,16 @@ impl Component for HomePage {
                     }
                     PilotLoginState::WaitingForServer => self.waiting_for_server(),
                 },
-                PilotingState::Selected(pilot) => {
+                PilotingState::Selected(active_pilot) => {
                     // TODO player dashboard? Not sure.
                     html! {
-                        <p>{"Welcome Back "}{ &pilot.name }</p>
+                        <p>{"Welcome Back "}{ &active_pilot.pilot.name }</p>
+                    }
+                }
+                PilotingState::Reconnecting => {
+                    // TODO localize
+                    html! {
+                        <p>{"Reconnecting..."}</p>
                     }
                 }
             }
@@ -202,7 +209,7 @@ impl Component for HomePage {
 }
 
 impl HomePage {
-    fn select_pilot(&self, available_pilots: &Vec<Pilot>) -> Html {
+    fn select_pilot(&self, available_pilots: &[Pilot]) -> Html {
         let pilots = if available_pilots.is_empty() {
             html! {
                 <div class="notification">

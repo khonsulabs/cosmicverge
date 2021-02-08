@@ -1,3 +1,4 @@
+#![allow(clippy::single_match)]
 #![recursion_limit = "8192"]
 #[allow(unused_imports)]
 #[macro_use]
@@ -18,7 +19,7 @@ mod internal_macros {
 }
 
 #[cfg(debug_assertions)]
-const MAX_LOG_LEVEL: log::Level = log::Level::Debug;
+const MAX_LOG_LEVEL: log::Level = log::Level::Info;
 #[cfg(not(debug_assertions))]
 const MAX_LOG_LEVEL: log::Level = log::Level::Info;
 
@@ -26,6 +27,7 @@ mod app;
 #[macro_use]
 pub mod strings;
 mod client_api;
+mod extended_text_metrics;
 mod redraw_loop;
 
 #[wasm_bindgen]
