@@ -40,11 +40,17 @@ impl Hangar {
 pub struct ShipSpecification {
     pub id: ShipId,
     pub image: &'static str,
-    pub mass: f64,
+    pub mass: f32,
+    pub rotation: f32,
     pub thruster_force: f32,
-    pub rotor_force: f32,
-    pub mass_radius: f32,
 }
+
+impl ShipSpecification {
+    pub fn acceleration(&self) -> f32 {
+        self.thruster_force / self.mass
+    }
+}
+
 #[derive(
     Serialize,
     Deserialize,

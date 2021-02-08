@@ -5,6 +5,7 @@ use euclid::{Point2D, Vector2D, Angle, approxeq::ApproxEq};
 
 use crate::protocol::{FlightPlan, PilotedShip, PilotingAction, SolarSystemLocation, FlightPlanManeuver};
 use crate::solar_systems::{Solar, universe};
+use crate::ships::{ShipSpecification, hangar};
 
 #[derive(Default)]
 pub struct SolarSystemSimulation {
@@ -154,7 +155,7 @@ impl crate::protocol::PilotedShip {
     }
 
     fn max_acceleration(&self) -> f32 {
-        5.
+        self.specification().acceleration()
     }
 
     fn execute_flight_plan_if_needed(&mut self, duration: f32) {
@@ -167,7 +168,11 @@ impl crate::protocol::PilotedShip {
         }
     }
     fn max_turning_radians_per_sec(&self) -> f32 {
-        PI / 2.
+        self.specification().rotation
+    }
+
+    fn specification(&self) -> &'static ShipSpecification {
+        hangar().load(&self.ship.ship)
     }
 }
 

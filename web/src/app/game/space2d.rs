@@ -396,7 +396,7 @@ impl Drawable for SpaceView {
                                     let render_radius =
                                         (image.width() as f64 / 2.) * self.zoom as f64;
                                     let render_center = center.to_f64()
-                                        + (ship.location.to_vector() * scale).to_f64();
+                                        + (ship.physics.location.to_vector() * scale).to_f64();
                                     context.save();
                                     context.translate(render_center.x, render_center.y).unwrap();
                                     context
