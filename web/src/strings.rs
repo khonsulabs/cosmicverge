@@ -49,7 +49,7 @@ macro_rules! localize_html {
     ($name:expr, $($key:expr => $value:expr),+) => {{
         let mut args = std::collections::HashMap::new();
         $(
-            args.insert(String::from($key), fluent_templates::fluent_bundle::FluentValue::from($value));
+            args.insert(String::from($key), fluent_templates::fluent_bundle::FluentValue::from(String::from($value)));
         )+
         crate::strings::localize_with_args($name, &args)
     }};

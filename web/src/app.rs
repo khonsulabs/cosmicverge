@@ -83,6 +83,7 @@ pub enum Message {
     ToggleNavbar,
     ToggleRendering,
     ForegroundGame,
+    LogOut,
 }
 
 fn set_document_title(title: &str) {
@@ -155,6 +156,14 @@ impl Component for App {
                     self.connected = Some(true);
                     true
                 }
+                AgentResponse::StorageStatus(storage_enabled) => {
+                    if !storage_enabled && self.user.is_some() {
+                        self.user = None;
+                        true
+                    } else {
+                        false
+                    }
+                }
                 AgentResponse::Response(response) => match response {
                     CosmicVergeResponse::ServerStatus { connected_pilots } => {
                         self.connected_pilots = Some(connected_pilots);
@@ -189,6 +198,10 @@ impl Component for App {
                 },
                 _ => false,
             },
+            Message::LogOut => {
+                self.api.send(AgentMessage::LogOut);
+                false
+            }
         }
     }
 
@@ -317,6 +330,36 @@ impl AppRouteRenderer {
         } else {
             Default::default()
         };
+
+        let pilot_menu = if let Some(logged_in_user) = &self.user.clone() {
+            let logout_button = html! {
+                <a class="navbar-item" onclick=self.link.callback(|e: MouseEvent| { e.prevent_default(); Message::LogOut })>{ localize!("log-out") }</a>
+            };
+
+            let top_button = if let PilotingState::Selected(active_pilot) = &logged_in_user.pilot {
+                html! {
+                    <div class="navbar-link">{ &active_pilot.pilot.name }</div>
+                }
+            } else {
+                html! {
+                    <RouterAnchor<AppRoute> classes="navbar-link" route=AppRoute::Index>
+                        { localize!("no-pilot") }
+                    </RouterAnchor<AppRoute>>
+                }
+            };
+
+            html! {
+                <div class="navbar-item has-dropdown is-hoverable">
+                    { top_button }
+                    <div class="navbar-dropdown is-boxed">
+                        { logout_button }
+                    </div>
+                </div>
+            }
+        } else {
+            Default::default()
+        };
+
         html! {
             <nav class=format!("navbar is-fixed-top {}", self.navbar_menu_expanded_class()) role="navigation" aria-label=localize!("navbar-label")>
                 <div class="navbar-brand">
@@ -333,18 +376,20 @@ impl AppRouteRenderer {
 
                 <div id="navbar-contents" class=format!("navbar-menu {}", self.navbar_menu_expanded_class())>
                     <div class="navbar-start">
-                        <RouterAnchor<AppRoute> classes=self.navbar_item_class(AppRoute::Index) route=AppRoute::Index>
-                            { localize!("home") }
-                        </RouterAnchor<AppRoute>>
                         <RouterAnchor<AppRoute> classes=self.navbar_item_class(AppRoute::Game) route=AppRoute::Game>
                             { localize!("space") }
                         </RouterAnchor<AppRoute>>
+                        <RouterAnchor<AppRoute> classes=self.navbar_item_class(AppRoute::Index) route=AppRoute::Index>
+                            { localize!("home") }
+                        </RouterAnchor<AppRoute>>
                     </div>
                     <div class="navbar-end">
-                        <div class="navbar-item">
-                            <button class="button" onclick=self.link.callback(|_| Message::ToggleRendering)>{ self.rendering_icon() }</button>
-                        </div>
+                        // <div class="navbar-item">
+                        //    <button class="button" onclick=self.link.callback(|_| Message::ToggleRendering)>{ self.rendering_icon() }</button>
+                        // </div>
+
                         { connected_pilots }
+                        { pilot_menu }
                     </div>
                 </div>
             </nav>

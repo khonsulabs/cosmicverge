@@ -172,9 +172,7 @@ impl Component for HomePage {
                 },
                 PilotingState::Selected(active_pilot) => {
                     // TODO player dashboard? Not sure.
-                    html! {
-                        <p>{"Welcome Back "}{ &active_pilot.pilot.name }</p>
-                    }
+                    localize_html!("welcome", "pilot" => &active_pilot.pilot.name)
                 }
                 PilotingState::Reconnecting => {
                     // TODO localize

@@ -11,6 +11,7 @@ navbar-label = main navigation
 navbar-menu-label = menu
 home = Home
 space = Space
+no-pilot = No Pilot Selected
 
 early-warning = This is incredibly early in development. Use at your own peril.
 
