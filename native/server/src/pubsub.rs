@@ -1,8 +1,8 @@
-use crate::{
-    connect_to_redis,
-    orchestrator::location_store::LocationStore,
-    server::{ConnectedAccount, CosmicVergeServer},
+use std::{
+    collections::HashMap,
+    sync::atomic::{AtomicUsize, Ordering},
 };
+
 use cosmicverge_shared::{
     protocol::{PilotedShip, SolarSystemLocation},
     solar_systems::SolarSystemId,
@@ -15,11 +15,13 @@ use database::{
 };
 use futures::StreamExt as _;
 use redis::{aio::Connection, AsyncCommands};
-use std::{
-    collections::HashMap,
-    sync::atomic::{AtomicUsize, Ordering},
-};
 use tokio::time::Duration;
+
+use crate::{
+    connect_to_redis,
+    orchestrator::location_store::LocationStore,
+    server::{ConnectedAccount, CosmicVergeServer},
+};
 
 pub async fn pg_notify_loop(websockets: Server<CosmicVergeServer>) -> Result<(), anyhow::Error> {
     loop {

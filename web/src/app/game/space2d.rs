@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use cosmicverge_shared::{
     euclid::{Point2D, Scale, Size2D, Vector2D},
     protocol::{
@@ -9,19 +11,17 @@ use cosmicverge_shared::{
     solar_systems::{Pixels, Solar, SolarSystem, SolarSystemId},
 };
 use crossbeam::channel::{self, Receiver, Sender, TryRecvError};
-use std::collections::HashMap;
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlImageElement, Performance};
 use yew::{Bridged, Callback};
 
+use super::Button;
 use crate::{
     app::game::check_canvas_size,
     client_api::{self, AgentMessage, ApiAgent, ApiBridge},
     extended_text_metrics::ExtendedTextMetrics,
     redraw_loop::Drawable,
 };
-
-use super::Button;
 
 pub enum Command {
     SetPilot(ActivePilot),

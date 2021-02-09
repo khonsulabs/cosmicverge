@@ -1,10 +1,10 @@
-use once_cell::sync::OnceCell;
 use std::{collections::HashMap, sync::RwLock};
 
 use basws_yew::{prelude::*, ClientLogic, ClientState, Error};
 use cosmicverge_shared::protocol::{
     cosmic_verge_protocol_version, CosmicVergeRequest, CosmicVergeResponse, Pilot,
 };
+use once_cell::sync::OnceCell;
 use url::Url;
 
 pub type AgentMessage = basws_yew::AgentMessage<CosmicVergeRequest>;

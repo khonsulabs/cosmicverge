@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Duration};
+use std::{cmp::Ordering, collections::HashMap, time::Duration};
 
 use cosmicverge_shared::{
     euclid::Point2D,
@@ -16,7 +16,6 @@ use crate::{
     client_api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
     localize, redraw_loop,
 };
-use std::cmp::Ordering;
 
 const DOUBLE_CLICK_MS: i64 = 400;
 const DOUBLE_CLICK_MAX_PIXEL_DISTANCE: f32 = 5.;

@@ -1,8 +1,3 @@
-use crate::{
-    orchestrator::{connected_pilots, location_store::LocationStore},
-    pubsub::connected_pilots_count,
-    twitch,
-};
 use async_trait::async_trait;
 use cosmicverge_shared::protocol::ActivePilot;
 use database::{
@@ -12,6 +7,12 @@ use database::{
         OAuthProvider,
     },
     schema::{convert_db_pilots, Account, Installation, Pilot, PilotError},
+};
+
+use crate::{
+    orchestrator::{connected_pilots, location_store::LocationStore},
+    pubsub::connected_pilots_count,
+    twitch,
 };
 
 #[derive(Debug)]

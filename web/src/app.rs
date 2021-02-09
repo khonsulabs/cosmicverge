@@ -1,15 +1,15 @@
-use cosmicverge_shared::protocol::{ActivePilot, CosmicVergeRequest, CosmicVergeResponse, Pilot};
 use std::sync::Arc;
+
+use cosmicverge_shared::protocol::{ActivePilot, CosmicVergeRequest, CosmicVergeResponse, Pilot};
 use yew::prelude::*;
 use yew_bulma::static_page::StaticPage;
-use yew_router::{agent::RouteAgentDispatcher, prelude::*};
+use yew_router::{agent::RouteRequest, prelude::*};
 
 use crate::{
     app::game::Game,
     client_api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
     localize, localize_html,
 };
-use yew_router::agent::RouteRequest;
 
 mod game;
 mod home_page;
@@ -51,7 +51,7 @@ pub struct App {
     navbar_expanded: bool,
     connected: Option<bool>,
     connected_pilots: Option<usize>,
-    router: RouteAgentDispatcher<()>,
+    router: RouteAgentBridge<()>,
 }
 
 #[derive(PartialEq, Debug)]
@@ -78,6 +78,7 @@ pub enum PilotingState {
 
 pub enum Message {
     WsMessage(AgentResponse),
+    RouterMessage(Route),
     SetTitle(String),
     ToggleNavbar,
     ToggleRendering,
@@ -99,7 +100,7 @@ impl Component for App {
     fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let callback = link.callback(Message::WsMessage);
         let api = ApiAgent::bridge(callback);
-        let router = RouteAgentDispatcher::new();
+        let router = RouteAgentBridge::new(link.callback(Message::RouterMessage));
         set_document_title(&localize!("cosmic-verge"));
 
         Self {
@@ -120,6 +121,10 @@ impl Component for App {
             Message::SetTitle(title) => {
                 set_document_title(&title);
                 false
+            }
+            Message::RouterMessage(_) => {
+                self.navbar_expanded = false;
+                true
             }
             Message::ToggleNavbar => {
                 self.navbar_expanded = !self.navbar_expanded;
