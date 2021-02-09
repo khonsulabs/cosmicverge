@@ -4,7 +4,7 @@ use cosmicverge_shared::{
     euclid::{Point2D, Scale, Size2D, Vector2D},
     protocol::{
         ActivePilot, CosmicVergeRequest, PilotLocation, PilotedShip, PilotingAction,
-        SolarSystemLocation,
+        SolarSystemLocation, SolarSystemLocationId,
     },
     ships::{hangar, ShipId},
     solar_system_simulation::SolarSystemSimulation,
@@ -50,7 +50,7 @@ pub struct SpaceView {
     canvas: Option<HtmlCanvasElement>,
     context: Option<CanvasRenderingContext2d>,
     backdrop: Option<HtmlImageElement>,
-    location_images: HashMap<i64, HtmlImageElement>,
+    location_images: HashMap<SolarSystemLocationId, HtmlImageElement>,
     ship_images: HashMap<ShipId, HtmlImageElement>,
     solar_system: Option<&'static SolarSystem>,
     look_at: Point2D<f32, Solar>,
@@ -224,14 +224,7 @@ impl SpaceView {
     ) -> Option<Point2D<f32, Solar>> {
         self.canvas_center().map(move |canvas_center| {
             let relative_location = canvas_location - canvas_center;
-            let result = self.look_at + relative_location / scale;
-
-            // info!(
-            //     "convert_canvas_to_world({:?}) - {:?} - {:?} - {:?} = {:?}",
-            //     canvas_location, canvas_center, self.look_at, self.zoom, result
-            // );
-
-            result
+            self.look_at + relative_location / scale
         })
     }
 
@@ -249,14 +242,7 @@ impl SpaceView {
     ) -> Option<Point2D<f32, Pixels>> {
         self.canvas_center().map(move |canvas_center| {
             let relative_location = world_location - self.look_at.to_vector();
-            let result = canvas_center + relative_location.to_vector() * scale;
-
-            // info!(
-            //     "convert_world_to_canvas({:?}) - {:?} - {:?} - {:?} = {:?}",
-            //     world_location, canvas_center, self.look_at, self.zoom, result
-            // );
-
-            result
+            canvas_center + relative_location.to_vector() * scale
         })
     }
 

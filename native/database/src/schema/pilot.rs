@@ -1,5 +1,8 @@
 use chrono::{DateTime, Utc};
-use cosmicverge_shared::{protocol, MAX_PILOTS_PER_ACCOUNT};
+use cosmicverge_shared::{
+    protocol::{self, PilotId},
+    MAX_PILOTS_PER_ACCOUNT,
+};
 
 use crate::{sqlx, DatabaseError, SqlxResultExt};
 
@@ -14,7 +17,7 @@ pub struct Pilot {
 impl Into<protocol::Pilot> for Pilot {
     fn into(self) -> protocol::Pilot {
         protocol::Pilot {
-            id: self.id,
+            id: self.id(),
             created_at: self.created_at,
             name: self.name,
         }
@@ -40,6 +43,10 @@ impl From<sqlx::Error> for PilotError {
 }
 
 impl Pilot {
+    pub fn id(&self) -> PilotId {
+        PilotId(self.id)
+    }
+
     pub async fn create<
         'e,
         E: sqlx::Acquire<
@@ -79,13 +86,13 @@ impl Pilot {
     }
 
     pub async fn load<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
-        id: i64,
+        id: PilotId,
         executor: E,
     ) -> Result<Option<Self>, DatabaseError> {
         sqlx::query_as!(
             Self,
             "SELECT id, account_id, name, created_at FROM pilots WHERE id = $1",
-            id
+            id.0
         )
         .fetch_one(executor)
         .await

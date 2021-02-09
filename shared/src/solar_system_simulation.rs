@@ -1,15 +1,18 @@
-use std::collections::HashMap;
-use std::f32::consts::PI;
+use std::{collections::HashMap, f32::consts::PI};
 
-use euclid::{Point2D, Vector2D, Angle, approxeq::ApproxEq};
+use euclid::{approxeq::ApproxEq, Angle, Point2D, Vector2D};
 
-use crate::protocol::{FlightPlan, PilotedShip, PilotingAction, SolarSystemLocation, FlightPlanManeuver};
-use crate::solar_systems::{Solar, universe};
-use crate::ships::{ShipSpecification, hangar};
+use crate::{
+    protocol::{
+        FlightPlan, FlightPlanManeuver, PilotId, PilotedShip, PilotingAction, SolarSystemLocation,
+    },
+    ships::{hangar, ShipSpecification},
+    solar_systems::{universe, Solar},
+};
 
 #[derive(Default)]
 pub struct SolarSystemSimulation {
-    ships: HashMap<i64, PilotedShip>,
+    ships: HashMap<PilotId, PilotedShip>,
 }
 
 impl SolarSystemSimulation {
@@ -29,7 +32,7 @@ impl SolarSystemSimulation {
         }
     }
 
-    pub fn add_ships<I: Iterator<Item=PilotedShip>>(&mut self, ships: I) {
+    pub fn add_ships<I: Iterator<Item = PilotedShip>>(&mut self, ships: I) {
         for ship in ships {
             self.ships.insert(ship.pilot_id, ship);
         }
@@ -69,10 +72,12 @@ impl crate::protocol::PilotedShip {
     fn append_stop_plan_if_needed(&self, plan: &mut FlightPlan) {
         if let Some(normalized_velocity) = self.physics.linear_velocity.try_normalize() {
             // Turn the ship around
-            let negative_velocity_angle = (vector_to_angle(normalized_velocity) + Angle::pi()).signed();
+            let negative_velocity_angle =
+                (vector_to_angle(normalized_velocity) + Angle::pi()).signed();
             let amount_to_turn = self.physics.rotation.angle_to(negative_velocity_angle);
             let rotation_time = amount_to_turn.radians.abs() / self.max_turning_radians_per_sec();
-            let position_after_rotation = plan.last_location_for(self) + self.physics.linear_velocity * rotation_time;
+            let position_after_rotation =
+                plan.last_location_for(self) + self.physics.linear_velocity * rotation_time;
             plan.maneuvers.push(FlightPlanManeuver {
                 duration: rotation_time,
                 target: position_after_rotation,
@@ -83,7 +88,8 @@ impl crate::protocol::PilotedShip {
             // Decelerate
             let velocity_magnitude = self.physics.linear_velocity.length();
             let time_to_stop = velocity_magnitude / self.max_acceleration();
-            let traveled_distance = velocity_magnitude * time_to_stop + 0.5 * -self.max_acceleration() * time_to_stop * time_to_stop;
+            let traveled_distance = velocity_magnitude * time_to_stop
+                + 0.5 * -self.max_acceleration() * time_to_stop * time_to_stop;
             let final_location = position_after_rotation + normalized_velocity * traveled_distance;
             plan.maneuvers.push(FlightPlanManeuver {
                 duration: time_to_stop,
@@ -109,12 +115,17 @@ impl crate::protocol::PilotedShip {
         let destination_delta = destination.to_vector() - start.to_vector();
 
         // If we can't normalize, it means the distance is 0., so our goal is already met
-        if let Some(normalized_travel_direction) = destination_delta.try_normalize()
-        {
+        if let Some(normalized_travel_direction) = destination_delta.try_normalize() {
             let distance_to_destination = destination_delta.length();
             let angle_to_destination = vector_to_angle(destination_delta);
 
-            let time_to_align = plan.last_rotation_for(self).angle_to(angle_to_destination).signed().radians.abs() / self.max_turning_radians_per_sec();
+            let time_to_align = plan
+                .last_rotation_for(self)
+                .angle_to(angle_to_destination)
+                .signed()
+                .radians
+                .abs()
+                / self.max_turning_radians_per_sec();
             plan.maneuvers.push(FlightPlanManeuver {
                 duration: time_to_align,
                 target: start,
@@ -122,11 +133,14 @@ impl crate::protocol::PilotedShip {
                 target_velocity: Vector2D::zero(),
             });
 
-            let time_to_midpoint = time_to_travel_distance(0., self.max_acceleration(), distance_to_destination / 2.);
+            let time_to_midpoint =
+                time_to_travel_distance(0., self.max_acceleration(), distance_to_destination / 2.);
             let acceleration_time = time_to_midpoint - time_to_turn_around / 2.;
-            let final_velocity = normalized_travel_direction * acceleration_time * self.max_acceleration();
+            let final_velocity =
+                normalized_travel_direction * acceleration_time * self.max_acceleration();
             // This is a shortcut for 1/2 at^2, because we already calculated at in the previous line, the remaining values are 0.5 and t
-            let location_after_acceleration = plan.last_location_for(self) + final_velocity * 0.5 * acceleration_time;
+            let location_after_acceleration =
+                plan.last_location_for(self) + final_velocity * 0.5 * acceleration_time;
             plan.maneuvers.push(FlightPlanManeuver {
                 duration: acceleration_time,
                 target: location_after_acceleration,
@@ -136,7 +150,8 @@ impl crate::protocol::PilotedShip {
 
             // Turn around
             let deceleration_angle = (angle_to_destination + Angle::pi()).signed();
-            let location_after_drifting = location_after_acceleration + final_velocity * time_to_turn_around;
+            let location_after_drifting =
+                location_after_acceleration + final_velocity * time_to_turn_around;
             plan.maneuvers.push(FlightPlanManeuver {
                 duration: time_to_turn_around,
                 target: location_after_drifting,
@@ -207,7 +222,10 @@ fn time_to_travel_distance(initial_velocity: f32, acceleration: f32, distance: f
     } else if solution_b > 0. {
         solution_b
     } else {
-        error!("invalid solution found for time_to_travel_distance({}, {}, {}) -> {} or {}", initial_velocity, acceleration, distance, solution_a, solution_b);
+        error!(
+            "invalid solution found for time_to_travel_distance({}, {}, {}) -> {} or {}",
+            initial_velocity, acceleration, distance, solution_a, solution_b
+        );
         0.
     }
 }
@@ -220,32 +238,53 @@ fn execute_flight_plan(plan: &mut FlightPlan, mut duration: f32) -> Option<Fligh
             // Partial maneuver
             plan.elapsed_in_current_maneuver = total_elapsed;
             let percent_complete = plan.elapsed_in_current_maneuver / maneuver.duration;
-            let movement_interpolation_mode= if plan.initial_velocity.approx_eq(&maneuver.target_velocity) {
-                InterpolationMode::Linear
-            } else if plan.initial_velocity.square_length() > maneuver.target_velocity.square_length() {
-                InterpolationMode::ExponentialOut
-            } else {
-              InterpolationMode::ExponentialIn
-            };
+            let movement_interpolation_mode =
+                if plan.initial_velocity.approx_eq(&maneuver.target_velocity) {
+                    InterpolationMode::Linear
+                } else if plan.initial_velocity.square_length()
+                    > maneuver.target_velocity.square_length()
+                {
+                    InterpolationMode::ExponentialOut
+                } else {
+                    InterpolationMode::ExponentialIn
+                };
             last_update = Some(FlightUpdate {
-                location: interpolate_value(plan.initial_position.to_vector(), maneuver.target.to_vector(), percent_complete, movement_interpolation_mode).to_point(),
-                orientation: interpolate_value(plan.initial_orientation, maneuver.target_rotation, percent_complete, InterpolationMode::Linear),
-                velocity: interpolate_value(plan.initial_velocity, maneuver.target_velocity, percent_complete, movement_interpolation_mode),
+                location: interpolate_value(
+                    plan.initial_position.to_vector(),
+                    maneuver.target.to_vector(),
+                    percent_complete,
+                    movement_interpolation_mode,
+                )
+                .to_point(),
+                orientation: interpolate_value(
+                    plan.initial_orientation,
+                    maneuver.target_rotation,
+                    percent_complete,
+                    InterpolationMode::Linear,
+                ),
+                velocity: interpolate_value(
+                    plan.initial_velocity,
+                    maneuver.target_velocity,
+                    percent_complete,
+                    movement_interpolation_mode,
+                ),
             });
             break;
         } else {
             // Completed this maneuver
             duration -= maneuver.duration - plan.elapsed_in_current_maneuver;
-            last_update = Some(
-                FlightUpdate {
-                    location: maneuver.target,
-                    velocity: maneuver.target_velocity,
-                    orientation: maneuver.target_rotation,
-                }
-            );
+            last_update = Some(FlightUpdate {
+                location: maneuver.target,
+                velocity: maneuver.target_velocity,
+                orientation: maneuver.target_rotation,
+            });
             plan.maneuvers.remove(0);
 
-            let FlightUpdate { location, orientation, velocity } = last_update.unwrap();
+            let FlightUpdate {
+                location,
+                orientation,
+                velocity,
+            } = last_update.unwrap();
             plan.initial_orientation = orientation;
             plan.initial_velocity = velocity;
             plan.initial_position = location;
@@ -271,14 +310,15 @@ enum InterpolationMode {
 }
 
 fn interpolate_value<T>(original: T, target: T, percent: f32, mode: InterpolationMode) -> T
-where T: std::ops::Add<T, Output=T> + std::ops::Sub<T, Output=T> + std::ops::Mul<f32, Output=T> + Copy {
+where
+    T: std::ops::Add<T, Output = T>
+        + std::ops::Sub<T, Output = T>
+        + std::ops::Mul<f32, Output = T>
+        + Copy,
+{
     match mode {
-        InterpolationMode::Linear => {
-            original + (target - original) * percent
-        }
-        InterpolationMode::ExponentialIn => {
-            original + (target - original) * (percent * percent)
-        }
+        InterpolationMode::Linear => original + (target - original) * percent,
+        InterpolationMode::ExponentialIn => original + (target - original) * (percent * percent),
         InterpolationMode::ExponentialOut => {
             let one_minus_percent = 1. - percent;
             let difference = original - target;

@@ -105,7 +105,7 @@ async fn wait_for_messages(
                     |client| async move {
                         // Only send updates to connected pilots
                         if let Some(pilot_id) =
-                            client.map_client(|c| c.as_ref().map(|p| p.id)).await
+                            client.map_client(|c| c.as_ref().map(|p| p.id())).await
                         {
                             let cache = LocationStore::lookup(pilot_id).await;
                             let _ = client

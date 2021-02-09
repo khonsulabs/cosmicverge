@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Utc};
+use cosmicverge_shared::protocol::PilotId;
 use once_cell::sync::OnceCell;
 use redis::{aio::MultiplexedConnection, AsyncCommands, RedisError};
 use serde::{Deserialize, Serialize};
@@ -23,9 +24,6 @@ impl Default for ConnectedPilotInfo {
         }
     }
 }
-
-// These type aliases are just to help code readability.
-pub type PilotId = i64;
 
 pub(crate) async fn manager_loop(mut connection: MultiplexedConnection) -> Result<(), RedisError> {
     let pilot_reader = connection_channel().1.clone();

@@ -6,6 +6,8 @@ use num_traits::ToPrimitive;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
+use crate::protocol::SolarSystemLocationId;
+
 mod sm0a9f4;
 
 #[derive(Debug)]
@@ -64,7 +66,7 @@ impl Universe {
 pub struct SolarSystem {
     pub id: SolarSystemId,
     pub background: Option<&'static str>,
-    pub locations: HashMap<i64, SolarSystemObject>,
+    pub locations: HashMap<SolarSystemLocationId, SolarSystemObject>,
 }
 
 impl SolarSystem {
@@ -84,7 +86,8 @@ impl SolarSystem {
         initializer: F,
     ) -> Self {
         let location = initializer(SolarSystemObject::new(id, image, size));
-        self.locations.insert(location.id.id(), location);
+        self.locations
+            .insert(SolarSystemLocationId(location.id.id()), location);
         self
     }
 

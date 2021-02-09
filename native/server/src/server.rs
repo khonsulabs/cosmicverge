@@ -58,7 +58,7 @@ impl ServerLogic for CosmicVergeServer {
     ) -> anyhow::Result<RequestHandling<Self::Response>> {
         match request {
             CosmicVergeRequest::Fly(action) => {
-                if let Some(pilot_id) = client.map_client(|c| c.as_ref().map(|p| p.id)).await {
+                if let Some(pilot_id) = client.map_client(|c| c.as_ref().map(|p| p.id())).await {
                     LocationStore::set_piloting_action(pilot_id, &action).await?;
                     Ok(RequestHandling::NoResponse)
                 } else {
@@ -218,7 +218,7 @@ impl ServerLogic for CosmicVergeServer {
         client: &ConnectedClient<Self>,
     ) -> anyhow::Result<RequestHandling<Self::Response>> {
         if let Some(pilot_id) = client
-            .map_client(|client| client.as_ref().map(|p| p.id))
+            .map_client(|client| client.as_ref().map(|p| p.id()))
             .await
         {
             connected_pilots::note(pilot_id).await;
@@ -235,7 +235,7 @@ impl CosmicVergeServer {
         client: &ConnectedClient<Self>,
     ) -> anyhow::Result<RequestHandling<CosmicVergeResponse>> {
         let api_pilot = pilot.clone().into();
-        let info = LocationStore::lookup(pilot.id).await;
+        let info = LocationStore::lookup(pilot.id()).await;
         client
             .map_client_mut(|client| {
                 *client = Some(pilot);

@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use cosmicverge_shared::{
-    protocol::{PilotLocation, PilotPhysics, PilotingAction, ShipInformation},
+    protocol::{PilotId, PilotLocation, PilotPhysics, PilotingAction, ShipInformation},
     solar_systems::SolarSystemId,
     strum::EnumCount,
 };
@@ -9,8 +9,6 @@ use once_cell::sync::OnceCell;
 use redis::{aio::MultiplexedConnection, AsyncCommands};
 use serde::Deserialize;
 use tokio::sync::RwLock;
-
-use crate::orchestrator::connected_pilots::PilotId;
 
 pub struct LocationStore {
     redis: MultiplexedConnection,
@@ -62,7 +60,7 @@ impl LocationStore {
             .arg("pilot_ships")
             .query_async(&mut redis)
             .await?;
-        let pilots: Vec<i64> = pilots;
+        let pilots: Vec<PilotId> = pilots;
         let locations: HashMap<PilotId, String> = locations;
         let actions: HashMap<PilotId, String> = actions;
         let physics: HashMap<PilotId, String> = physics;
@@ -85,7 +83,7 @@ impl LocationStore {
             );
         }
 
-        let mut system_pilots: HashMap<SolarSystemId, Vec<i64>> =
+        let mut system_pilots: HashMap<SolarSystemId, Vec<PilotId>> =
             HashMap::with_capacity(SolarSystemId::COUNT);
         for (pilot_id, cache) in pilot_cache.iter() {
             system_pilots

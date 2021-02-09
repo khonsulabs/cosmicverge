@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::RwLock};
 
 use basws_yew::{prelude::*, ClientLogic, ClientState, Error};
 use cosmicverge_shared::protocol::{
-    cosmic_verge_protocol_version, CosmicVergeRequest, CosmicVergeResponse, Pilot,
+    cosmic_verge_protocol_version, CosmicVergeRequest, CosmicVergeResponse, Pilot, PilotId,
 };
 use once_cell::sync::OnceCell;
 use url::Url;
@@ -12,7 +12,7 @@ pub type AgentResponse = basws_yew::AgentResponse<CosmicVergeResponse>;
 pub type ApiAgent = basws_yew::ApiAgent<CosmicVergeApiClient>;
 pub type ApiBridge = basws_yew::ApiBridge<CosmicVergeApiClient>;
 
-static PILOT_CACHE: OnceCell<RwLock<HashMap<i64, Pilot>>> = OnceCell::new();
+static PILOT_CACHE: OnceCell<RwLock<HashMap<PilotId, Pilot>>> = OnceCell::new();
 
 fn cache_pilot_information(pilot: Pilot) {
     let mut cache = PILOT_CACHE
@@ -22,7 +22,7 @@ fn cache_pilot_information(pilot: Pilot) {
     cache.insert(pilot.id, pilot);
 }
 
-pub fn pilot_information(pilot_id: i64, api: &mut ApiBridge) -> Option<Pilot> {
+pub fn pilot_information(pilot_id: PilotId, api: &mut ApiBridge) -> Option<Pilot> {
     if let Some(cache) = PILOT_CACHE.get() {
         let cache = cache.read().unwrap();
         if let Some(pilot) = cache.get(&pilot_id) {

@@ -382,6 +382,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "once_cell",
+ "redis",
  "serde",
  "strum",
  "strum_macros",

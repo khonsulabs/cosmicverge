@@ -1,133 +1,43 @@
-use basws_shared::{Version, VersionReq};
-use chrono::{DateTime, Utc};
-use euclid::{Point2D, Vector2D, Angle, approxeq::ApproxEq};
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
+use std::fmt::Display;
 
 use crate::{
+    protocol::{Pilot, PilotId},
     ships::ShipId,
     solar_systems::{Solar, SolarSystemId},
 };
+use euclid::{approxeq::ApproxEq, Angle, Point2D, Vector2D};
+use serde::{Deserialize, Serialize};
 
-pub fn cosmic_verge_protocol_version() -> Version {
-    Version::parse("0.0.1").unwrap()
-}
+#[derive(Debug, Copy, Hash, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct SolarSystemLocationId(pub i64);
 
-pub fn cosmic_verge_protocol_version_requirements() -> VersionReq {
-    VersionReq::parse("=0.0.1").unwrap()
-}
+#[cfg(feature = "redis")]
+mod redis {
+    use super::SolarSystemLocationId;
+    use redis::{FromRedisValue, ToRedisArgs};
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum CosmicVergeRequest {
-    AuthenticationUrl(OAuthProvider),
-    SelectPilot(i64),
-    CreatePilot { name: String },
+    impl FromRedisValue for SolarSystemLocationId {
+        fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {
+            let value = i64::from_redis_value(v)?;
+            Ok(Self(value))
+        }
+    }
 
-    Fly(PilotingAction),
-    GetPilotInformation(i64),
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum OAuthProvider {
-    Twitch,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum CosmicVergeResponse {
-    ServerStatus {
-        connected_pilots: usize,
-    },
-    AuthenticateAtUrl {
-        url: String,
-    },
-    Authenticated {
-        user_id: i64,
-        pilots: Vec<Pilot>,
-    },
-    Unauthenticated,
-    PilotChanged(ActivePilot),
-    SpaceUpdate {
-        timestamp: i64,
-        location: PilotLocation,
-        action: PilotingAction,
-        ships: Vec<PilotedShip>,
-    },
-    PilotInformation(Pilot),
-
-    Error {
-        message: Option<String>,
-    },
-}
-
-impl CosmicVergeResponse {
-    pub fn error(key: &str) -> Self {
-        Self::Error {
-            message: Some(key.to_string()),
+    impl ToRedisArgs for SolarSystemLocationId {
+        fn write_redis_args<W>(&self, out: &mut W)
+        where
+            W: ?Sized + redis::RedisWrite,
+        {
+            self.0.write_redis_args(out)
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
-pub struct Pilot {
-    pub id: i64,
-    pub name: String,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum PilotNameError {
-    #[error("invalid character")]
-    InvalidCharacter,
-    #[error("too long")]
-    TooLong,
-}
-
-impl Pilot {
-    // TODO unit test
-    pub fn cleanup_name(name: &str) -> Result<String, PilotNameError> {
-        enum ParseState {
-            InWord,
-            AfterSpace,
-        }
-        let name = name.trim();
-        let mut cleaned = String::with_capacity(name.len());
-        let mut parse_state = None;
-        for c in name.chars() {
-            // TODO: whitelist specific unicode ranges
-            if !c.is_ascii_alphanumeric() {
-                if c == ' ' {
-                    // Skip sequential spaces
-                    if matches!(parse_state, Some(ParseState::AfterSpace)) {
-                        continue;
-                    }
-                    parse_state = Some(ParseState::AfterSpace);
-                } else {
-                    return Err(PilotNameError::InvalidCharacter);
-                }
-            } else {
-                parse_state = Some(ParseState::InWord);
-            }
-
-            cleaned.push(c)
-        }
-
-        if cleaned.len() > 40 {
-            Err(PilotNameError::TooLong)
-        } else {
-            Ok(cleaned)
-        }
+impl Display for SolarSystemLocationId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Installation {
-    pub id: Uuid,
-    pub account_id: Option<i64>,
-    pub nonce: Option<Vec<u8>>,
-    pub private_key: Option<Vec<u8>>,
-}
-
-pub type SolarSystemLocationId = i64;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PilotLocation {
@@ -155,11 +65,11 @@ impl PartialEq for SolarSystemLocation {
         match self {
             Self::InSpace(self_location) => match other {
                 Self::InSpace(other_location) => self_location.approx_eq(other_location),
-                _ => false
+                _ => false,
             },
             Self::Docked(self_location) => match other {
                 Self::Docked(other_location) => self_location == other_location,
-                _ => false
+                _ => false,
             },
         }
     }
@@ -179,7 +89,7 @@ impl Default for PilotingAction {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PilotedShip {
-    pub pilot_id: i64,
+    pub pilot_id: PilotId,
     pub ship: ShipInformation,
     pub physics: PilotPhysics,
     pub action: PilotingAction,
@@ -261,4 +171,3 @@ pub struct FlightPlanManeuver {
     pub target_rotation: Angle<f32>,
     pub target_velocity: Vector2D<f32, Solar>,
 }
-
