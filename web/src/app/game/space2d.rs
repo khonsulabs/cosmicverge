@@ -139,7 +139,6 @@ impl SpaceView {
                     self.load_solar_system_images();
                 }
                 Command::Zoom(fraction, focus) => {
-                    info!("Zooming from {} by {} at {:?}", self.zoom, fraction, focus);
                     let scale = self.scale();
                     let new_zoom = self.zoom + self.zoom * fraction;
                     let new_zoom = new_zoom.min(10.).max(0.1);
@@ -168,7 +167,7 @@ impl SpaceView {
                     count,
                     location,
                 } => {
-                    if count == 2 && button == Button::Left {
+                    if count == 2 && (button == Button::Left || button == Button::OneFinger) {
                         if let Some(location) = self.convert_canvas_to_world(location.to_f32()) {
                             if let Some(pilot) = &self.active_pilot {
                                 let request = CosmicVergeRequest::Fly(PilotingAction::NavigateTo(
@@ -236,12 +235,12 @@ impl SpaceView {
         })
     }
 
-    fn convert_world_to_canvas(
-        &mut self,
-        world_location: Point2D<f32, Solar>,
-    ) -> Option<Point2D<f32, Pixels>> {
-        self.convert_world_to_canvas_with_scale(world_location, self.scale())
-    }
+    // fn convert_world_to_canvas(
+    //     &mut self,
+    //     world_location: Point2D<f32, Solar>,
+    // ) -> Option<Point2D<f32, Pixels>> {
+    //     self.convert_world_to_canvas_with_scale(world_location, self.scale())
+    // }
 
     fn convert_world_to_canvas_with_scale(
         &mut self,

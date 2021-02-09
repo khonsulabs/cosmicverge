@@ -1,6 +1,5 @@
 use cosmicverge_shared::protocol::{ActivePilot, CosmicVergeRequest, CosmicVergeResponse, Pilot};
 use std::sync::Arc;
-use wasm_bindgen::JsCast;
 use yew::prelude::*;
 use yew_bulma::static_page::StaticPage;
 use yew_router::{agent::RouteAgentDispatcher, prelude::*};
@@ -133,7 +132,12 @@ impl Component for App {
             Message::ForegroundGame => {
                 self.router
                     .send(RouteRequest::ChangeRoute(Route::from(AppRoute::Game)));
-                false
+                if self.navbar_expanded {
+                    self.navbar_expanded = false;
+                    true
+                } else {
+                    false
+                }
             }
             Message::WsMessage(message) => match message {
                 AgentResponse::Disconnected => {

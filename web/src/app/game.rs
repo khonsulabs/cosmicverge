@@ -16,9 +16,11 @@ use crate::{
     client_api::{AgentMessage, AgentResponse, ApiAgent, ApiBridge},
     localize, redraw_loop,
 };
+use std::cmp::Ordering;
 
 const DOUBLE_CLICK_MS: i64 = 400;
-const DOUBLE_CLICK_MAX_PIXEL_DISTANCE: f64 = 5.;
+const DOUBLE_CLICK_MAX_PIXEL_DISTANCE: f32 = 5.;
+const MAX_TOUCH_DELTA: f32 = 10.;
 
 #[cfg(name = "opengl")]
 mod glspace;
@@ -41,6 +43,7 @@ impl MouseButtons {
             Button::Left => self.left,
             Button::Right => self.right,
             Button::Middle => self.middle,
+            Button::OneFinger => false,
         }
     }
 }
@@ -50,6 +53,7 @@ pub enum Button {
     Left,
     Right,
     Middle,
+    OneFinger,
 }
 
 #[derive(Debug)]
@@ -59,6 +63,14 @@ struct SequentialClickState {
     // from performance::now()
     first_click: f64,
     click_count: i64,
+}
+
+#[derive(Debug)]
+struct SequentialTouchState {
+    original_tap_location: Point2D<i32, Pixels>,
+    // from performance::now()
+    first_tap: f64,
+    tap_count: i64,
 }
 
 pub struct Game {
@@ -73,6 +85,8 @@ pub struct Game {
     touches: HashMap<i32, TouchState>,
     performance: web_sys::Performance,
     click_handler_timer: Option<TimeoutTask>,
+    touch_handler_timer: Option<TimeoutTask>,
+    sequential_touch_state: Option<SequentialTouchState>,
 }
 
 struct TouchState {
@@ -102,6 +116,7 @@ pub enum Message {
     MouseLeave(MouseEvent),
     ApiMessage(AgentResponse),
     CheckHandleClick,
+    CheckHandleTap,
 }
 
 impl Game {
@@ -138,7 +153,7 @@ impl Game {
                     let distance = self
                         .mouse_buttons
                         .last_mouse_location
-                        .map(|l| l.to_f64().distance_to(location.to_f64()));
+                        .map(|l| l.to_f32().distance_to(location.to_f32()));
                     let elapsed = (now - state.first_click) as i64;
                     if (distance.is_none() || distance.unwrap() < DOUBLE_CLICK_MAX_PIXEL_DISTANCE)
                         && elapsed < state.click_count * DOUBLE_CLICK_MS
@@ -181,7 +196,9 @@ impl Component for Game {
             touches: Default::default(),
             solar_system: universe().get(&SolarSystemId::SM0A9F4),
             click_handler_timer: None,
+            touch_handler_timer: None,
             mouse_location: None,
+            sequential_touch_state: None,
         };
         component
             .space_sender
@@ -207,6 +224,19 @@ impl Component for Game {
                 }
 
                 self.mouse_buttons.sequential_click_state = None;
+            }
+            Message::CheckHandleTap => {
+                if let Some(state) = &self.sequential_touch_state {
+                    if self.touches.is_empty() {
+                        let _ = self.space_sender.send(space2d::Command::HandleClick {
+                            button: Button::OneFinger,
+                            count: state.tap_count,
+                            location: state.original_tap_location,
+                        });
+                    }
+                }
+
+                self.sequential_touch_state = None;
             }
             Message::WheelEvent(event) => {
                 event.prevent_default();
@@ -280,6 +310,37 @@ impl Component for Game {
                         },
                     );
                 }
+
+                match self.touches.len().cmp(&1) {
+                    Ordering::Less => unreachable!(),
+                    Ordering::Equal => {
+                        let tap = self.touches.values().next().unwrap();
+                        let reset_state =
+                            if let Some(touch_state) = &mut self.sequential_touch_state {
+                                let now = self.performance.now();
+                                let elapsed = (now - touch_state.first_tap) as i64;
+                                if elapsed < touch_state.tap_count * DOUBLE_CLICK_MS {
+                                    touch_state.tap_count += 1;
+                                    false
+                                } else {
+                                    true
+                                }
+                            } else {
+                                true
+                            };
+
+                        if reset_state {
+                            self.sequential_touch_state = Some(SequentialTouchState {
+                                original_tap_location: tap.start,
+                                first_tap: self.performance.now(),
+                                tap_count: 1,
+                            });
+                        }
+                    }
+                    Ordering::Greater => {
+                        self.sequential_touch_state = None;
+                    }
+                }
             }
             Message::TouchCancel(event) | Message::TouchEnd(event) => {
                 event.prevent_default();
@@ -287,6 +348,23 @@ impl Component for Game {
                 for i in 0..touches.length() {
                     let touch = touches.get(i).unwrap();
                     self.touches.remove(&touch.identifier());
+                }
+
+                match self.touches.len().cmp(&0) {
+                    Ordering::Less => unreachable!(),
+                    Ordering::Equal => {
+                        if let Some(touch_state) = &mut self.sequential_touch_state {
+                            let now = self.performance.now();
+                            let elapsed = (now - touch_state.first_tap) as i64;
+                            if elapsed < touch_state.tap_count * DOUBLE_CLICK_MS {
+                                self.touch_handler_timer = Some(TimeoutService::spawn(
+                                    Duration::from_millis(DOUBLE_CLICK_MS as u64),
+                                    self.link.callback(|_| Message::CheckHandleTap),
+                                ));
+                            }
+                        }
+                    }
+                    Ordering::Greater => {}
                 }
             }
             Message::TouchMove(event) => {
@@ -307,6 +385,17 @@ impl Component for Game {
                         let _ = self
                             .space_sender
                             .send(space2d::Command::Pan(delta.to_f32()));
+
+                        if let Some(sequential_state) = &self.sequential_touch_state {
+                            let distance = sequential_state
+                                .original_tap_location
+                                .to_f32()
+                                .distance_to(location.to_f32());
+
+                            if distance > MAX_TOUCH_DELTA {
+                                self.sequential_touch_state = None;
+                            }
+                        }
                     }
                 } else if touches.length() == 2 {
                     // Zoom
