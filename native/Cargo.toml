@@ -2,7 +2,6 @@
 members = ["server", "database", "migrations"]
 
 [patch.crates-io]
-cosmicverge-shared = { path = "../shared" }
 # For tokio 1.0 compatibility
 # basws-server = { path = "../../basws/basws-server" }
 # basws-shared = { path = "../../basws/basws-shared" }

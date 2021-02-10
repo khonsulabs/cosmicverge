@@ -1,5 +1,6 @@
-use super::{ShipId, ShipSpecification};
 use std::f32::consts::PI;
+
+use super::{ShipId, ShipSpecification};
 
 pub fn ship() -> ShipSpecification {
     ShipSpecification {

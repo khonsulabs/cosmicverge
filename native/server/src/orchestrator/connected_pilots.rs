@@ -25,7 +25,7 @@ impl Default for ConnectedPilotInfo {
     }
 }
 
-pub(crate) async fn manager_loop(mut connection: MultiplexedConnection) -> Result<(), RedisError> {
+pub(crate) async fn run(mut connection: MultiplexedConnection) -> Result<(), RedisError> {
     let pilot_reader = connection_channel().1.clone();
     loop {
         let mut new_pilots = HashSet::new();

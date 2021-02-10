@@ -23,10 +23,7 @@ pub async fn orchestrate() {
                     connection.clone(),
                 ));
                 let c2 = connection.clone();
-                match tokio::try_join!(
-                    orchestrator.run(connection),
-                    connected_pilots::manager_loop(c2),
-                ) {
+                match tokio::try_join!(orchestrator.run(connection), connected_pilots::run(c2),) {
                     Ok(_) => unreachable!(),
                     Err(err) => {
                         error!("orchestrator redis error while orchestrating {:?}", err);

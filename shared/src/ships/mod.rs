@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
+use num_derive::{FromPrimitive, ToPrimitive};
 use once_cell::sync::OnceCell;
+use serde::{Deserialize, Serialize};
 
 use crate::solar_systems::Named;
-use num_derive::{FromPrimitive, ToPrimitive};
-use serde::{Deserialize, Serialize};
 
 mod shuttle;
 

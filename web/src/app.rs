@@ -1,6 +1,12 @@
 use std::sync::Arc;
 
-use cosmicverge_shared::protocol::{ActivePilot, CosmicVergeRequest, CosmicVergeResponse, Pilot};
+use cosmicverge_shared::{
+    protocol::{
+        ActivePilot, CosmicVergeRequest, CosmicVergeResponse, Pilot, PilotLocation, PilotingAction,
+        SolarSystemLocation, SolarSystemLocationId,
+    },
+    solar_systems::{universe, Named, SolarSystemId},
+};
 use yew::prelude::*;
 use yew_bulma::static_page::StaticPage;
 use yew_router::{agent::RouteRequest, prelude::*};
@@ -84,6 +90,7 @@ pub enum Message {
     ToggleRendering,
     ForegroundGame,
     LogOut,
+    NavigateToLocation(SolarSystemId, SolarSystemLocationId),
 }
 
 fn set_document_title(title: &str) {
@@ -144,6 +151,16 @@ impl Component for App {
                 } else {
                     false
                 }
+            }
+            Message::NavigateToLocation(system, location_id) => {
+                self.api.send(AgentMessage::Request(CosmicVergeRequest::Fly(
+                    PilotingAction::NavigateTo(PilotLocation {
+                        system,
+                        location: SolarSystemLocation::Docked(location_id),
+                    }),
+                )));
+                self.navbar_expanded = false;
+                true
             }
             Message::WsMessage(message) => match message {
                 AgentResponse::Disconnected => {
@@ -321,39 +338,13 @@ impl AppRouteRenderer {
     }
 
     fn navbar(&self) -> Html {
+        let pilot_menu = self.pilot_menu();
+        let navigate_menu = self.navigate_menu();
+
         let connected_pilots = if let Some(connected_pilots) = self.connected_pilots {
             html! {
                 <div class="navbar-item">
                     { localize!("connected-pilots", "count" => connected_pilots) }
-                </div>
-            }
-        } else {
-            Default::default()
-        };
-
-        let pilot_menu = if let Some(logged_in_user) = &self.user.clone() {
-            let logout_button = html! {
-                <a class="navbar-item" onclick=self.link.callback(|e: MouseEvent| { e.prevent_default(); Message::LogOut })>{ localize!("log-out") }</a>
-            };
-
-            let top_button = if let PilotingState::Selected(active_pilot) = &logged_in_user.pilot {
-                html! {
-                    <div class="navbar-link">{ &active_pilot.pilot.name }</div>
-                }
-            } else {
-                html! {
-                    <RouterAnchor<AppRoute> classes="navbar-link" route=AppRoute::Index>
-                        { localize!("no-pilot") }
-                    </RouterAnchor<AppRoute>>
-                }
-            };
-
-            html! {
-                <div class="navbar-item has-dropdown is-hoverable">
-                    { top_button }
-                    <div class="navbar-dropdown is-boxed">
-                        { logout_button }
-                    </div>
                 </div>
             }
         } else {
@@ -382,17 +373,84 @@ impl AppRouteRenderer {
                         <RouterAnchor<AppRoute> classes=self.navbar_item_class(AppRoute::Index) route=AppRoute::Index>
                             { localize!("home") }
                         </RouterAnchor<AppRoute>>
+                        { navigate_menu }
                     </div>
                     <div class="navbar-end">
-                        // <div class="navbar-item">
-                        //    <button class="button" onclick=self.link.callback(|_| Message::ToggleRendering)>{ self.rendering_icon() }</button>
-                        // </div>
+                        <div class="navbar-item">
+                           <button class="button" onclick=self.link.callback(|_| Message::ToggleRendering)>{ self.rendering_icon() }</button>
+                        </div>
 
                         { connected_pilots }
                         { pilot_menu }
                     </div>
                 </div>
             </nav>
+        }
+    }
+
+    fn navigate_menu(&self) -> Html {
+        if let Some(user) = &self.user {
+            if matches!(user.pilot, PilotingState::Selected(_)) {
+                let mut systems = universe().systems().collect::<Vec<_>>();
+                systems.sort_by_key(|s| s.id.name());
+                let navigate_menu = systems.into_iter().enumerate().map(|(index, system)| {
+                    let separator = if index == 0 {
+                        Default::default()
+                    } else {
+                        html!{ <hr class="navbar-divider" /> }
+                    };
+                    let mut locations = system.locations.values().collect::<Vec<_>>();
+                    // TODO sort by shortest distance to its owning object, once orbiting is hooked up
+                    locations.sort_by_key(|l| l.id.name());
+                    let locations = locations.into_iter().map(move |location| html! {
+                            <a class="navbar-item" onclick=self.link.callback(move |e: MouseEvent| { e.prevent_default(); Message::NavigateToLocation(system.id, location.id.id()) })>{ location.id.name() }</a>
+                        }).collect::<Html>();
+                    vec![separator, locations]
+                }).flatten().collect::<Html>();
+
+                return html! {
+                    <div class="navbar-item has-dropdown is-hoverable">
+                        // TODO localize
+                        <div class="navbar-link">{ "Navigate" }</div>
+                        <div class="navbar-dropdown is-boxed">
+                            { navigate_menu }
+                        </div>
+                    </div>
+                };
+            }
+        }
+
+        Default::default()
+    }
+
+    fn pilot_menu(&self) -> Html {
+        if let Some(logged_in_user) = &self.user.clone() {
+            let logout_button = html! {
+                <a class="navbar-item" onclick=self.link.callback(|e: MouseEvent| { e.prevent_default(); Message::LogOut })>{ localize!("log-out") }</a>
+            };
+
+            let top_button = if let PilotingState::Selected(active_pilot) = &logged_in_user.pilot {
+                html! {
+                    <div class="navbar-link">{ &active_pilot.pilot.name }</div>
+                }
+            } else {
+                html! {
+                    <RouterAnchor<AppRoute> classes="navbar-link" route=AppRoute::Index>
+                        { localize!("no-pilot") }
+                    </RouterAnchor<AppRoute>>
+                }
+            };
+
+            html! {
+                <div class="navbar-item has-dropdown is-hoverable">
+                    { top_button }
+                    <div class="navbar-dropdown is-boxed">
+                        { logout_button }
+                    </div>
+                </div>
+            }
+        } else {
+            Default::default()
         }
     }
 
@@ -406,9 +464,9 @@ impl AppRouteRenderer {
 
     fn rendering_icon(&self) -> Html {
         if self.rendering {
-            html! { <i class="icofont-ui-pause"></i> }
+            html! { <i class="icofont-ui-pause" alt=localize!("resume-game-rendering-alt")></i> }
         } else {
-            html! { <i class="icofont-ui-play"></i> }
+            html! { <i class="icofont-ui-play" alt=localize!("resume-game-rendering-alt")></i> }
         }
     }
 

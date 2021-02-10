@@ -1,14 +1,16 @@
+use std::fmt::Display;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
 
 #[derive(Debug, Copy, Hash, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PilotId(pub i64);
 
 #[cfg(feature = "redis")]
 mod redis {
-    use super::PilotId;
     use redis::{FromRedisValue, ToRedisArgs};
+
+    use super::PilotId;
 
     impl FromRedisValue for PilotId {
         fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {

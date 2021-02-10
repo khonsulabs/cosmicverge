@@ -21,7 +21,7 @@ impl Named for SM0A9F4 {
 }
 
 pub fn system() -> SolarSystem {
-    SolarSystem::new(SolarSystemId::SM0A9F4)
+    SolarSystem::new(SolarSystemId::SM0A9F4, Point2D::new(0., 0.))
         .with_background("/helianthusgames/Backgrounds/BlueStars.png")
         .define_object(
             SM0A9F4::Sun,
@@ -36,7 +36,7 @@ pub fn system() -> SolarSystem {
             |location| {
                 location
                     .located_at(Point2D::new(600., 0.))
-                    .owned_by(SM0A9F4::Earth)
+                    .owned_by(SM0A9F4::Sun)
             },
         )
         .define_object(
@@ -46,7 +46,7 @@ pub fn system() -> SolarSystem {
             |location| {
                 location
                     .located_at(Point2D::new(200., 200.))
-                    .owned_by(SM0A9F4::Earth)
+                    .owned_by(SM0A9F4::Sun)
             },
         )
 }

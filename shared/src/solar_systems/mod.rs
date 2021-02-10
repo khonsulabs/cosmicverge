@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::protocol::SolarSystemLocationId;
 
 mod sm0a9f4;
+mod system2;
 
 #[derive(Debug)]
 pub struct Universe {
@@ -29,6 +30,7 @@ impl Universe {
         };
 
         universe.insert(sm0a9f4::system());
+        universe.insert(system2::system());
 
         universe
     }
@@ -66,13 +68,15 @@ impl Universe {
 pub struct SolarSystem {
     pub id: SolarSystemId,
     pub background: Option<&'static str>,
+    pub galaxy_location: Point2D<f32, Galactic>,
     pub locations: HashMap<SolarSystemLocationId, SolarSystemObject>,
 }
 
 impl SolarSystem {
-    fn new(id: SolarSystemId) -> Self {
+    fn new(id: SolarSystemId, galaxy_location: Point2D<f32, Galactic>) -> Self {
         Self {
             id,
+            galaxy_location,
             background: Default::default(),
             locations: Default::default(),
         }
@@ -86,8 +90,7 @@ impl SolarSystem {
         initializer: F,
     ) -> Self {
         let location = initializer(SolarSystemObject::new(id, image, size));
-        self.locations
-            .insert(SolarSystemLocationId(location.id.id()), location);
+        self.locations.insert(location.id.id(), location);
         self
     }
 
@@ -129,11 +132,11 @@ impl SolarSystemObject {
 }
 
 pub struct Pixels;
-
 pub struct Solar;
+pub struct Galactic;
 
 pub trait Identifiable {
-    fn id(&self) -> i64;
+    fn id(&self) -> SolarSystemLocationId;
 }
 
 pub trait Named {
@@ -146,8 +149,8 @@ impl<T> Identifiable for T
 where
     T: ToPrimitive,
 {
-    fn id(&self) -> i64 {
-        self.to_i64().unwrap()
+    fn id(&self) -> SolarSystemLocationId {
+        SolarSystemLocationId(self.to_i64().unwrap())
     }
 }
 
@@ -169,12 +172,14 @@ impl<T> NamedLocation for T where T: Identifiable + Named + Send + Sync + std::f
 )]
 pub enum SolarSystemId {
     SM0A9F4,
+    System2,
 }
 
 impl Named for SolarSystemId {
     fn name(&self) -> &'static str {
         match self {
             SolarSystemId::SM0A9F4 => "SM-0-A9F4",
+            SolarSystemId::System2 => "System 2",
         }
     }
 }

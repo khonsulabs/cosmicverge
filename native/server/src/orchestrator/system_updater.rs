@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use cosmicverge_shared::{
     num_traits::FromPrimitive,
-    protocol::{PilotLocation, PilotedShip, SolarSystemLocation},
+    protocol::{PilotLocation, SolarSystemLocation},
     solar_system_simulation::SolarSystemSimulation,
     solar_systems::{universe, SolarSystemId},
 };
@@ -76,36 +76,19 @@ pub async fn wait_for_ready_to_process(
                         .get(&SolarSystemId::from_i64(system_id).expect("invalid solar system id"));
                     debug!("updating {:?}", system.id);
 
-                    let mut simulation = SolarSystemSimulation::default();
+                    let mut simulation = SolarSystemSimulation::new(system.id);
                     // TODO limit to pilots *connected*
                     let pilots_in_system = LocationStore::pilots_in_system(system.id).await;
-                    let ships = futures::future::join_all(pilots_in_system.into_iter().map(
-                        |pilot_id| async move {
-                            let cache = LocationStore::lookup(pilot_id).await;
-                            if let SolarSystemLocation::InSpace(_) = cache.location.location {
-                                Some(PilotedShip {
-                                    pilot_id,
-                                    ship: cache.ship,
-                                    action: cache.action,
-                                    physics: cache.physics,
-                                })
-                            } else {
-                                None
-                            }
-                        },
-                    ))
-                    .await;
 
-                    simulation.add_ships(ships.into_iter().filter_map(|s| s));
-                    // simulation.step(0.0);
+                    simulation.add_ships(pilots_in_system);
                     simulation.step(1.0);
 
                     let mut pipe = redis::pipe();
                     let mut pipe = &mut pipe;
 
-                    for ship in simulation.get_ship_info() {
+                    for ship in simulation.all_ships() {
                         let location = PilotLocation {
-                            system: system.id,
+                            system: ship.physics.system,
                             location: SolarSystemLocation::InSpace(ship.physics.location),
                         };
                         pipe = pipe

@@ -12,6 +12,8 @@ navbar-menu-label = menu
 home = Home
 space = Space
 no-pilot = No Pilot Selected
+pause-game-rendering-alt = Pause Game Rendering
+resume-game-rendering-alt = Resume Game Rendering
 
 early-warning = This is incredibly early in development. Use at your own peril.
 

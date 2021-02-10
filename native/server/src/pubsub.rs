@@ -1,13 +1,5 @@
-use std::{
-    collections::HashMap,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-use cosmicverge_shared::{
-    protocol::{PilotedShip, SolarSystemLocation},
-    solar_systems::SolarSystemId,
-    strum::IntoEnumIterator,
-};
 use database::{
     basws_server::{prelude::Uuid, Handle, Server},
     cosmicverge_shared::protocol::CosmicVergeResponse,
@@ -90,14 +82,7 @@ async fn wait_for_messages(
             "system_update_complete" => {
                 let timestamp: i64 = payload.parse()?;
 
-                let system_updates =
-                    futures::future::join_all(SolarSystemId::iter().map(|system_id| async move {
-                        (system_id, load_system_ships(system_id).await)
-                    }))
-                    .await
-                    .into_iter()
-                    .collect::<HashMap<SolarSystemId, Vec<PilotedShip>>>();
-
+                let system_updates = LocationStore::pilots_by_system().await;
                 // This forces the async move to move a reference, not the hash itself
                 let system_updates = &system_updates;
                 // Iterate over all of the connected clients in parallel
@@ -138,26 +123,4 @@ pub async fn notify<S: ToString>(
 ) -> Result<(), redis::RedisError> {
     let mut redis = crate::redis().await.clone();
     redis.publish(channel, payload.to_string()).await
-}
-
-async fn load_system_ships(system_id: SolarSystemId) -> Vec<PilotedShip> {
-    let system_pilots = LocationStore::pilots_in_system(system_id).await.into_iter();
-
-    futures::future::join_all(system_pilots.map(|pilot_id| async move {
-        let cache = LocationStore::lookup(pilot_id).await;
-
-        match cache.location.location {
-            SolarSystemLocation::InSpace(_) => Some(PilotedShip {
-                pilot_id,
-                ship: cache.ship,
-                action: cache.action,
-                physics: cache.physics,
-            }),
-            SolarSystemLocation::Docked(_) => None,
-        }
-    }))
-    .await
-    .into_iter()
-    .filter_map(|s| s)
-    .collect()
 }

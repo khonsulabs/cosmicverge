@@ -1,7 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
 use cosmicverge_shared::{
-    protocol::{PilotId, PilotLocation, PilotPhysics, PilotingAction, ShipInformation},
+    protocol::{
+        PilotId, PilotLocation, PilotPhysics, PilotedShip, PilotingAction, ShipInformation,
+        SolarSystemLocation,
+    },
     solar_systems::SolarSystemId,
     strum::EnumCount,
 };
@@ -75,6 +78,7 @@ impl LocationStore {
             pilot_cache.insert(
                 pilot_id,
                 PilotCache {
+                    pilot_id,
                     location,
                     action,
                     physics,
@@ -105,7 +109,7 @@ impl LocationStore {
             .pilot_cache
             .get(&pilot_id)
             .cloned()
-            .unwrap_or_default()
+            .unwrap_or_else(|| PilotCache::new_for(pilot_id))
     }
 
     pub async fn set_piloting_action(
@@ -123,23 +127,68 @@ impl LocationStore {
             .await
     }
 
-    pub async fn pilots_in_system(system: SolarSystemId) -> Vec<PilotId> {
+    pub async fn pilots_in_system(system: SolarSystemId) -> Vec<PilotedShip> {
+        let store = SHARED_STORE.get().expect("Uninitialized cache access");
+        let cache = store.cache.read().await;
+        if let Some(pilots) = cache.system_pilots.get(&system) {
+            pilots
+                .iter()
+                .filter_map(|pilot_id| cache.pilot_cache[pilot_id].to_piloted_ship())
+                .collect()
+        } else {
+            Vec::default()
+        }
+    }
+
+    pub async fn pilots_by_system() -> HashMap<SolarSystemId, Vec<PilotedShip>> {
         let store = SHARED_STORE.get().expect("Uninitialized cache access");
         let cache = store.cache.read().await;
         cache
             .system_pilots
-            .get(&system)
-            .cloned()
-            .unwrap_or_default()
+            .iter()
+            .map(|(system_id, pilots)| {
+                (
+                    *system_id,
+                    pilots
+                        .iter()
+                        .filter_map(|pilot_id| cache.pilot_cache[pilot_id].to_piloted_ship())
+                        .collect(),
+                )
+            })
+            .collect()
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct PilotCache {
+    pub pilot_id: PilotId,
     pub location: PilotLocation,
     pub action: PilotingAction,
     pub ship: ShipInformation,
     pub physics: PilotPhysics,
+}
+
+impl PilotCache {
+    pub fn new_for(pilot_id: PilotId) -> Self {
+        Self {
+            pilot_id,
+            location: Default::default(),
+            action: Default::default(),
+            ship: Default::default(),
+            physics: Default::default(),
+        }
+    }
+    fn to_piloted_ship(&self) -> Option<PilotedShip> {
+        match self.location.location {
+            SolarSystemLocation::InSpace(_) => Some(PilotedShip {
+                pilot_id: self.pilot_id,
+                ship: self.ship.clone(),
+                action: self.action.clone(),
+                physics: self.physics.clone(),
+            }),
+            SolarSystemLocation::Docked(_) => None,
+        }
+    }
 }
 
 #[derive(Default)]

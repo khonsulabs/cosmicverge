@@ -1,5 +1,6 @@
-use crate::protocol::{ActivePilot, Pilot, PilotLocation, PilotedShip, PilotingAction};
 use serde::{Deserialize, Serialize};
+
+use crate::protocol::{ActivePilot, Pilot, PilotLocation, PilotedShip, PilotingAction};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum CosmicVergeResponse {

@@ -8,7 +8,7 @@ use cosmicverge_shared::{
     },
     ships::{hangar, ShipId},
     solar_system_simulation::SolarSystemSimulation,
-    solar_systems::{Pixels, Solar, SolarSystem, SolarSystemId},
+    solar_systems::{universe, Pixels, Solar, SolarSystem, SolarSystemId},
 };
 use crossbeam::channel::{self, Receiver, Sender, TryRecvError};
 use wasm_bindgen::{JsCast, JsValue};
@@ -186,8 +186,10 @@ impl SpaceView {
                     solar_system,
                 } => {
                     self.simulation_system = Some(solar_system);
-                    let mut simulation = SolarSystemSimulation::default();
-                    simulation.add_ships(ships.into_iter());
+                    // TODO we shouldn't always follow the ship
+                    self.switch_system(solar_system);
+                    let mut simulation = SolarSystemSimulation::new(solar_system);
+                    simulation.add_ships(ships);
 
                     self.last_physics_update = None;
 
@@ -226,6 +228,11 @@ impl SpaceView {
             let relative_location = canvas_location - canvas_center;
             self.look_at + relative_location / scale
         })
+    }
+
+    fn switch_system(&mut self, system: SolarSystemId) {
+        self.solar_system = Some(universe().get(&system));
+        self.load_solar_system_images();
     }
 
     // fn convert_world_to_canvas(
@@ -296,6 +303,19 @@ impl Drawable for SpaceView {
                     if let Some(simulation) = &mut self.simulation {
                         let elapsed = (now - last_physics_timestamp_ms) / 1000.;
                         simulation.step(elapsed as f32);
+
+                        // TODO only follow the ship if we
+                        let mut switch_system_to = None;
+                        if let Some(pilot) = &self.active_pilot {
+                            if let Some(ship) = simulation.lookup_ship(&pilot.pilot.id) {
+                                if Some(ship.physics.system) != self.solar_system.map(|s| s.id) {
+                                    switch_system_to = Some(ship.physics.system);
+                                }
+                            }
+                        }
+                        if let Some(new_system) = switch_system_to {
+                            self.switch_system(new_system);
+                        }
                     }
                 }
                 self.last_physics_update = Some(now);
@@ -369,7 +389,7 @@ impl Drawable for SpaceView {
                             context.set_fill_style(&JsValue::from_str("#df0772"));
                             context.set_shadow_blur(2.0);
                             context.set_shadow_color("#000");
-                            for ship in self.simulation.as_ref().unwrap().get_ship_info() {
+                            for ship in self.simulation.as_ref().unwrap().all_ships() {
                                 let ship_spec = hangar().load(&ship.ship.ship);
                                 let image =
                                     self.ship_images.entry(ship_spec.id).or_insert_with(|| {
