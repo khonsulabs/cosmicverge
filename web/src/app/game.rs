@@ -462,8 +462,13 @@ impl Component for Game {
                             .send(space2d::Command::SetPilot(active_pilot));
                     }
                     CosmicVergeResponse::SpaceUpdate {
-                        ships, location, ..
+                        ships,
+                        location,
+                        timestamp,
+                        ..
                     } => {
+                        universe().update_orbits(timestamp);
+
                         let _ = self.space_sender.send(space2d::Command::UpdateSolarSystem {
                             ships,
                             solar_system: location.system,

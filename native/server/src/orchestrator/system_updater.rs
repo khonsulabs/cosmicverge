@@ -56,6 +56,8 @@ pub async fn wait_for_ready_to_process(
 
         LocationStore::refresh().await?;
 
+        universe().update_orbits(current_timestamp);
+
         loop {
             // TODO magic number needs to be a configuration
             let system_ids: Vec<i64> = shared_connection

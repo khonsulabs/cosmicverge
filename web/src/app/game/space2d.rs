@@ -173,7 +173,7 @@ impl SpaceView {
                                 let request = CosmicVergeRequest::Fly(PilotingAction::NavigateTo(
                                     PilotLocation {
                                         location: SolarSystemLocation::InSpace(location),
-                                        system: pilot.location.system,
+                                        system: self.solar_system.unwrap().id,
                                     },
                                 ));
                                 self.api.send(AgentMessage::Request(request));
@@ -361,12 +361,14 @@ impl Drawable for SpaceView {
                 }
 
                 if let Some(solar_system) = &self.solar_system {
+                    let orbits = universe().orbits_for(&solar_system.id);
                     for (id, location) in solar_system.locations.iter() {
                         let image = &self.location_images[id];
                         if image.complete() {
                             let render_radius = (location.size * self.zoom) as f64;
-                            let render_center =
-                                (center + location.location.to_vector().to_f32() * scale).to_f64();
+                            let render_center = (center
+                                + orbits[&location.id.id()].to_vector().to_f32() * scale)
+                                .to_f64();
 
                             if let Err(err) = context
                                 .draw_image_with_html_image_element_and_dw_and_dh(

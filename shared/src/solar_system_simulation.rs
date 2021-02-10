@@ -68,8 +68,9 @@ impl crate::protocol::PilotedShip {
                 let location = match destination.location {
                     SolarSystemLocation::InSpace(location) => location,
                     SolarSystemLocation::Docked(object_id) => {
-                        let system = universe().get(&destination.system);
-                        system.locations[&object_id].location
+                        let system = universe().orbits_for(&destination.system);
+
+                        system[&object_id]
                     }
                 };
 

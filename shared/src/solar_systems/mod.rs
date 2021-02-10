@@ -1,20 +1,28 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
+use std::sync::RwLock;
 
-use euclid::Point2D;
+use euclid::{Angle, Point2D, Vector2D};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::ToPrimitive;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
 use crate::protocol::SolarSystemLocationId;
+use std::f32::consts::PI;
+use std::iter::FromIterator;
 
 mod sm0a9f4;
 mod system2;
+
+const LONGEST_PLANET_ORBIT_DAYS: i64 = 3650;
+
+pub type SolarSystemOrbits = HashMap<SolarSystemLocationId, Point2D<f32, Solar>>;
 
 #[derive(Debug)]
 pub struct Universe {
     solar_systems: HashMap<SolarSystemId, SolarSystem>,
     solar_systems_by_name: HashMap<String, SolarSystemId>,
+    orbits: RwLock<HashMap<SolarSystemId, SolarSystemOrbits>>,
 }
 
 pub fn universe() -> &'static Universe {
@@ -27,6 +35,7 @@ impl Universe {
         let mut universe = Self {
             solar_systems: Default::default(),
             solar_systems_by_name: Default::default(),
+            orbits: RwLock::new(HashMap::new()),
         };
 
         universe.insert(sm0a9f4::system());
@@ -62,6 +71,18 @@ impl Universe {
     pub fn systems(&self) -> impl Iterator<Item = &SolarSystem> {
         self.solar_systems.values()
     }
+
+    pub fn update_orbits(&self, timestamp: i64) {
+        let mut orbits = self.orbits.write().unwrap();
+        for system in self.solar_systems.values() {
+            orbits.insert(system.id, system.calculate_orbits(timestamp));
+        }
+    }
+
+    pub fn orbits_for(&self, system: &SolarSystemId) -> SolarSystemOrbits {
+        let orbits = self.orbits.read().unwrap();
+        orbits[system].clone()
+    }
 }
 
 #[derive(Debug)]
@@ -70,6 +91,7 @@ pub struct SolarSystem {
     pub background: Option<&'static str>,
     pub galaxy_location: Point2D<f32, Galactic>,
     pub locations: HashMap<SolarSystemLocationId, SolarSystemObject>,
+    pub locations_by_owners: HashMap<Option<SolarSystemLocationId>, Vec<SolarSystemLocationId>>,
 }
 
 impl SolarSystem {
@@ -79,6 +101,7 @@ impl SolarSystem {
             galaxy_location,
             background: Default::default(),
             locations: Default::default(),
+            locations_by_owners: Default::default(),
         }
     }
 
@@ -90,13 +113,57 @@ impl SolarSystem {
         initializer: F,
     ) -> Self {
         let location = initializer(SolarSystemObject::new(id, image, size));
-        self.locations.insert(location.id.id(), location);
+        let id = location.id.id();
+        let owner_locations = self
+            .locations_by_owners
+            .entry(location.owned_by.as_ref().map(|o| o.id()))
+            .or_default();
+        owner_locations.push(id);
+        self.locations.insert(id, location);
         self
     }
 
     fn with_background(mut self, background: &'static str) -> Self {
         self.background = Some(background);
         self
+    }
+
+    fn calculate_orbits(&self, timestamp: i64) -> SolarSystemOrbits {
+        let mut orbits = SolarSystemOrbits::new();
+        let mut objects_to_process =
+            VecDeque::from_iter(self.locations_by_owners.get(&None).unwrap());
+        while let Some(object_id) = objects_to_process.pop_front() {
+            let object = &self.locations[object_id];
+            let location = match &object.owned_by {
+                Some(owner) => {
+                    let orbit_around = *orbits.get(&owner.id()).expect("Error in ownership chain");
+                    // All planets for now will follow a basic ellipse with the radius having a constant multiplier
+                    // The orbit will swing y twice as much as the x axis
+                    let truncated_epoch = (timestamp + object.orbit_seed)
+                        % (LONGEST_PLANET_ORBIT_DAYS * 24 * 60 * 60);
+                    let period_in_seconds = object.orbit_days as f64 * 24. * 60. * 60.;
+                    let orbit_amount =
+                        (truncated_epoch as f64 % period_in_seconds) / period_in_seconds;
+                    let orbit_angle = orbit_amount as f32 * PI * 2.;
+
+                    let (x, y) = Angle::radians(orbit_angle).sin_cos();
+                    let relative_location = Vector2D::new(
+                        x * object.orbit_distance * 2. + object.orbit_distance / 2.,
+                        y * object.orbit_distance,
+                    );
+
+                    orbit_around + relative_location
+                }
+                None => Point2D::default(),
+            };
+
+            orbits.insert(*object_id, location);
+
+            if let Some(children) = self.locations_by_owners.get(&Some(*object_id)) {
+                objects_to_process.extend(children);
+            }
+        }
+        orbits
     }
 }
 
@@ -105,7 +172,9 @@ pub struct SolarSystemObject {
     pub id: Box<dyn NamedLocation>,
     pub image: &'static str,
     pub size: f32,
-    pub location: Point2D<f32, Solar>,
+    pub orbit_distance: f32,
+    pub orbit_days: f32,
+    orbit_seed: i64,
     pub owned_by: Option<Box<dyn NamedLocation>>,
 }
 
@@ -115,13 +184,18 @@ impl SolarSystemObject {
             id: Box::new(id),
             image,
             size,
-            location: Default::default(),
             owned_by: None,
+            orbit_seed: 0,
+            orbit_distance: 0.,
+            orbit_days: 0.,
         }
     }
 
-    fn located_at(mut self, location: Point2D<f32, Solar>) -> Self {
-        self.location = location;
+    fn orbiting_at(mut self, orbit_distance: f32, orbit_days: f32, orbit_seed: i64) -> Self {
+        self.orbit_distance = orbit_distance;
+        assert!(orbit_days < LONGEST_PLANET_ORBIT_DAYS as f32);
+        self.orbit_days = orbit_days;
+        self.orbit_seed = orbit_seed;
         self
     }
 

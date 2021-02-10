@@ -33,11 +33,7 @@ pub fn system() -> SolarSystem {
             SM0A9F4::Earth,
             "/helianthusgames/Terran_or_Earth-like/1.png",
             32.,
-            |location| {
-                location
-                    .located_at(Point2D::new(600., 0.))
-                    .owned_by(SM0A9F4::Sun)
-            },
+            |location| location.orbiting_at(600., 365., 0).owned_by(SM0A9F4::Sun),
         )
         .define_object(
             SM0A9F4::Mercury,
@@ -45,7 +41,7 @@ pub fn system() -> SolarSystem {
             24.,
             |location| {
                 location
-                    .located_at(Point2D::new(200., 200.))
+                    .orbiting_at(200., 58.66, 200)
                     .owned_by(SM0A9F4::Sun)
             },
         )

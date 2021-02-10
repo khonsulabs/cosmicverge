@@ -33,11 +33,7 @@ pub fn system() -> SolarSystem {
             System2::Earth,
             "/helianthusgames/Desert_or_Martian/1.png",
             64.,
-            |location| {
-                location
-                    .located_at(Point2D::new(1400., 0.))
-                    .owned_by(System2::Earth)
-            },
+            |location| location.orbiting_at(1400., 600., 30).owned_by(System2::Sun),
         )
         .define_object(
             System2::Mercury,
@@ -45,7 +41,7 @@ pub fn system() -> SolarSystem {
             16.,
             |location| {
                 location
-                    .located_at(Point2D::new(200., 200.))
+                    .orbiting_at(200., 1. / 16., 10)
                     .owned_by(System2::Earth)
             },
         )

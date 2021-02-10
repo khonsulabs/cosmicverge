@@ -5,6 +5,7 @@
 extern crate log;
 
 use chrono::NaiveDateTime;
+use cosmicverge_shared::solar_systems::universe;
 use cosmicverge_shared::{current_git_revision, current_git_timestamp};
 use wasm_bindgen::prelude::*;
 
@@ -47,6 +48,10 @@ pub fn run_app() -> Result<(), JsValue> {
 fn initialize() {
     wasm_logger::init(wasm_logger::Config::new(MAX_LOG_LEVEL));
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+
+    // Initialize orbits. Once we are authenticated, we will receive server time updates to sync with
+    universe()
+        .update_orbits((web_sys::window().unwrap().performance().unwrap().now() / 1000.) as i64);
 }
 
 fn print_safety_warning() {
