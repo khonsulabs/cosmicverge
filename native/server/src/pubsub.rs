@@ -95,7 +95,10 @@ async fn wait_for_messages(
                             let cache = LocationStore::lookup(pilot_id).await;
                             let _ = client
                                 .send_response(CosmicVergeResponse::SpaceUpdate {
-                                    ships: system_updates[&cache.location.system].clone(),
+                                    ships: system_updates
+                                        .get(&cache.location.system)
+                                        .cloned()
+                                        .unwrap_or_default(),
                                     location: cache.location,
                                     action: cache.action,
                                     timestamp,

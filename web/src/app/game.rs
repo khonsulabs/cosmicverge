@@ -468,6 +468,11 @@ impl Component for Game {
                             ships,
                             solar_system: location.system,
                         });
+
+                        if self.solar_system.id != location.system {
+                            self.solar_system = universe().get(&location.system);
+                            return true;
+                        }
                     }
                     _ => {}
                 },
