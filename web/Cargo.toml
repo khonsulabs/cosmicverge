@@ -51,6 +51,11 @@ include_dir = "0.6"
 anyhow = "1"
 url = "2"
 
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "s"
+
 [patch.crates-io]
 #basws-yew = { path = "../../basws/basws-yew" }
 # basws-shared = { path = "../../basws/basws-shared" }
