@@ -11,4 +11,4 @@ EXPOSE 7879/tcp
 
 ENV RUST_BACKTRACE=1
 
-CMD ./server
+CMD ./cosmicverge-server serve

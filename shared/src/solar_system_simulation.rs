@@ -412,7 +412,7 @@ where
 {
     match mode {
         InterpolationMode::Linear => original + (target - original) * percent,
-        InterpolationMode::ExponentialIn => original + (target - original) * (percent * percent),
+        InterpolationMode::ExponentialIn => original + (target - original) * percent * percent,
         InterpolationMode::ExponentialOut => {
             let one_minus_percent = 1. - percent;
             let difference = original - target;

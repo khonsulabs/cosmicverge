@@ -81,26 +81,23 @@ impl Component for HomePage {
                     self.current_storage_status = status;
                     true
                 }
-                AgentResponse::Response(response) => match response {
-                    CosmicVergeResponse::Error { message } => {
-                        self.error_message = message;
-                        match &self.pilot_state {
-                            PilotLoginState::WaitingForServer => {
-                                self.pilot_state = PilotLoginState::Selecting;
-                            }
-                            PilotLoginState::Creating { name, .. } => {
-                                self.pilot_state = PilotLoginState::Creating {
-                                    name: name.clone(),
-                                    sent_request: false,
-                                };
-                            }
-                            PilotLoginState::Selecting => {}
+                AgentResponse::Response(CosmicVergeResponse::Error { message }) => {
+                    self.error_message = message;
+                    match &self.pilot_state {
+                        PilotLoginState::WaitingForServer => {
+                            self.pilot_state = PilotLoginState::Selecting;
                         }
-
-                        true
+                        PilotLoginState::Creating { name, .. } => {
+                            self.pilot_state = PilotLoginState::Creating {
+                                name: name.clone(),
+                                sent_request: false,
+                            };
+                        }
+                        PilotLoginState::Selecting => {}
                     }
-                    _ => false,
-                },
+
+                    true
+                }
                 _ => false,
             },
             Message::ToggleStatus => {

@@ -275,7 +275,7 @@ impl SpaceView {
 
             for (id, location) in solar_system.locations.iter() {
                 let image = HtmlImageElement::new().unwrap();
-                image.set_src(location.image);
+                image.set_src(&location.image_url());
                 self.location_images.insert(*id, image);
             }
         } else {

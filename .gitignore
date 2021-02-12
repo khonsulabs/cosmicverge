@@ -2,6 +2,8 @@ target/
 shared/Cargo.lock
 .DS_Store
 .idea
-web/static/styles.css*
 .env
 .vscode
+
+web/static/styles.css*
+web/static/magrathea/

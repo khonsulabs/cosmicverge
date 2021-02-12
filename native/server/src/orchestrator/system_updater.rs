@@ -12,7 +12,9 @@ use redis::{
     AsyncCommands,
 };
 
-use crate::{connect_to_redis, orchestrator::location_store::LocationStore, redis_lock::RedisLock};
+use crate::{
+    orchestrator::location_store::LocationStore, redis::connect_to_redis, redis_lock::RedisLock,
+};
 
 pub async fn run(shared_connection: MultiplexedConnection) -> Result<(), anyhow::Error> {
     loop {

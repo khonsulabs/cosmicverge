@@ -1,5 +1,8 @@
-use std::collections::{HashMap, VecDeque};
-use std::sync::RwLock;
+use std::{
+    borrow::Cow,
+    collections::{HashMap, VecDeque},
+    sync::RwLock,
+};
 
 use euclid::{Angle, Point2D, Vector2D};
 use num_derive::{FromPrimitive, ToPrimitive};
@@ -8,11 +11,10 @@ use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
 use crate::protocol::SolarSystemLocationId;
-use std::f32::consts::PI;
-use std::iter::FromIterator;
+use std::{f32::consts::PI, iter::FromIterator};
 
-mod sm0a9f4;
-mod system2;
+pub mod sm0a9f4;
+pub mod system2;
 
 const LONGEST_PLANET_ORBIT_DAYS: i64 = 3650;
 
@@ -108,11 +110,10 @@ impl SolarSystem {
     fn define_object<F: FnOnce(SolarSystemObject) -> SolarSystemObject, ID: NamedLocation>(
         mut self,
         id: ID,
-        image: &'static str,
         size: f32,
         initializer: F,
     ) -> Self {
-        let location = initializer(SolarSystemObject::new(id, image, size));
+        let location = initializer(SolarSystemObject::new(self.id, id, size));
         let id = location.id.id();
         let owner_locations = self
             .locations_by_owners
@@ -170,7 +171,8 @@ impl SolarSystem {
 #[derive(Debug)]
 pub struct SolarSystemObject {
     pub id: Box<dyn NamedLocation>,
-    pub image: &'static str,
+    pub system: SolarSystemId,
+    pub image: Option<&'static str>,
     pub size: f32,
     pub orbit_distance: f32,
     pub orbit_days: f32,
@@ -179,11 +181,12 @@ pub struct SolarSystemObject {
 }
 
 impl SolarSystemObject {
-    fn new<ID: NamedLocation>(id: ID, image: &'static str, size: f32) -> Self {
+    fn new<ID: NamedLocation>(system: SolarSystemId, id: ID, size: f32) -> Self {
         Self {
             id: Box::new(id),
-            image,
+            system,
             size,
+            image: None,
             owned_by: None,
             orbit_seed: 0,
             orbit_distance: 0.,
@@ -202,6 +205,23 @@ impl SolarSystemObject {
     fn owned_by<ID: NamedLocation>(mut self, owner: ID) -> Self {
         self.owned_by = Some(Box::new(owner));
         self
+    }
+
+    fn with_image(mut self, url: &'static str) -> Self {
+        self.image = Some(url);
+        self
+    }
+
+    pub fn image_url(&self) -> Cow<'static, str> {
+        if let Some(image) = self.image {
+            Cow::from(image)
+        } else {
+            Cow::from(format!(
+                "/magrathea/{}/{}.png",
+                Into::<&'static str>::into(self.system),
+                self.id.id()
+            ))
+        }
     }
 }
 
@@ -241,6 +261,7 @@ impl<T> NamedLocation for T where T: Identifiable + Named + Send + Sync + std::f
     Clone,
     strum_macros::EnumCount,
     strum_macros::EnumIter,
+    strum_macros::IntoStaticStr,
     FromPrimitive,
     ToPrimitive,
 )]

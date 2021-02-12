@@ -58,7 +58,8 @@ jobs:
           cargo make build -p release
 
           cd ../native
-          cargo build --bin server --release
+          cargo build --bin cosmicverge-server --release
+          cargo run --bin cosmicverge-server --release -- generate-assets ../web/static/
 
       - name: Configure Production
         if: github.ref == 'refs/heads/main'

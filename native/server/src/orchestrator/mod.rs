@@ -6,7 +6,7 @@ use redis::{self, aio::MultiplexedConnection, RedisError};
 use tokio::time::Duration;
 use uuid::Uuid;
 
-use crate::{connect_to_redis_multiplex, redis_lock::RedisLock};
+use crate::{redis::connect_to_redis_multiplex, redis_lock::RedisLock};
 
 pub mod connected_pilots;
 pub mod location_store;

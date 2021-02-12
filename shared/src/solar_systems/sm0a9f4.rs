@@ -23,26 +23,14 @@ impl Named for SM0A9F4 {
 pub fn system() -> SolarSystem {
     SolarSystem::new(SolarSystemId::SM0A9F4, Point2D::new(0., 0.))
         .with_background("/helianthusgames/Backgrounds/BlueStars.png")
-        .define_object(
-            SM0A9F4::Sun,
-            "/helianthusgames/Suns/2.png",
-            128.,
-            |location| location,
-        )
-        .define_object(
-            SM0A9F4::Earth,
-            "/helianthusgames/Terran_or_Earth-like/1.png",
-            32.,
-            |location| location.orbiting_at(600., 365., 0).owned_by(SM0A9F4::Sun),
-        )
-        .define_object(
-            SM0A9F4::Mercury,
-            "/helianthusgames/Rocky/1.png",
-            24.,
-            |location| {
-                location
-                    .orbiting_at(200., 58.66, 200)
-                    .owned_by(SM0A9F4::Sun)
-            },
-        )
+        .define_object(SM0A9F4::Sun, 128., |location| location)
+        .define_object(SM0A9F4::Earth, 32., |location| {
+            location.orbiting_at(600., 365., 0).owned_by(SM0A9F4::Sun)
+        })
+        .define_object(SM0A9F4::Mercury, 24., |location| {
+            location
+                .orbiting_at(200., 58.66, 200)
+                .owned_by(SM0A9F4::Sun)
+                .with_image("/helianthusgames/Rocky/1.png")
+        })
 }

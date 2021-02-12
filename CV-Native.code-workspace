@@ -5,6 +5,12 @@
 	},
 	{
 		"path": "shared"
+	},
+	{
+		"path": ".github"
+	},
+	{
+		"path": "cloudformation"
 	}
 ],
   "settings": {}

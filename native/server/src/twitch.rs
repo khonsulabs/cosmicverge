@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 use warp::{Filter, Rejection};
 
-use crate::{env, jwk::JwtKey, webserver_base_url};
+use crate::{env, http::webserver_base_url, jwk::JwtKey};
 
 #[derive(Deserialize)]
 struct TwitchCallback {

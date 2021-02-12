@@ -6,3 +6,4 @@ members = ["server", "database", "migrations"]
 # basws-server = { path = "../../basws/basws-server" }
 # basws-shared = { path = "../../basws/basws-shared" }
 # sqlx-simple-migrator = { path = "../../sqlx-simple-migrator" }
+# magrathea = { path = "../../magrathea" }

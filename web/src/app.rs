@@ -67,11 +67,11 @@ pub struct LoggedInUser {
 }
 
 impl LoggedInUser {
-    fn with_pilot(&self, pilot: ActivePilot) -> Option<Arc<Self>> {
-        Some(Arc::new(Self {
+    fn with_pilot(&self, pilot: ActivePilot) -> Arc<Self> {
+        Arc::new(Self {
             user_id: self.user_id,
             pilot: PilotingState::Selected(pilot),
-        }))
+        })
     }
 }
 
@@ -208,7 +208,7 @@ impl Component for App {
                         self.last_pilot = Some(active_pilot.pilot.clone());
                         let user = self.user.as_ref().expect("The server should never send this without us being Authenticated first");
 
-                        self.user = user.with_pilot(active_pilot);
+                        self.user = Some(user.with_pilot(active_pilot));
                         true
                     }
                     _ => false,

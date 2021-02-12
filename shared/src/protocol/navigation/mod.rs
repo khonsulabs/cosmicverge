@@ -5,12 +5,19 @@ use serde::{Deserialize, Serialize};
 
 pub use self::{flight_plan::*, piloting::*};
 use crate::solar_systems::{Solar, SolarSystemId};
+use num_traits::FromPrimitive;
 
 mod flight_plan;
 mod piloting;
 
 #[derive(Debug, Copy, Hash, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SolarSystemLocationId(pub i64);
+
+impl SolarSystemLocationId {
+    pub fn into_location<T: FromPrimitive>(self) -> Option<T> {
+        T::from_i64(self.0)
+    }
+}
 
 #[cfg(feature = "redis")]
 mod redis {

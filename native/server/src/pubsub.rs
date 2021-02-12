@@ -10,8 +10,8 @@ use redis::{aio::Connection, AsyncCommands};
 use tokio::time::Duration;
 
 use crate::{
-    connect_to_redis,
     orchestrator::location_store::LocationStore,
+    redis::connect_to_redis,
     server::{ConnectedAccount, CosmicVergeServer},
 };
 
@@ -124,6 +124,6 @@ pub async fn notify<S: ToString>(
     channel: &'static str,
     payload: S,
 ) -> Result<(), redis::RedisError> {
-    let mut redis = crate::redis().await.clone();
+    let mut redis = crate::redis::redis().await.clone();
     redis.publish(channel, payload.to_string()).await
 }
