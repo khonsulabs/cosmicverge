@@ -3,7 +3,9 @@ use std::path::PathBuf;
 use cosmicverge_shared::{
     euclid::Length,
     protocol::SolarSystemLocationId,
-    solar_systems::{sm0a9f4::SM0A9F4, universe, SolarSystemId, SolarSystemObject},
+    solar_systems::{
+        sm0a9f4::SM0A9F4, system2::System2, universe, SolarSystemId, SolarSystemObject,
+    },
 };
 use magrathea::{planet::GeneratedPlanet, ElevationColor, Kilometers, Planet};
 use uuid::Uuid;
@@ -11,12 +13,16 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum ObjectElevations {
     DeepOcean,
+    Canyon,
     ShallowOcean,
+    Crater,
     Beach,
+    Ground,
     Grass,
     Forest,
     Mountain,
     Snow,
+
     SunlikeDeepBase,
     SunlikeBrightMiddle,
     SunlikeHotTop,
@@ -72,6 +78,72 @@ impl ObjectElevations {
         ]
     }
 
+    pub fn redrock() -> Vec<ElevationColor<Self>> {
+        vec![
+            ElevationColor::from_u8(
+                ObjectElevations::Canyon,
+                0x69,
+                0x1D,
+                0x1D,
+                Kilometers::new(-1000.),
+            ),
+            ElevationColor::from_u8(
+                ObjectElevations::Crater,
+                0x96,
+                0x48,
+                0x48,
+                Kilometers::new(-50.),
+            ),
+            ElevationColor::from_u8(
+                ObjectElevations::Ground,
+                0xB8,
+                0x6F,
+                0x6F,
+                Kilometers::new(200.),
+            ),
+            ElevationColor::from_u8(
+                ObjectElevations::Mountain,
+                0x74,
+                0x20,
+                0x20,
+                Kilometers::new(1000.),
+            ),
+        ]
+    }
+
+    pub fn whiterock() -> Vec<ElevationColor<Self>> {
+        vec![
+            ElevationColor::from_u8(
+                ObjectElevations::Canyon,
+                0x9B,
+                0xA8,
+                0xA8,
+                Kilometers::new(-1000.),
+            ),
+            ElevationColor::from_u8(
+                ObjectElevations::Crater,
+                0xE9,
+                0xF6,
+                0xF6,
+                Kilometers::new(-50.),
+            ),
+            ElevationColor::from_u8(
+                ObjectElevations::Ground,
+                0xCE,
+                0xDF,
+                0xDF,
+                Kilometers::new(200.),
+            ),
+            ElevationColor::from_u8(
+                ObjectElevations::Mountain,
+                0xAA,
+                0xB9,
+                0xB9,
+                Kilometers::new(1000.),
+            ),
+        ]
+    }
+
     pub fn sunlike() -> Vec<ElevationColor<Self>> {
         vec![
             // Deep base glow
@@ -100,6 +172,35 @@ impl ObjectElevations {
             ),
         ]
     }
+
+    pub fn blue_sunlike() -> Vec<ElevationColor<Self>> {
+        vec![
+            // Deep base glow
+            ElevationColor::from_u8(
+                ObjectElevations::SunlikeDeepBase,
+                10,
+                31,
+                189,
+                Kilometers::new(-200.),
+            ),
+            // Bright middle
+            ElevationColor::from_u8(
+                ObjectElevations::SunlikeBrightMiddle,
+                56,
+                156,
+                250,
+                Kilometers::new(-180.),
+            ),
+            // Hot top
+            ElevationColor::from_u8(
+                ObjectElevations::SunlikeHotTop,
+                41,
+                218,
+                255,
+                Kilometers::new(200.),
+            ),
+        ]
+    }
 }
 
 pub fn planet_for_location(
@@ -112,22 +213,46 @@ pub fn planet_for_location(
                 .into_location::<SM0A9F4>()
                 .expect("wrong type of location")
             {
+                SM0A9F4::Sun => Planet::new_from_iter(
+                    Uuid::from_u128(311297988823460753720839672646651867567),
+                    Default::default(),
+                    Length::new(4000.),
+                    ObjectElevations::sunlike(),
+                ),
                 SM0A9F4::Earth => Planet::new_from_iter(
                     Uuid::from_u128(311297988823460753720839672646651867567),
                     Default::default(),
                     Length::new(6371.),
                     ObjectElevations::earthlike(),
                 ),
-                SM0A9F4::Sun => Planet::new_from_iter(
-                    Uuid::from_u128(311297988823460753720839672646651867567),
+                SM0A9F4::Mercury => Planet::new_from_iter(
+                    Uuid::from_u128(311297988823460753720839672646651867564),
                     Default::default(),
-                    Length::new(256.),
-                    ObjectElevations::sunlike(),
+                    Length::new(400.),
+                    ObjectElevations::redrock(),
                 ),
-                SM0A9F4::Mercury => unreachable!("hardcoded asset"),
             }
         }
-        SolarSystemId::System2 => todo!(),
+        SolarSystemId::System2 => match location.into_location::<System2>().unwrap() {
+            System2::Sun => Planet::new_from_iter(
+                Uuid::from_u128(311297988823460753720839672646651867565),
+                Default::default(),
+                Length::new(4000.),
+                ObjectElevations::blue_sunlike(),
+            ),
+            System2::Mercury => Planet::new_from_iter(
+                Uuid::from_u128(311297988823460753720839672646651867561),
+                Default::default(),
+                Length::new(200.),
+                ObjectElevations::whiterock(),
+            ),
+            System2::Earth => Planet::new_from_iter(
+                Uuid::from_u128(311297988823460753720839672646651867562),
+                Default::default(),
+                Length::new(6371.),
+                ObjectElevations::earthlike(),
+            ),
+        },
     }
 }
 

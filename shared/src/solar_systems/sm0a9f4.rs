@@ -31,6 +31,5 @@ pub fn system() -> SolarSystem {
             location
                 .orbiting_at(200., 58.66, 200)
                 .owned_by(SM0A9F4::Sun)
-                .with_image("/helianthusgames/Rocky/1.png")
         })
 }

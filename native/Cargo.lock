@@ -529,6 +529,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "once_cell",
+ "rand 0.8.3",
  "redis",
  "serde",
  "strum",

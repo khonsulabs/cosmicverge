@@ -1,6 +1,8 @@
 use std::{
     borrow::Cow,
     collections::{HashMap, VecDeque},
+    f32::consts::PI,
+    iter::FromIterator,
     sync::RwLock,
 };
 
@@ -11,7 +13,6 @@ use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
 use crate::protocol::SolarSystemLocationId;
-use std::{f32::consts::PI, iter::FromIterator};
 
 pub mod sm0a9f4;
 pub mod system2;

@@ -5,8 +5,7 @@
 extern crate log;
 
 use chrono::NaiveDateTime;
-use cosmicverge_shared::solar_systems::universe;
-use cosmicverge_shared::{current_git_revision, current_git_timestamp};
+use cosmicverge_shared::{current_git_revision, current_git_timestamp, solar_systems::universe};
 use wasm_bindgen::prelude::*;
 
 #[macro_use]

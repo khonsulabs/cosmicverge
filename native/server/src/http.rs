@@ -1,7 +1,6 @@
-use std::convert::Infallible;
+use std::{convert::Infallible, path::PathBuf};
 
 use database::cosmicverge_shared::current_git_revision;
-use std::path::PathBuf;
 use uuid::Uuid;
 use warp::{Filter, Reply};
 

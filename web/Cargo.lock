@@ -276,6 +276,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "once_cell",
+ "rand",
  "serde",
  "strum",
  "strum_macros",

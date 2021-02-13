@@ -1,11 +1,11 @@
 use std::fmt::Display;
 
 use euclid::{approxeq::ApproxEq, Point2D};
+use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
 
 pub use self::{flight_plan::*, piloting::*};
 use crate::solar_systems::{Solar, SolarSystemId};
-use num_traits::FromPrimitive;
 
 mod flight_plan;
 mod piloting;

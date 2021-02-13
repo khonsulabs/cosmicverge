@@ -133,6 +133,7 @@ impl SpaceView {
             match event {
                 Command::SetPilot(active_pilot) => {
                     self.active_pilot = Some(active_pilot);
+                    self.focus_on_pilot();
                 }
                 Command::SetSolarSystem(system) => {
                     self.solar_system = system;
@@ -169,7 +170,7 @@ impl SpaceView {
                 } => {
                     if count == 2 && (button == Button::Left || button == Button::OneFinger) {
                         if let Some(location) = self.convert_canvas_to_world(location.to_f32()) {
-                            if let Some(pilot) = &self.active_pilot {
+                            if self.active_pilot.is_some() {
                                 let request = CosmicVergeRequest::Fly(PilotingAction::NavigateTo(
                                     PilotLocation {
                                         location: SolarSystemLocation::InSpace(location),
@@ -231,8 +232,27 @@ impl SpaceView {
     }
 
     fn switch_system(&mut self, system: SolarSystemId) {
-        self.solar_system = Some(universe().get(&system));
-        self.load_solar_system_images();
+        if self.solar_system.is_none() || self.solar_system.unwrap().id != system {
+            self.solar_system = Some(universe().get(&system));
+            self.load_solar_system_images();
+
+            self.focus_on_pilot();
+        }
+    }
+
+    fn focus_on_pilot(&mut self) {
+        let mut look_at = None;
+        if let Some(simulation) = &self.simulation {
+            if let Some(pilot) = &self.active_pilot {
+                if let Some(ship) = simulation.lookup_ship(&pilot.pilot.id) {
+                    look_at = Some(ship.physics.location);
+                }
+            }
+        }
+
+        if let Some(look_at) = look_at {
+            self.look_at = look_at;
+        }
     }
 
     // fn convert_world_to_canvas(
@@ -388,9 +408,6 @@ impl Drawable for SpaceView {
                         if simulation_system == solar_system.id {
                             context.save();
                             context.set_font("18px Orbitron, sans-serif");
-                            context.set_fill_style(&JsValue::from_str("#df0772"));
-                            context.set_shadow_blur(2.0);
-                            context.set_shadow_color("#000");
                             for ship in self.simulation.as_ref().unwrap().all_ships() {
                                 let ship_spec = hangar().load(&ship.ship.ship);
                                 let image =
@@ -429,10 +446,27 @@ impl Drawable for SpaceView {
                                             context.measure_text(&pilot.name).unwrap(),
                                         );
 
+                                        const NAMEPLATE_PADDING: f64 = 5.;
+                                        context.set_fill_style(&JsValue::from_str("#df0772"));
+                                        let text_left =
+                                            (render_center.x - text_metrics.width() / 2.).floor();
+                                        // Since it's a square, this is the simplified version of a^2 + b^2 = c^2
+                                        let maximum_ship_size =
+                                            (render_radius.powf(2.) * 2.).sqrt();
+                                        let nameplate_top =
+                                            (render_center.y + maximum_ship_size).ceil();
+                                        let text_top = nameplate_top + NAMEPLATE_PADDING;
+                                        context.fill_rect(
+                                            text_left - NAMEPLATE_PADDING,
+                                            nameplate_top,
+                                            text_metrics.width() + 2. * NAMEPLATE_PADDING,
+                                            text_metrics.height() + 2. * NAMEPLATE_PADDING,
+                                        );
+                                        context.set_fill_style(&JsValue::from_str("#FFF"));
                                         let _ = context.fill_text(
                                             &pilot.name,
-                                            render_center.x - text_metrics.width() / 2.,
-                                            render_center.y + render_radius + text_metrics.height(),
+                                            text_left,
+                                            (text_top + text_metrics.height()).ceil(),
                                         );
                                     }
                                 }

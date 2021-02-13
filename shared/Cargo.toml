@@ -23,3 +23,4 @@ strum_macros = "0.20"
 log = "0.4"
 approx = "0.4"
 redis = { version = "0.19", default-features = false, optional = true }
+rand = "0.8"

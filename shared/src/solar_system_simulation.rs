@@ -1,6 +1,7 @@
 use std::{collections::HashMap, f32::consts::PI};
 
 use euclid::{approxeq::ApproxEq, Angle, Point2D, Vector2D};
+use rand::{thread_rng, Rng};
 
 use crate::{
     protocol::{
@@ -160,11 +161,18 @@ impl crate::protocol::PilotedShip {
             let angle_to_destination = vector_to_angle(distance_to_destination);
             self.append_alignment_towards(plan, angle_to_destination);
 
+            let sun_id = destination.locations_by_owners[&None][0];
+            let sun = &destination.locations[&sun_id];
+
+            let mut rng = thread_rng();
             plan.maneuvers.push(FlightPlanManeuver {
                 kind: ManeuverKind::Jump,
                 system: destination_system,
                 duration: 1.0,
-                target: Default::default(),
+                target: Point2D::new(
+                    rng.gen::<f32>() * sun.size * 2.,
+                    rng.gen::<f32>() * sun.size * 2.,
+                ),
                 target_rotation: Default::default(),
                 target_velocity: Default::default(),
             });
@@ -369,18 +377,19 @@ fn execute_flight_plan(plan: &mut FlightPlan, mut duration: f32) -> Option<Fligh
 
             let jump = matches!(maneuver.kind, ManeuverKind::Jump);
             plan.maneuvers.remove(0);
-            // Jumps should be returned right away after they're removed
-            // On the server, the new solar system will process the next flight plan steps
-            // On the client, the simulation will remove ships that are no longer present.
-            if jump {
-                break;
-            }
 
             plan.initial_system = update.system;
             plan.initial_orientation = update.orientation;
             plan.initial_velocity = update.velocity;
             plan.initial_position = update.location;
             plan.elapsed_in_current_maneuver = 0.;
+
+            // Jumps should be returned right away after they're removed
+            // On the server, the new solar system will process the next flight plan steps
+            // On the client, the simulation will remove ships that are no longer present.
+            if jump {
+                break;
+            }
         }
     }
 
