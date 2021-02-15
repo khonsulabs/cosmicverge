@@ -13,14 +13,16 @@ use crate::{
 };
 
 pub struct SolarSystemSimulation {
+    pub timestamp: f64,
     system: SolarSystemId,
     ships: HashMap<PilotId, PilotedShip>,
 }
 
 impl SolarSystemSimulation {
-    pub fn new(system: SolarSystemId) -> Self {
+    pub fn new(system: SolarSystemId, timestamp: f64) -> Self {
         Self {
             system,
+            timestamp,
             ships: Default::default(),
         }
     }
@@ -39,6 +41,8 @@ impl SolarSystemSimulation {
                 ship.create_flight_plan(self.system);
             }
         }
+
+        self.timestamp += duration as f64;
     }
 
     pub fn add_ships<I: IntoIterator<Item = PilotedShip>>(&mut self, ships: I) {
@@ -299,6 +303,67 @@ fn time_to_travel_distance(initial_velocity: f32, acceleration: f32, distance: f
     }
 }
 
+fn calculate_flight_update(plan: &FlightPlan) -> Option<FlightUpdate> {
+    if let Some(maneuver) = plan.maneuvers.first() {
+        let percent_complete = plan.elapsed_in_current_maneuver / maneuver.duration;
+        Some(match maneuver.kind {
+            // For jumps, we don't want to alter the values, just pass the effect of "jumping"
+            ManeuverKind::Jump => FlightUpdate {
+                system: plan.initial_system,
+                location: plan.initial_position,
+                orientation: plan.initial_orientation,
+                velocity: plan.initial_velocity,
+                effect: Some(ShipEffect::Jumping),
+            },
+
+            // Movement we interpolate
+            ManeuverKind::Movement => {
+                let (effect, movement_interpolation_mode) =
+                    if plan.initial_velocity.approx_eq(&maneuver.target_velocity) {
+                        (None, InterpolationMode::Linear)
+                    } else if plan.initial_velocity.square_length()
+                        > maneuver.target_velocity.square_length()
+                    {
+                        (
+                            Some(ShipEffect::Thrusting),
+                            InterpolationMode::ExponentialOut,
+                        )
+                    } else {
+                        (
+                            Some(ShipEffect::Thrusting),
+                            InterpolationMode::ExponentialIn,
+                        )
+                    };
+                FlightUpdate {
+                    system: maneuver.system,
+                    effect,
+                    location: interpolate_value(
+                        plan.initial_position.to_vector(),
+                        maneuver.target.to_vector(),
+                        percent_complete,
+                        movement_interpolation_mode,
+                    )
+                    .to_point(),
+                    orientation: interpolate_value(
+                        plan.initial_orientation,
+                        maneuver.target_rotation,
+                        percent_complete,
+                        InterpolationMode::Linear,
+                    ),
+                    velocity: interpolate_value(
+                        plan.initial_velocity,
+                        maneuver.target_velocity,
+                        percent_complete,
+                        movement_interpolation_mode,
+                    ),
+                }
+            }
+        })
+    } else {
+        None
+    }
+}
+
 fn execute_flight_plan(plan: &mut FlightPlan, mut duration: f32) -> Option<FlightUpdate> {
     let mut last_update = None;
     while let Some(maneuver) = plan.maneuvers.first_mut() {
@@ -306,63 +371,7 @@ fn execute_flight_plan(plan: &mut FlightPlan, mut duration: f32) -> Option<Fligh
         if plan.elapsed_in_current_maneuver < maneuver.duration {
             // Partial maneuver
             plan.elapsed_in_current_maneuver = total_elapsed;
-            let percent_complete = plan.elapsed_in_current_maneuver / maneuver.duration;
-            let update = match maneuver.kind {
-                // For jumps, we don't want to alter the values, just pass the effect of "jumping"
-                ManeuverKind::Jump => FlightUpdate {
-                    system: plan.initial_system,
-                    location: plan.initial_position,
-                    orientation: plan.initial_orientation,
-                    velocity: plan.initial_velocity,
-                    effect: Some(ShipEffect::Jumping),
-                },
-
-                // Movement we interpolate
-                ManeuverKind::Movement => {
-                    let (effect, movement_interpolation_mode) =
-                        if plan.initial_velocity.approx_eq(&maneuver.target_velocity) {
-                            (None, InterpolationMode::Linear)
-                        } else if plan.initial_velocity.square_length()
-                            > maneuver.target_velocity.square_length()
-                        {
-                            (
-                                Some(ShipEffect::Thrusting),
-                                InterpolationMode::ExponentialOut,
-                            )
-                        } else {
-                            (
-                                Some(ShipEffect::Thrusting),
-                                InterpolationMode::ExponentialIn,
-                            )
-                        };
-                    FlightUpdate {
-                        system: maneuver.system,
-                        effect,
-                        location: interpolate_value(
-                            plan.initial_position.to_vector(),
-                            maneuver.target.to_vector(),
-                            percent_complete,
-                            movement_interpolation_mode,
-                        )
-                        .to_point(),
-                        orientation: interpolate_value(
-                            plan.initial_orientation,
-                            maneuver.target_rotation,
-                            percent_complete,
-                            InterpolationMode::Linear,
-                        ),
-                        velocity: interpolate_value(
-                            plan.initial_velocity,
-                            maneuver.target_velocity,
-                            percent_complete,
-                            movement_interpolation_mode,
-                        ),
-                    }
-                }
-            };
-
-            last_update = Some(update);
-            break;
+            return calculate_flight_update(plan);
         } else {
             // Completed this maneuver
             duration -= maneuver.duration - plan.elapsed_in_current_maneuver;
@@ -406,13 +415,13 @@ struct FlightUpdate {
 }
 
 #[derive(Clone, Copy, Debug)]
-enum InterpolationMode {
+pub enum InterpolationMode {
     Linear,
     ExponentialIn,
     ExponentialOut,
 }
 
-fn interpolate_value<T>(original: T, target: T, percent: f32, mode: InterpolationMode) -> T
+pub fn interpolate_value<T>(original: T, target: T, percent: f32, mode: InterpolationMode) -> T
 where
     T: std::ops::Add<T, Output = T>
         + std::ops::Sub<T, Output = T>

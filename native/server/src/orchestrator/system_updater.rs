@@ -45,6 +45,7 @@ pub async fn wait_for_ready_to_process(
     let mut pubsub = pubsub_connection.into_pubsub();
     pubsub.subscribe("systems_ready_to_process").await?;
     let mut stream = pubsub.on_message();
+    let mut last_systems_processed: Option<Vec<i64>> = None;
     while let Some(message) = stream.next().await {
         let current_timestamp: f64 = message.get_payload()?;
 
@@ -57,11 +58,13 @@ pub async fn wait_for_ready_to_process(
 
         universe().update_orbits(current_timestamp);
 
+        let mut systems_processed = Vec::new();
+
         loop {
-            // TODO magic number needs to be a configuration
             let (system_ids, last_timestamp): (Vec<i64>, f64) = redis::pipe()
                 .cmd("SRANDMEMBER")
                 .arg("systems_to_process")
+                // TODO magic number needs to be a configuration
                 .arg(3)
                 .cmd("GET")
                 .arg("world_timestamp")
@@ -71,6 +74,17 @@ pub async fn wait_for_ready_to_process(
                 break;
             }
 
+            let system_ids = if let Some(mut systems_to_try) = last_systems_processed.take() {
+                // If this is our first loop, try to grab the systems we worked on last loop
+                // This will reduce lock contention overall, making it happen mostly when nodes
+                // are added or lost
+                last_systems_processed = None;
+                systems_to_try.extend(system_ids);
+                systems_to_try
+            } else {
+                system_ids
+            };
+
             for system_id in system_ids {
                 if RedisLock::new(format!("system_update_{}", system_id))
                     .expire_after_msecs(20)
@@ -78,6 +92,7 @@ pub async fn wait_for_ready_to_process(
                     .await?
                 {
                     // Process server update
+                    systems_processed.push(system_id);
                     let system = universe()
                         .get(&SolarSystemId::from_i64(system_id).expect("invalid solar system id"));
                     debug!("updating {:?}", system.id);
@@ -114,6 +129,8 @@ pub async fn wait_for_ready_to_process(
                 }
             }
         }
+
+        last_systems_processed = Some(systems_processed);
 
         LocationStore::refresh().await?;
 

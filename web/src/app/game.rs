@@ -472,6 +472,7 @@ impl Component for Game {
                         let _ = self.space_sender.send(space2d::Command::UpdateSolarSystem {
                             ships,
                             solar_system: location.system,
+                            timestamp,
                         });
 
                         if self.solar_system.id != location.system {

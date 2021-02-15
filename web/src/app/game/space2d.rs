@@ -7,7 +7,7 @@ use cosmicverge_shared::{
         SolarSystemLocation, SolarSystemLocationId,
     },
     ships::{hangar, ShipId},
-    solar_system_simulation::SolarSystemSimulation,
+    solar_system_simulation::{interpolate_value, InterpolationMode, SolarSystemSimulation},
     solar_systems::{universe, Pixels, Solar, SolarSystem, SolarSystemId},
 };
 use crossbeam::channel::{self, Receiver, Sender, TryRecvError};
@@ -42,8 +42,11 @@ pub enum Command {
     UpdateSolarSystem {
         solar_system: SolarSystemId,
         ships: Vec<PilotedShip>,
+        timestamp: f64,
     },
 }
+
+const SHIP_TWEEN_DURATION: f64 = 1.0;
 
 pub struct SpaceView {
     performance: Performance,
@@ -60,8 +63,14 @@ pub struct SpaceView {
     api: ApiBridge,
     simulation_system: Option<SolarSystemId>,
     simulation: Option<SolarSystemSimulation>,
+    tweened_simulation: Option<TweenedSimulation>,
     last_physics_update: Option<f64>,
     server_roundtrip_time: Option<f64>,
+}
+
+struct TweenedSimulation {
+    simulation: SolarSystemSimulation,
+    start_timestamp: f64,
 }
 
 impl SpaceView {
@@ -85,6 +94,7 @@ impl SpaceView {
                 api,
                 simulation_system: None,
                 simulation: None,
+                tweened_simulation: None,
                 last_physics_update: None,
                 server_roundtrip_time: None,
             },
@@ -185,20 +195,37 @@ impl SpaceView {
                 Command::UpdateSolarSystem {
                     ships,
                     solar_system,
+                    timestamp,
                 } => {
                     self.simulation_system = Some(solar_system);
                     // TODO we shouldn't always follow the ship
                     self.switch_system(solar_system);
-                    let mut simulation = SolarSystemSimulation::new(solar_system);
+
+                    let current_simulation_timestamp = self
+                        .simulation
+                        .as_ref()
+                        .map(|s| s.timestamp)
+                        .unwrap_or(timestamp);
+                    let mut simulation = SolarSystemSimulation::new(solar_system, timestamp);
                     simulation.add_ships(ships);
 
                     self.last_physics_update = None;
 
-                    if let Some(server_roundtrip_time) = self.server_roundtrip_time {
-                        simulation.step(server_roundtrip_time as f32 / 2.);
+                    // Since the simulation keeps track of how much time it thinks has elapsed, we know how much time
+                    // has elapsed since this calculation was made and can accurately update. However, in the case of
+                    // a negative duration, our only resort is to tween.
+                    let simulation_catchup = current_simulation_timestamp - timestamp;
+                    if simulation_catchup > 0. {
+                        simulation.step(simulation_catchup as f32);
                     }
 
-                    self.simulation = Some(simulation);
+                    self.tweened_simulation =
+                        self.simulation
+                            .replace(simulation)
+                            .map(|simulation| TweenedSimulation {
+                                simulation,
+                                start_timestamp: current_simulation_timestamp,
+                            });
                 }
                 Command::UpdateServerRoundtripTime(server_roundtrip_time) => {
                     self.server_roundtrip_time = Some(server_roundtrip_time)
@@ -323,6 +350,15 @@ impl Drawable for SpaceView {
                     if let Some(simulation) = &mut self.simulation {
                         let elapsed = (now - last_physics_timestamp_ms) / 1000.;
                         simulation.step(elapsed as f32);
+                        if let Some(tweened_simulation) = self.tweened_simulation.as_mut() {
+                            if simulation.timestamp - tweened_simulation.start_timestamp
+                                > SHIP_TWEEN_DURATION
+                            {
+                                self.tweened_simulation = None;
+                            } else {
+                                tweened_simulation.simulation.step(elapsed as f32);
+                            }
+                        }
 
                         // TODO only follow the ship if we
                         let mut switch_system_to = None;
@@ -409,6 +445,32 @@ impl Drawable for SpaceView {
                             context.save();
                             context.set_font("18px Orbitron, sans-serif");
                             for ship in self.simulation.as_ref().unwrap().all_ships() {
+                                let mut location = ship.physics.location;
+                                let mut orientation = ship.physics.rotation;
+                                if let Some(tweened) = &self.tweened_simulation {
+                                    if let Some(tweened_ship) =
+                                        tweened.simulation.lookup_ship(&ship.pilot_id)
+                                    {
+                                        let amount = (self.simulation.as_ref().unwrap().timestamp
+                                            - tweened.start_timestamp)
+                                            / SHIP_TWEEN_DURATION;
+                                        let amount = amount.clamp(0.0, 1.0) as f32;
+                                        location = interpolate_value(
+                                            tweened_ship.physics.location.to_vector(),
+                                            location.to_vector(),
+                                            amount,
+                                            InterpolationMode::Linear,
+                                        )
+                                        .to_point();
+                                        orientation = interpolate_value(
+                                            tweened_ship.physics.rotation,
+                                            orientation,
+                                            amount,
+                                            InterpolationMode::Linear,
+                                        );
+                                    }
+                                }
+
                                 let ship_spec = hangar().load(&ship.ship.ship);
                                 let image =
                                     self.ship_images.entry(ship_spec.id).or_insert_with(|| {
@@ -419,13 +481,11 @@ impl Drawable for SpaceView {
                                 if image.complete() {
                                     let render_radius =
                                         (image.width() as f64 / 2.) * self.zoom as f64;
-                                    let render_center = center.to_f64()
-                                        + (ship.physics.location.to_vector() * scale).to_f64();
+                                    let render_center =
+                                        center.to_f64() + (location.to_vector() * scale).to_f64();
                                     context.save();
                                     context.translate(render_center.x, render_center.y).unwrap();
-                                    context
-                                        .rotate(ship.physics.rotation.signed().get() as f64)
-                                        .unwrap();
+                                    context.rotate(orientation.signed().get() as f64).unwrap();
                                     if let Err(err) = context
                                         .draw_image_with_html_image_element_and_dw_and_dh(
                                             image,
