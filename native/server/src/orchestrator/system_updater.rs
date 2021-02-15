@@ -7,10 +7,7 @@ use cosmicverge_shared::{
     solar_systems::{universe, SolarSystemId},
 };
 use futures::StreamExt as _;
-use redis::{
-    aio::{Connection, MultiplexedConnection},
-    AsyncCommands,
-};
+use redis::aio::{Connection, MultiplexedConnection};
 
 use crate::{
     orchestrator::location_store::LocationStore, redis::connect_to_redis, redis_lock::RedisLock,
@@ -49,7 +46,7 @@ pub async fn wait_for_ready_to_process(
     pubsub.subscribe("systems_ready_to_process").await?;
     let mut stream = pubsub.on_message();
     while let Some(message) = stream.next().await {
-        let current_timestamp: i64 = message.get_payload()?;
+        let current_timestamp: f64 = message.get_payload()?;
 
         debug!(
             "waking up system_updater - world timestamp {}",
@@ -62,8 +59,13 @@ pub async fn wait_for_ready_to_process(
 
         loop {
             // TODO magic number needs to be a configuration
-            let system_ids: Vec<i64> = shared_connection
-                .srandmember_multiple("systems_to_process", 3)
+            let (system_ids, last_timestamp): (Vec<i64>, f64) = redis::pipe()
+                .cmd("SRANDMEMBER")
+                .arg("systems_to_process")
+                .arg(3)
+                .cmd("GET")
+                .arg("world_timestamp")
+                .query_async(&mut shared_connection)
                 .await?;
             if system_ids.is_empty() {
                 break;
@@ -85,7 +87,7 @@ pub async fn wait_for_ready_to_process(
                     let pilots_in_system = LocationStore::pilots_in_system(system.id).await;
 
                     simulation.add_ships(pilots_in_system);
-                    simulation.step(1.0);
+                    simulation.step((current_timestamp - last_timestamp) as f32);
 
                     let mut pipe = redis::pipe();
                     let mut pipe = &mut pipe;
@@ -120,8 +122,14 @@ pub async fn wait_for_ready_to_process(
             .acquire(&mut shared_connection)
             .await?
         {
-            shared_connection
-                .publish("system_update_complete", current_timestamp.to_string())
+            redis::pipe()
+                .cmd("PUBLISH")
+                .arg("system_update_complete")
+                .arg(current_timestamp.to_string())
+                .cmd("SET")
+                .arg("world_timestamp")
+                .arg(current_timestamp)
+                .query_async(&mut shared_connection)
                 .await?;
         }
     }

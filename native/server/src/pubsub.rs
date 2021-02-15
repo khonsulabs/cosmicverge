@@ -80,7 +80,7 @@ async fn wait_for_messages(
                     .await;
             }
             "system_update_complete" => {
-                let timestamp: i64 = payload.parse()?;
+                let timestamp: f64 = payload.parse()?;
 
                 let system_updates = LocationStore::pilots_by_system().await;
                 // This forces the async move to move a reference, not the hash itself

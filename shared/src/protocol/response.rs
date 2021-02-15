@@ -17,7 +17,7 @@ pub enum CosmicVergeResponse {
     Unauthenticated,
     PilotChanged(ActivePilot),
     SpaceUpdate {
-        timestamp: i64,
+        timestamp: f64,
         location: PilotLocation,
         action: PilotingAction,
         ships: Vec<PilotedShip>,

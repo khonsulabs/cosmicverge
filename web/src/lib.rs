@@ -50,7 +50,7 @@ fn initialize() {
 
     // Initialize orbits. Once we are authenticated, we will receive server time updates to sync with
     universe()
-        .update_orbits((web_sys::window().unwrap().performance().unwrap().now() / 1000.) as i64);
+        .update_orbits((web_sys::window().unwrap().performance().unwrap().now() / 1000.) as f64);
 }
 
 fn print_safety_warning() {

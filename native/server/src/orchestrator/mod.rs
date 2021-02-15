@@ -62,13 +62,10 @@ impl Orchestrator {
                 .await?
             {
                 // Get the server time and the world timestamp incremented by one
-                let ((server_timestamp, _nanoseconds), next_timestamp): ((i64, u32), i64) =
-                    redis::pipe()
-                        .cmd("TIME")
-                        .cmd("INCR")
-                        .arg("world_timestamp")
-                        .query_async(&mut connection)
-                        .await?;
+                let (server_timestamp, nanoseconds): (i64, u32) =
+                    redis::cmd("TIME").query_async(&mut connection).await?;
+
+                let current_timestamp = server_timestamp as f64 + (nanoseconds as f64 / 1_000_000.);
 
                 // Insert all the IDs into a set, and then publish a notification saying there is stuff to do
                 let mut pipe = redis::pipe();
@@ -78,20 +75,6 @@ impl Orchestrator {
                     pipe = pipe.arg(system_id);
                 }
                 pipe = pipe.ignore();
-
-                // If we've lost time, just catch up to the real-world timestamp by jumping
-                // All of the "physics" updates will be done in a one-second increment, this
-                // just adjusts the official server time
-                let current_timestamp = if server_timestamp != next_timestamp {
-                    warn!(
-                        "time drifted (server {}) to (manual {})",
-                        next_timestamp, server_timestamp
-                    );
-                    pipe = pipe.cmd("SET").arg("world_timestamp").arg(server_timestamp);
-                    server_timestamp
-                } else {
-                    next_timestamp
-                };
 
                 // Publish the notification to the workers that will process the set as a queue
                 pipe = pipe

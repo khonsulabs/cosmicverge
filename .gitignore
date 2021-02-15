@@ -4,6 +4,8 @@ shared/Cargo.lock
 .idea
 .env
 .vscode
+.tasks
 
 web/static/styles.css*
 web/static/magrathea/
+web/static/pkg

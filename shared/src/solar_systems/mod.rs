@@ -75,7 +75,7 @@ impl Universe {
         self.solar_systems.values()
     }
 
-    pub fn update_orbits(&self, timestamp: i64) {
+    pub fn update_orbits(&self, timestamp: f64) {
         let mut orbits = self.orbits.write().unwrap();
         for system in self.solar_systems.values() {
             orbits.insert(system.id, system.calculate_orbits(timestamp));
@@ -130,7 +130,7 @@ impl SolarSystem {
         self
     }
 
-    fn calculate_orbits(&self, timestamp: i64) -> SolarSystemOrbits {
+    fn calculate_orbits(&self, timestamp: f64) -> SolarSystemOrbits {
         let mut orbits = SolarSystemOrbits::new();
         let mut objects_to_process =
             VecDeque::from_iter(self.locations_by_owners.get(&None).unwrap());
@@ -141,7 +141,7 @@ impl SolarSystem {
                     let orbit_around = *orbits.get(&owner.id()).expect("Error in ownership chain");
                     // All planets for now will follow a basic ellipse with the radius having a constant multiplier
                     // The orbit will swing y twice as much as the x axis
-                    let truncated_epoch = (timestamp + object.orbit_seed)
+                    let truncated_epoch = (timestamp as i64 + object.orbit_seed)
                         % (LONGEST_PLANET_ORBIT_DAYS * 24 * 60 * 60);
                     let period_in_seconds = object.orbit_days as f64 * 24. * 60. * 60.;
                     let orbit_amount =
