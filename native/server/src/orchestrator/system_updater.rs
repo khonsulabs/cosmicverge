@@ -97,7 +97,7 @@ pub async fn wait_for_ready_to_process(
                         .get(&SolarSystemId::from_i64(system_id).expect("invalid solar system id"));
                     debug!("updating {:?}", system.id);
 
-                    let mut simulation = SolarSystemSimulation::new(system.id);
+                    let mut simulation = SolarSystemSimulation::new(system.id, current_timestamp);
                     // TODO limit to pilots *connected*
                     let pilots_in_system = LocationStore::pilots_in_system(system.id).await;
 
