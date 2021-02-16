@@ -5,7 +5,7 @@ use cosmicverge_shared::{
 };
 use crossbeam::channel::{self, Receiver, Sender, TryRecvError};
 use wasm_bindgen::JsCast;
-use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, Performance};
+use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlElement, Performance};
 
 use super::{simulator::Simulator, system_renderer::SystemRenderer, Button};
 use crate::{app::game::check_canvas_size, redraw_loop::Drawable};
@@ -36,6 +36,7 @@ pub enum Command {
 }
 
 pub struct GameController {
+    hud: Option<HtmlElement>,
     canvas: Option<HtmlCanvasElement>,
     context: Option<CanvasRenderingContext2d>,
     performance: Performance,
@@ -70,6 +71,7 @@ impl GameController {
                 canvas: None,
                 context: None,
                 view: None,
+                hud: None,
                 receiver,
                 active_pilot: None,
                 simulator: Simulator::default(),
@@ -86,11 +88,12 @@ impl GameController {
         } {
             match event {
                 Command::SetPilot(active_pilot) => {
+                    let pilot_system = active_pilot.location.system;
                     self.active_pilot = Some(active_pilot);
-                    self.focus_on_pilot();
+                    self.view_solar_system(&pilot_system);
                 }
                 Command::ViewSolarSystem(system) => {
-                    self.view = Some(Box::new(SystemRenderer::new(system)));
+                    self.view_solar_system(&system.id);
                 }
                 Command::Zoom(fraction, focus) => {
                     let context = self.view_context();
@@ -120,9 +123,6 @@ impl GameController {
                     timestamp,
                 } => {
                     self.simulator.update(ships, solar_system, timestamp);
-
-                    // TODO we shouldn't always follow the ship
-                    // self.switch_system(solar_system);
                 }
                 _ => {}
             }
@@ -131,18 +131,36 @@ impl GameController {
         Ok(())
     }
 
-    fn focus_on_pilot(&mut self) {
-        let mut look_at = None;
-        if let Some(pilot) = &self.active_pilot {
-            if let Some(location) = self.simulator.pilot_location(&pilot.pilot.id) {
-                look_at = Some(location);
+    fn view_solar_system(&mut self, solar_system: &SolarSystemId) {
+        self.set_view(SystemRenderer::new(solar_system));
+    }
+
+    fn set_view<T: View + 'static>(&mut self, view: T) {
+        info!("Replacing view");
+        self.view = Some(Box::new(view));
+
+        if let Some(hud) = self.hud() {
+            while let Some(child) = hud.first_element_child() {
+                child.remove();
             }
         }
+    }
 
-        // TODO switch to solar system here too
-        // if let Some(look_at) = look_at {
-        //     self.look_at = look_at.cast_unit();
-        // }
+    pub fn hud(&mut self) -> Option<HtmlElement> {
+        if self.hud.is_none() {
+            self.hud = Some(
+                web_sys::window()
+                    .unwrap()
+                    .document()
+                    .unwrap()
+                    .get_element_by_id("hud")
+                    .unwrap()
+                    .dyn_into::<web_sys::HtmlElement>()
+                    .ok()?,
+            );
+        }
+
+        self.hud.clone()
     }
 
     pub fn canvas(&mut self) -> Option<HtmlCanvasElement> {
@@ -190,6 +208,7 @@ impl GameController {
         };
         ViewContext {
             active_ship,
+            hud: self.hud().unwrap(),
             canvas: self.canvas().unwrap(),
             context: self.context().unwrap(),
             performance: self.performance.clone(),
@@ -229,6 +248,7 @@ impl Drawable for GameController {
 }
 
 pub struct ViewContext {
+    pub hud: HtmlElement,
     pub canvas: HtmlCanvasElement,
     pub context: CanvasRenderingContext2d,
     pub performance: Performance,

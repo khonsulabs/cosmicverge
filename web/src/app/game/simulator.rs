@@ -1,6 +1,6 @@
 use cosmicverge_shared::{
     euclid::{Angle, Point2D},
-    protocol::{PilotId, PilotedShip},
+    protocol::PilotedShip,
     solar_system_simulation::{interpolate_value, InterpolationMode, SolarSystemSimulation},
     solar_systems::{Solar, SolarSystemId},
 };
@@ -49,16 +49,6 @@ impl Simulator {
                     simulation,
                     start_timestamp: current_simulation_timestamp,
                 });
-    }
-
-    pub fn pilot_location(&self, pilot_id: &PilotId) -> Option<Point2D<f32, Solar>> {
-        if let Some(simulation) = &self.simulation {
-            if let Some(ship) = simulation.lookup_ship(pilot_id) {
-                return Some(ship.physics.location);
-            }
-        }
-
-        None
     }
 
     pub fn step(&mut self, now: f64) {

@@ -3,7 +3,7 @@ use std::{cmp::Ordering, collections::HashMap, time::Duration};
 use cosmicverge_shared::{
     euclid::Point2D,
     protocol::CosmicVergeResponse,
-    solar_systems::{universe, Named, Pixels, SolarSystem, SolarSystemId},
+    solar_systems::{universe, Pixels, SolarSystemId},
 };
 use crossbeam::channel::Sender;
 use web_sys::{HtmlCanvasElement, MouseEvent, WheelEvent};
@@ -76,7 +76,6 @@ pub struct Game {
     _api: ApiBridge,
     link: ComponentLink<Self>,
     props: Props,
-    solar_system: &'static SolarSystem,
     loop_sender: Sender<redraw_loop::Command>,
     space_sender: Sender<controller::Command>,
     mouse_buttons: MouseButtons,
@@ -193,7 +192,6 @@ impl Component for Game {
             performance: web_sys::window().unwrap().performance().unwrap(),
             mouse_buttons: Default::default(),
             touches: Default::default(),
-            solar_system: universe().get(&SolarSystemId::SM0A9F4),
             click_handler_timer: None,
             touch_handler_timer: None,
             mouse_location: None,
@@ -201,7 +199,9 @@ impl Component for Game {
         };
         component
             .space_sender
-            .send(controller::Command::ViewSolarSystem(component.solar_system))
+            .send(controller::Command::ViewSolarSystem(
+                universe().get(&SolarSystemId::SM0A9F4),
+            ))
             .unwrap();
         component.update_title();
         component
@@ -475,11 +475,6 @@ impl Component for Game {
                                 solar_system: location.system,
                                 timestamp,
                             });
-
-                        if self.solar_system.id != location.system {
-                            self.solar_system = universe().get(&location.system);
-                            return true;
-                        }
                     }
                     _ => {}
                 },
@@ -533,12 +528,7 @@ impl Component for Game {
                     ontouchmove=self.link.callback(Message::TouchMove)
                     ontouchend=self.link.callback(Message::TouchEnd)
                     ontouchcancel=self.link.callback(Message::TouchCancel)>
-                <div id="hud">
-                    <div id="solar-system">
-                        <label>{ localize!("current-system") }</label>
-                        <div id="solar-system-name">{ &self.solar_system.id.name() }</div>
-                    </div>
-                </div>
+                <div id="hud" />
                 <canvas id="layer2" />
                 <canvas id="layer1" />
             </div>
