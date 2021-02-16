@@ -724,18 +724,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "glow"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "072136d2c3783f3a92f131acb227bc806d3886278e2a4dc1e9990ec89ef9e70b"
-dependencies = [
- "js-sys",
- "slotmap",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
 name = "half"
 version = "1.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -873,13 +861,13 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "lexical-core"
-version = "0.7.4"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db65c6da02e61f55dae90a0ae427b2a5f6b3e8db09f58d10efab23af92592616"
+checksum = "21f866863575d0e1d654fbeeabdc927292fdf862873dc3c96c6f753357e13374"
 dependencies = [
  "arrayvec",
  "bitflags",
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "ryu",
  "static_assertions",
 ]
@@ -1058,9 +1046,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.8"
+version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "991431c3519a3f36861882da93630ce66b52918dcf1b8e2fd66b397fc96f28df"
+checksum = "c3d0b9745dc2debf507c8422de05d7226cc1f0644216dfdfead988f9b1ab32a7"
 dependencies = [
  "proc-macro2",
 ]
@@ -1089,9 +1077,9 @@ dependencies = [
 
 [[package]]
 name = "rand_core"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c026d7df8b298d90ccbbc5190bd04d85e159eaf5576caeacf8741da93ccbd2e5"
+checksum = "34cf66eb183df1c5876e2dcf6b13d57340741e8dc255b48e40a26de954d06ae7"
 dependencies = [
  "getrandom",
 ]
@@ -1248,12 +1236,6 @@ name = "slab"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
-
-[[package]]
-name = "slotmap"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c46a3482db8f247956e464d783693ece164ca056e6e67563ee5505bdb86452cd"
 
 [[package]]
 name = "smallvec"
@@ -1479,9 +1461,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-normalization"
-version = "0.1.16"
+version = "0.1.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a13e63ab62dbe32aeee58d1c5408d35c36c392bba5d9d3142287219721afe606"
+checksum = "07fbfce1c8a97d547e8b5334978438d9d6ec8c20e38f56d4a4374d181493eaef"
 dependencies = [
  "tinyvec",
 ]
@@ -1649,7 +1631,6 @@ dependencies = [
  "cosmicverge-shared",
  "crossbeam",
  "fluent-templates",
- "glow",
  "include_dir",
  "js-sys",
  "log",

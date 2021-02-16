@@ -208,10 +208,10 @@ impl SolarSystemObject {
         self
     }
 
-    fn with_image(mut self, url: &'static str) -> Self {
-        self.image = Some(url);
-        self
-    }
+    // fn with_image(mut self, url: &'static str) -> Self {
+    //     self.image = Some(url);
+    //     self
+    // }
 
     pub fn image_url(&self) -> Cow<'static, str> {
         if let Some(image) = self.image {

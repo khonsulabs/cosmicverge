@@ -246,7 +246,6 @@ impl crate::protocol::PilotedShip {
     fn execute_flight_plan_if_needed(&mut self, duration: f32) {
         if let Some(plan) = &mut self.physics.flight_plan {
             if let Some(update) = execute_flight_plan(plan, duration) {
-                // TODO here
                 self.physics.location = update.location;
                 self.physics.rotation = update.orientation;
                 self.physics.linear_velocity = update.velocity;
