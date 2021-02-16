@@ -136,7 +136,6 @@ impl GameController {
     }
 
     fn set_view<T: View + 'static>(&mut self, view: T) {
-        info!("Replacing view");
         self.view = Some(Box::new(view));
 
         if let Some(hud) = self.hud() {

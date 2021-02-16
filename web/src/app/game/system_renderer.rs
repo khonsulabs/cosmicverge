@@ -78,7 +78,6 @@ impl SystemRenderer {
 
     fn switch_system(&mut self, system: SolarSystemId, hud: &HtmlElement) {
         if self.solar_system.id != system {
-            info!("Switching system");
             self.solar_system = universe().get(&system);
             self.load_solar_system_images();
             self.zoom = 1.;
