@@ -51,7 +51,6 @@ $navbar-item-active-background-color: $light-purple
 @import "./bulma/sass/grid/_all"
 @import "./bulma/sass/layout/_all"
 
-
 @mixin heading-font
   font-family: 'Orbitron', sans-serif
   font-weight: 600
@@ -106,7 +105,11 @@ $navbar-item-active-background-color: $light-purple
   z-index: 0
   tab-index: 100
 
-#glcanvas
+#layer2
+  @include full-canvas
+  z-index: 2
+
+#layer1
   @include full-canvas
   z-index: 1
 

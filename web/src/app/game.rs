@@ -21,9 +21,9 @@ const DOUBLE_CLICK_MS: i64 = 400;
 const DOUBLE_CLICK_MAX_PIXEL_DISTANCE: f32 = 5.;
 const MAX_TOUCH_DELTA: f32 = 10.;
 
-#[cfg(name = "opengl")]
-mod glspace;
+mod simulator;
 mod space2d;
+mod system_renderer;
 
 #[derive(Default, Debug)]
 struct MouseButtons {
@@ -201,9 +201,7 @@ impl Component for Game {
         };
         component
             .space_sender
-            .send(space2d::Command::SetSolarSystem(Some(
-                component.solar_system,
-            )))
+            .send(space2d::Command::ViewSolarSystem(component.solar_system))
             .unwrap();
         component.update_title();
         component
@@ -538,7 +536,8 @@ impl Component for Game {
                         <div id="solar-system-name">{ &self.solar_system.id.name() }</div>
                     </div>
                 </div>
-                <canvas id="glcanvas" />
+                <canvas id="layer2" />
+                <canvas id="layer1" />
             </div>
         }
     }

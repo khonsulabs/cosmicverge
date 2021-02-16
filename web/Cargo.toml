@@ -10,7 +10,6 @@ crate-type = ["cdylib"]
 
 [features]
 default = []
-opengl = ["glow"]
 
 [dependencies]
 cosmicverge-shared = { path = "../shared" }
@@ -41,7 +40,6 @@ web-sys = { version = "0.3", features = [
 js-sys = "0.3"
 log = "0.4"
 wasm-logger = "0.2"
-glow = { version = "0.7", optional = true }
 once_cell = "1"
 console_error_panic_hook = "0.1"
 crossbeam = { version = "0.8" }
