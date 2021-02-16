@@ -21,8 +21,8 @@ const DOUBLE_CLICK_MS: i64 = 400;
 const DOUBLE_CLICK_MAX_PIXEL_DISTANCE: f32 = 5.;
 const MAX_TOUCH_DELTA: f32 = 10.;
 
+mod controller;
 mod simulator;
-mod space2d;
 mod system_renderer;
 
 #[derive(Default, Debug)]
@@ -78,7 +78,7 @@ pub struct Game {
     props: Props,
     solar_system: &'static SolarSystem,
     loop_sender: Sender<redraw_loop::Command>,
-    space_sender: Sender<space2d::Command>,
+    space_sender: Sender<controller::Command>,
     mouse_buttons: MouseButtons,
     mouse_location: Option<Point2D<i32, Pixels>>,
     touches: HashMap<i32, TouchState>,
@@ -180,7 +180,7 @@ impl Component for Game {
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let mut api = ApiAgent::bridge(link.callback(Message::ApiMessage));
         api.send(AgentMessage::RegisterBroadcastHandler);
-        let (view, space_sender) = space2d::SpaceView::new();
+        let (view, space_sender) = controller::GameController::new();
         let loop_sender =
             redraw_loop::RedrawLoop::launch(view, redraw_loop::Configuration::default());
 
@@ -201,7 +201,7 @@ impl Component for Game {
         };
         component
             .space_sender
-            .send(space2d::Command::ViewSolarSystem(component.solar_system))
+            .send(controller::Command::ViewSolarSystem(component.solar_system))
             .unwrap();
         component.update_title();
         component
@@ -212,7 +212,7 @@ impl Component for Game {
             Message::CheckHandleClick => {
                 if let Some(state) = &self.mouse_buttons.sequential_click_state {
                     if !self.mouse_buttons.is_down(state.button) {
-                        let _ = self.space_sender.send(space2d::Command::HandleClick {
+                        let _ = self.space_sender.send(controller::Command::HandleClick {
                             button: state.button,
                             count: state.click_count,
                             location: state.location,
@@ -225,7 +225,7 @@ impl Component for Game {
             Message::CheckHandleTap => {
                 if let Some(state) = &self.sequential_touch_state {
                     if self.touches.is_empty() {
-                        let _ = self.space_sender.send(space2d::Command::HandleClick {
+                        let _ = self.space_sender.send(controller::Command::HandleClick {
                             button: Button::OneFinger,
                             count: state.tap_count,
                             location: state.original_tap_location,
@@ -251,7 +251,7 @@ impl Component for Game {
                 let focus = Point2D::new(event.client_x(), event.client_y());
                 let _ = self
                     .space_sender
-                    .send(space2d::Command::Zoom(amount, focus.to_f32()));
+                    .send(controller::Command::Zoom(amount, focus.to_f32()));
             }
             Message::MouseDown(event) => {
                 self.foreground_if_needed();
@@ -281,7 +281,7 @@ impl Component for Game {
                     if self.mouse_buttons.left {
                         let _ = self
                             .space_sender
-                            .send(space2d::Command::Pan(delta.to_f32()));
+                            .send(controller::Command::Pan(delta.to_f32()));
                     }
                 }
             }
@@ -381,7 +381,7 @@ impl Component for Game {
 
                         let _ = self
                             .space_sender
-                            .send(space2d::Command::Pan(delta.to_f32()));
+                            .send(controller::Command::Pan(delta.to_f32()));
 
                         if let Some(sequential_state) = &self.sequential_touch_state {
                             let distance = sequential_state
@@ -419,7 +419,7 @@ impl Component for Game {
 
                             let _ = self
                                 .space_sender
-                                .send(space2d::Command::Pan(current_midpoint - old_midpoint));
+                                .send(controller::Command::Pan(current_midpoint - old_midpoint));
 
                             let current_distance = touch1_location
                                 .to_f32()
@@ -429,9 +429,10 @@ impl Component for Game {
                                 .distance_to(touch2_last_location.to_f32());
                             let ratio = current_distance / old_distance - 1.;
 
-                            let _ = self
-                                .space_sender
-                                .send(space2d::Command::Zoom(ratio, current_midpoint.to_point()));
+                            let _ = self.space_sender.send(controller::Command::Zoom(
+                                ratio,
+                                current_midpoint.to_point(),
+                            ));
                         }
                     }
                 } else {
@@ -451,13 +452,13 @@ impl Component for Game {
                 AgentResponse::RoundtripUpdated(roundtrip) => {
                     let _ = self
                         .space_sender
-                        .send(space2d::Command::UpdateServerRoundtripTime(roundtrip));
+                        .send(controller::Command::UpdateServerRoundtripTime(roundtrip));
                 }
                 AgentResponse::Response(response) => match response {
                     CosmicVergeResponse::PilotChanged(active_pilot) => {
                         let _ = self
                             .space_sender
-                            .send(space2d::Command::SetPilot(active_pilot));
+                            .send(controller::Command::SetPilot(active_pilot));
                     }
                     CosmicVergeResponse::SpaceUpdate {
                         ships,
@@ -467,11 +468,13 @@ impl Component for Game {
                     } => {
                         universe().update_orbits(timestamp);
 
-                        let _ = self.space_sender.send(space2d::Command::UpdateSolarSystem {
-                            ships,
-                            solar_system: location.system,
-                            timestamp,
-                        });
+                        let _ = self
+                            .space_sender
+                            .send(controller::Command::UpdateSolarSystem {
+                                ships,
+                                solar_system: location.system,
+                                timestamp,
+                            });
 
                         if self.solar_system.id != location.system {
                             self.solar_system = universe().get(&location.system);

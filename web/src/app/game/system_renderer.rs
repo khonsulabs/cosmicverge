@@ -9,7 +9,7 @@ use crate::{
 };
 
 use super::{
-    space2d::{View, ViewContext},
+    controller::{CanvasScalable, View, ViewContext},
     Button,
 };
 use cosmicverge_shared::{
@@ -104,7 +104,7 @@ impl View for SystemRenderer {
 
         let size = Size2D::<_, Pixels>::new(canvas.client_width(), canvas.client_height()).to_f32();
         let canvas_center = (size.to_vector() / 2.).to_point();
-        let center = canvas_center - view.look_at.to_vector() * scale;
+        let center = canvas_center - view.look_at().to_vector() * scale;
 
         context.set_image_smoothing_enabled(false);
 
@@ -114,7 +114,7 @@ impl View for SystemRenderer {
         context.fill_rect(0., 0., size.width as f64, size.height as f64);
         if backdrop.complete() {
             // The backdrop is tiled and panned based on the look_at unaffected by zoom
-            let backdrop_center = canvas_center - view.look_at.to_vector() * scale * 0.1;
+            let backdrop_center = canvas_center - view.look_at().to_vector() * scale * 0.1;
             let size = size.ceil().to_i32();
             let backdrop_width = backdrop.width() as i32;
             let backdrop_height = backdrop.height() as i32;

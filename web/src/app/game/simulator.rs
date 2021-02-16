@@ -5,7 +5,7 @@ use cosmicverge_shared::{
     solar_systems::{Solar, SolarSystemId},
 };
 
-use super::space2d::SHIP_TWEEN_DURATION;
+use super::controller::SHIP_TWEEN_DURATION;
 
 #[derive(Default)]
 pub struct Simulator {
