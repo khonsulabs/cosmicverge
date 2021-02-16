@@ -10,8 +10,6 @@ use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlElement, Performa
 use super::{simulator::Simulator, system_renderer::SystemRenderer, Button};
 use crate::{app::game::check_canvas_size, redraw_loop::Drawable};
 
-pub const SHIP_TWEEN_DURATION: f64 = 1.0;
-
 pub enum Command {
     SetPilot(ActivePilot),
 
@@ -122,9 +120,12 @@ impl GameController {
                     solar_system,
                     timestamp,
                 } => {
-                    self.simulator.update(ships, solar_system, timestamp);
+                    self.simulator
+                        .update(ships, solar_system, timestamp, self.performance.now());
                 }
-                _ => {}
+                Command::UpdateServerRoundtripTime(rtt) => {
+                    self.simulator.server_round_trip_avg = Some(rtt);
+                }
             }
         }
 
