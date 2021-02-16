@@ -13,17 +13,19 @@ use super::{
     Button,
 };
 use cosmicverge_shared::{
-    euclid::Size2D,
+    euclid::{Point2D, Scale, Size2D, Vector2D},
     protocol::{
         CosmicVergeRequest, PilotLocation, PilotingAction, SolarSystemLocation,
         SolarSystemLocationId,
     },
     ships::{hangar, ShipId},
-    solar_systems::{universe, Pixels, SolarSystem},
+    solar_systems::{universe, Pixels, Solar, SolarSystem, SolarSystemId},
 };
 use web_sys::HtmlImageElement;
 
 pub struct SystemRenderer {
+    look_at: Point2D<f32, Solar>,
+    zoom: f32,
     backdrop: Option<HtmlImageElement>,
     location_images: HashMap<SolarSystemLocationId, HtmlImageElement>,
     ship_images: HashMap<ShipId, HtmlImageElement>,
@@ -35,10 +37,12 @@ impl SystemRenderer {
     pub fn new(solar_system: &'static SolarSystem) -> Self {
         let mut renderer = Self {
             solar_system: Some(solar_system),
+            zoom: 1.,
+            api: ApiAgent::bridge(Callback::noop()),
             backdrop: None,
+            look_at: Default::default(),
             location_images: Default::default(),
             ship_images: Default::default(),
-            api: ApiAgent::bridge(Callback::noop()),
         };
         renderer.load_solar_system_images();
         renderer
@@ -64,14 +68,14 @@ impl SystemRenderer {
         }
     }
 
-    // fn switch_system(&mut self, system: SolarSystemId) {
-    //     if self.solar_system.is_none() || self.solar_system.unwrap().id != system {
-    //         self.solar_system = Some(universe().get(&system));
-    //         self.load_solar_system_images();
-
-    //         self.focus_on_pilot();
-    //     }
-    // }
+    fn switch_system(&mut self, system: SolarSystemId) {
+        if self.solar_system.is_none() || self.solar_system.unwrap().id != system {
+            self.solar_system = Some(universe().get(&system));
+            self.load_solar_system_images();
+            self.zoom = 1.;
+            self.look_at = Default::default();
+        }
+    }
 }
 
 impl View for SystemRenderer {
@@ -86,7 +90,7 @@ impl View for SystemRenderer {
         view: &ViewContext,
     ) {
         if count == 2 && (button == Button::Left || button == Button::OneFinger) {
-            let location = view.convert_canvas_to_world(location.to_f32());
+            let location = self.convert_canvas_to_world(location.to_f32(), &view.canvas);
             if view.active_pilot.is_some() {
                 let request = CosmicVergeRequest::Fly(PilotingAction::NavigateTo(PilotLocation {
                     location: SolarSystemLocation::InSpace(location),
@@ -98,13 +102,26 @@ impl View for SystemRenderer {
     }
 
     fn render(&mut self, view: &ViewContext) {
-        let scale = view.scale();
+        // TODO only follow the ship if we
+        let mut switch_system_to = None;
+        if let Some(ship) = &view.active_ship {
+            if Some(ship.physics.system) != self.solar_system.map(|s| s.id) {
+                switch_system_to = Some((ship.physics.system, ship.physics.location));
+            }
+        }
+
+        if let Some((new_system, new_look_at)) = switch_system_to {
+            self.switch_system(new_system);
+            self.look_at = new_look_at;
+        }
+
+        let scale = self.scale();
         let canvas = &view.canvas;
         let context = &view.context;
 
         let size = Size2D::<_, Pixels>::new(canvas.client_width(), canvas.client_height()).to_f32();
         let canvas_center = (size.to_vector() / 2.).to_point();
-        let center = canvas_center - view.look_at().to_vector() * scale;
+        let center = canvas_center - self.look_at.to_vector() * scale;
 
         context.set_image_smoothing_enabled(false);
 
@@ -114,7 +131,7 @@ impl View for SystemRenderer {
         context.fill_rect(0., 0., size.width as f64, size.height as f64);
         if backdrop.complete() {
             // The backdrop is tiled and panned based on the look_at unaffected by zoom
-            let backdrop_center = canvas_center - view.look_at().to_vector() * scale * 0.1;
+            let backdrop_center = canvas_center - self.look_at.to_vector() * scale * 0.1;
             let size = size.ceil().to_i32();
             let backdrop_width = backdrop.width() as i32;
             let backdrop_height = backdrop.height() as i32;
@@ -144,7 +161,7 @@ impl View for SystemRenderer {
             for (id, location) in solar_system.locations.iter() {
                 let image = &self.location_images[id];
                 if image.complete() {
-                    let render_radius = (location.size * view.zoom) as f64;
+                    let render_radius = (location.size * self.zoom) as f64;
                     let render_center =
                         (center + orbits[&location.id.id()].to_vector().to_f32() * scale).to_f64();
 
@@ -172,7 +189,7 @@ impl View for SystemRenderer {
                             image
                         });
                         if image.complete() {
-                            let render_radius = (image.width() as f64 / 2.) * view.zoom as f64;
+                            let render_radius = (image.width() as f64 / 2.) * self.zoom as f64;
                             let render_center =
                                 center.to_f64() + (location.to_vector() * scale).to_f64();
                             context.save();
@@ -225,5 +242,25 @@ impl View for SystemRenderer {
                 }
             }
         }
+    }
+
+    fn zoom(&mut self, fraction: f32, focus: Point2D<f32, Pixels>, view: &ViewContext) {
+        let (new_zoom, new_look_at) = self.calculate_zoom(fraction, focus, &view.canvas);
+        self.zoom = new_zoom;
+        self.look_at = new_look_at;
+    }
+
+    fn pan(&mut self, amount: Vector2D<f32, Pixels>, _: &ViewContext) {
+        self.look_at -= amount / self.scale();
+    }
+}
+
+impl CanvasScalable for SystemRenderer {
+    fn scale<Unit>(&self) -> Scale<f32, Unit, Pixels> {
+        Scale::new(self.zoom)
+    }
+
+    fn look_at<Unit>(&self) -> Point2D<f32, Unit> {
+        self.look_at.cast_unit()
     }
 }

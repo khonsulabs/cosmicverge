@@ -1,5 +1,5 @@
 use cosmicverge_shared::{
-    euclid::{Angle, Point2D, Scale, Size2D, UnknownUnit, Vector2D},
+    euclid::{Angle, Point2D, Scale, Size2D, Vector2D},
     protocol::{ActivePilot, PilotedShip},
     solar_systems::{Pixels, Solar, SolarSystem, SolarSystemId},
 };
@@ -39,8 +39,6 @@ pub struct GameController {
     canvas: Option<HtmlCanvasElement>,
     context: Option<CanvasRenderingContext2d>,
     performance: Performance,
-    look_at: Point2D<f32, UnknownUnit>,
-    zoom: f32,
     active_pilot: Option<ActivePilot>,
     simulator: Simulator,
     receiver: Receiver<Command>,
@@ -57,6 +55,9 @@ pub trait View {
     );
 
     fn render(&mut self, view: &ViewContext);
+
+    fn zoom(&mut self, fraction: f32, focus: Point2D<f32, Pixels>, view: &ViewContext);
+    fn pan(&mut self, amount: Vector2D<f32, Pixels>, view: &ViewContext);
 }
 
 impl GameController {
@@ -69,8 +70,6 @@ impl GameController {
                 canvas: None,
                 context: None,
                 view: None,
-                look_at: Point2D::new(0., 0.),
-                zoom: 1.,
                 receiver,
                 active_pilot: None,
                 simulator: Simulator::default(),
@@ -94,26 +93,16 @@ impl GameController {
                     self.view = Some(Box::new(SystemRenderer::new(system)));
                 }
                 Command::Zoom(fraction, focus) => {
-                    let scale = self.scale();
-                    let new_zoom = self.zoom + self.zoom * fraction;
-                    let new_zoom = new_zoom.min(10.).max(0.1);
-                    let new_scale = Scale::<f32, UnknownUnit, Pixels>::new(new_zoom);
-
-                    let center = self.canvas_center();
-                    let focus = focus.to_f32();
-                    let focus_offset = focus.to_vector() - center.to_vector();
-                    let focus_solar = self.look_at + focus_offset / scale;
-
-                    let new_focus_location =
-                        self.convert_world_to_canvas_with_scale(focus_solar, new_scale);
-                    let pixel_delta = new_focus_location.to_vector() - focus.to_vector();
-                    let solar_delta = pixel_delta / new_scale;
-
-                    self.look_at += solar_delta;
-                    self.zoom = new_zoom;
+                    let context = self.view_context();
+                    if let Some(view) = self.view.as_mut() {
+                        view.zoom(fraction, focus, &context);
+                    }
                 }
                 Command::Pan(amount) => {
-                    self.look_at -= amount / self.scale();
+                    let context = self.view_context();
+                    if let Some(view) = self.view.as_mut() {
+                        view.pan(amount, &context);
+                    }
                 }
                 Command::HandleClick {
                     button,
@@ -151,9 +140,9 @@ impl GameController {
         }
 
         // TODO switch to solar system here too
-        if let Some(look_at) = look_at {
-            self.look_at = look_at.cast_unit();
-        }
+        // if let Some(look_at) = look_at {
+        //     self.look_at = look_at.cast_unit();
+        // }
     }
 
     pub fn canvas(&mut self) -> Option<HtmlCanvasElement> {
@@ -189,12 +178,21 @@ impl GameController {
     }
 
     pub fn view_context(&mut self) -> ViewContext {
+        let active_ship = if let Some(pilot) = self.active_pilot.as_ref() {
+            self.simulator
+                .simulation
+                .as_ref()
+                .map(|s| s.lookup_ship(&pilot.pilot.id))
+                .flatten()
+                .cloned()
+        } else {
+            None
+        };
         ViewContext {
+            active_ship,
             canvas: self.canvas().unwrap(),
             context: self.context().unwrap(),
             performance: self.performance.clone(),
-            look_at: self.look_at,
-            zoom: self.zoom,
             active_pilot: self.active_pilot.clone(),
             simulation_system: self.simulator.simulation_system,
             pilot_locations: self.simulator.pilot_locations(),
@@ -216,20 +214,6 @@ impl Drawable for GameController {
             check_canvas_size(&canvas);
             self.simulator.step(self.performance.now());
 
-            // TODO hook back up
-            // TODO only follow the ship if we
-            // let mut switch_system_to = None;
-            // if let Some(pilot) = &view.active_pilot {
-            //     if let Some(ship) = simulation.lookup_ship(&pilot.pilot.id) {
-            //         if Some(ship.physics.system) != self.solar_system.map(|s| s.id) {
-            //             switch_system_to = Some(ship.physics.system);
-            //         }
-            //     }
-            // }
-            // if let Some(new_system) = switch_system_to {
-            //     self.switch_system(new_system);
-            // }
-
             let context = self.view_context();
             if let Some(view) = self.view.as_mut() {
                 view.render(&context);
@@ -248,76 +232,72 @@ pub struct ViewContext {
     pub canvas: HtmlCanvasElement,
     pub context: CanvasRenderingContext2d,
     pub performance: Performance,
-    look_at: Point2D<f32, UnknownUnit>,
-    pub zoom: f32,
     pub active_pilot: Option<ActivePilot>,
+    pub active_ship: Option<PilotedShip>,
     pub simulation_system: Option<SolarSystemId>,
     pub pilot_locations: Vec<(PilotedShip, Point2D<f32, Solar>, Angle<f32>)>,
 }
 
 pub trait CanvasScalable {
-    fn canvas(&self) -> &HtmlCanvasElement;
     fn scale<Unit>(&self) -> Scale<f32, Unit, Pixels>;
     fn look_at<Unit>(&self) -> Point2D<f32, Unit>;
 
-    fn canvas_size(&self) -> Size2D<i32, Pixels> {
-        Size2D::new(self.canvas().client_width(), self.canvas().client_height())
+    fn canvas_size(&self, canvas: &HtmlCanvasElement) -> Size2D<i32, Pixels> {
+        Size2D::new(canvas.client_width(), canvas.client_height())
     }
 
-    fn canvas_center(&self) -> Point2D<f32, Pixels> {
-        (self.canvas_size().to_f32().to_vector() / 2.).to_point()
+    fn canvas_center(&self, canvas: &HtmlCanvasElement) -> Point2D<f32, Pixels> {
+        (self.canvas_size(canvas).to_f32().to_vector() / 2.).to_point()
     }
 
     fn convert_canvas_to_world_with_scale<Unit>(
         &self,
         canvas_location: Point2D<f32, Pixels>,
         scale: Scale<f32, Unit, Pixels>,
+        canvas: &HtmlCanvasElement,
     ) -> Point2D<f32, Unit> {
-        let relative_location = canvas_location - self.canvas_center();
+        let relative_location = canvas_location - self.canvas_center(canvas);
         self.look_at() + relative_location / scale
     }
 
     fn convert_canvas_to_world<Unit>(
         &self,
         canvas_location: Point2D<f32, Pixels>,
+        canvas: &HtmlCanvasElement,
     ) -> Point2D<f32, Unit> {
-        self.convert_canvas_to_world_with_scale(canvas_location, self.scale())
+        self.convert_canvas_to_world_with_scale(canvas_location, self.scale(), canvas)
     }
 
     fn convert_world_to_canvas_with_scale<Unit>(
         &self,
         world_location: Point2D<f32, Unit>,
         scale: Scale<f32, Unit, Pixels>,
+        canvas: &HtmlCanvasElement,
     ) -> Point2D<f32, Pixels> {
         let relative_location = world_location - self.look_at().to_vector();
-        self.canvas_center() + relative_location.to_vector() * scale
-    }
-}
-
-impl CanvasScalable for ViewContext {
-    fn canvas(&self) -> &HtmlCanvasElement {
-        &self.canvas
+        self.canvas_center(canvas) + relative_location.to_vector() * scale
     }
 
-    fn scale<Unit>(&self) -> Scale<f32, Unit, Pixels> {
-        Scale::new(self.zoom)
-    }
+    fn calculate_zoom<Unit>(
+        &self,
+        fraction: f32,
+        focus: Point2D<f32, Pixels>,
+        canvas: &HtmlCanvasElement,
+    ) -> (f32, Point2D<f32, Unit>) {
+        let scale = self.scale();
+        let new_zoom = scale.get() + scale.get() * fraction;
+        let new_zoom = new_zoom.min(10.).max(0.1);
+        let new_scale = Scale::<f32, Unit, Pixels>::new(new_zoom);
 
-    fn look_at<Unit>(&self) -> Point2D<f32, Unit> {
-        self.look_at.cast_unit()
-    }
-}
+        let center = self.canvas_center(canvas);
+        let focus_offset = focus.to_vector() - center.to_vector();
+        let focus_solar = self.look_at() + focus_offset / scale;
 
-impl CanvasScalable for GameController {
-    fn canvas(&self) -> &HtmlCanvasElement {
-        self.canvas.as_ref().unwrap()
-    }
+        let new_focus_location =
+            self.convert_world_to_canvas_with_scale(focus_solar, new_scale, canvas);
+        let pixel_delta = new_focus_location.to_vector() - focus.to_vector();
+        let solar_delta = pixel_delta / new_scale;
 
-    fn scale<Unit>(&self) -> Scale<f32, Unit, Pixels> {
-        Scale::new(self.zoom)
-    }
-
-    fn look_at<Unit>(&self) -> Point2D<f32, Unit> {
-        self.look_at.cast_unit()
+        (new_zoom, self.look_at() + solar_delta)
     }
 }
