@@ -1,0 +1,65 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cosmicverge
+  labels:
+    app: cosmicverge
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cosmicverge
+  template:
+    metadata:
+      labels:
+        app: cosmicverge
+    spec:
+      containers:
+        - name: cosmicverge
+          image: registry.digitalocean.com/khonsulabs/cosmicverge:main
+          ports:
+            - containerPort: 7879
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: database-url
+                  key: url
+            - name: REDIS_URL
+              value: "redis://redis.default.svc.cluster.local:6379"
+            - name: TWITCH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: twitch-oauth
+                  key: id
+            - name: TWITCH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: twitch-oauth
+                  key: secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cosmicverge
+  annotations:
+    service.beta.kubernetes.io/do-loadbalancer-size-slug: "lb-small"
+    service.beta.kubernetes.io/do-loadbalancer-protocol: "http"
+    service.beta.kubernetes.io/do-loadbalancer-algorithm: "least_connections"
+    service.beta.kubernetes.io/do-loadbalancer-tls-ports: "443"
+    service.beta.kubernetes.io/do-loadbalancer-healthcheck-path: "/__healthcheck"
+    service.beta.kubernetes.io/do-loadbalancer-healthcheck-protocol: "http"
+    service.beta.kubernetes.io/do-loadbalancer-certificate-id: "fb5b2cd8-b144-4e4f-943b-677a62d786cf"
+    service.beta.kubernetes.io/do-loadbalancer-redirect-http-to-https: "true"
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 443
+      targetPort: 7879
+      name: https
+    - port: 80
+      targetPort: 7879
+      name: http
+  selector:
+    app: cosmicverge

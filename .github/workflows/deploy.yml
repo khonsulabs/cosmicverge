@@ -81,6 +81,11 @@ jobs:
           cargo build --bin cosmicverge-server --release
           cargo run --bin cosmicverge-server --release -- generate-assets ../web/static/
 
+      - name: Compile sass
+        run: |
+          sudo npm install -g sass
+          sass web/sass/styles.sass web/static/styles.css
+
       - name: Authenticate with DigitalOcean Registry
         if: github.ref == 'refs/heads/testdigitalocean'
         run: |
