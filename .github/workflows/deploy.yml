@@ -36,23 +36,6 @@ jobs:
         if: github.ref == 'refs/heads/testdigitalocean'
         with:
           token: ${{ secrets.DO_WRITE_API_KEY }}
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          components: rustfmt, clippy
-      - name: Install wasm-bindgen-cli
-        uses: actions-rs/install@v0.1
-        with:
-          crate: wasm-bindgen-cli
-          version: latest
-          use-tool-cache: true
-      - name: Install wasm-pack
-        uses: actions-rs/install@v0.1
-        with:
-          crate: wasm-pack
-          version: latest
-          use-tool-cache: true
 
       - name: Run tests
         run: |
@@ -68,18 +51,9 @@ jobs:
           POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
 
       - name: Build
-        env:
-          BASWS_CLIENT_ENCRYPTION_KEY: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
-        run: |
-          cd web
-          sed -i s/CACHEBUSTER/`uuidgen`/g static/bootstrap.html
-          cargo build --target wasm32-unknown-unknown --release
-          wasm-bindgen target/wasm32-unknown-unknown/release/web.wasm --target web --out-dir static/pkg --out-name web --remove-producers-section
-          wasm-pack build --target web -d static/pkg --release
-
-          cd ../native
-          cargo build --bin cosmicverge-server --release
-          cargo run --bin cosmicverge-server --release -- generate-assets ../web/static/
+        uses: docker://khonsulabs/cosmicverge-build:main
+        with:
+          client-encryption-key: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
 
       - name: Compile sass
         run: |
@@ -96,3 +70,11 @@ jobs:
         run: |
           docker build . -t registry.digitalocean.com/khonsulabs/cosmicverge:sha-$GITHUB_SHA -t registry.digitalocean.com/khonsulabs/cosmicverge:main
           docker push -a registry.digitalocean.com/khonsulabs/cosmicverge
+
+      - name: Update Kubernetes
+        if: github.ref == 'refs/heads/testdigitalocean'
+        run: |
+          doctl kubernetes cluster kubeconfig save $CLUSTER_ID
+          kubectl rollout restart deployment/cosmicverge
+        env:
+          CLUSTER_ID: ${{ secrets.PRODUCTION_CLUSTER_ID }}
