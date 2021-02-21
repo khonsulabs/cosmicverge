@@ -6,9 +6,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: khonsulabs/build-rust:latest
-      options: "--security-opt seccomp=unconfined"
 
     # Service containers to run with `runner-job`
     services:
@@ -35,6 +32,27 @@ jobs:
           submodules: true
           persist-credentials: true
           ssh-key: ${{ secrets.BOTSU_PRIVATE_SSH_KEY }}
+      - uses: digitalocean/action-doctl@v2
+        if: github.ref == 'refs/heads/testdigitalocean'
+        with:
+          token: ${{ secrets.DO_WRITE_API_KEY }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: rustfmt, clippy
+      - name: Install wasm-bindgen-cli
+        uses: actions-rs/install@v0.1
+        with:
+          crate: wasm-bindgen-cli
+          version: latest
+          use-tool-cache: true
+      - name: Install wasm-pack
+        uses: actions-rs/install@v0.1
+        with:
+          crate: wasm-pack
+          version: latest
+          use-tool-cache: true
 
       - name: Run tests
         run: |
@@ -55,22 +73,21 @@ jobs:
         run: |
           cd web
           sed -i s/CACHEBUSTER/`uuidgen`/g static/bootstrap.html
-          cargo make build -p release
+          cargo build --target wasm32-unknown-unknown --release
+          wasm-bindgen target/wasm32-unknown-unknown/release/web.wasm --target web --out-dir static/pkg --out-name web --remove-producers-section
+          wasm-pack build --target web -d static/pkg --release
 
           cd ../native
           cargo build --bin cosmicverge-server --release
           cargo run --bin cosmicverge-server --release -- generate-assets ../web/static/
 
-      - name: Build Docker Image
+      - name: Authenticate with DigitalOcean Registry
         if: github.ref == 'refs/heads/testdigitalocean'
         run: |
-          docker build . -t registry.digitalocean.com/khonsulabs/cosmicverge:sha-$GITHUB_SHA -t registry.digitalocean.com/khonsulabs/cosmicverge:main
+          doctl registry login --expiry-seconds 600
 
       - name: Publish Docker Image
         if: github.ref == 'refs/heads/testdigitalocean'
         run: |
-          doctl registry login --expiry-seconds 600 --access-token $DO_API_KEY
+          docker build . -t registry.digitalocean.com/khonsulabs/cosmicverge:sha-$GITHUB_SHA -t registry.digitalocean.com/khonsulabs/cosmicverge:main
           docker push -a registry.digitalocean.com/khonsulabs/cosmicverge
-
-        env:
-          DO_API_KEY: ${{ secrets.DO_WRITE_API_KEY }}
