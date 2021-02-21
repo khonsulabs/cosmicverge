@@ -51,7 +51,7 @@ jobs:
           POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
 
       - name: Build
-        uses: docker://khonsulabs/cosmicverge-build:main
+        uses: docker://khonsulabs/cosmicverge-build:latest
         with:
           client-encryption-key: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
 
