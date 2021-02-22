@@ -32,10 +32,6 @@ jobs:
           submodules: true
           persist-credentials: true
           ssh-key: ${{ secrets.BOTSU_PRIVATE_SSH_KEY }}
-      - uses: digitalocean/action-doctl@v2
-        if: github.ref == 'refs/heads/main'
-        with:
-          token: ${{ secrets.DO_WRITE_API_KEY }}
 
       - name: Configure environment for CI postgres
         run: |
@@ -79,6 +75,17 @@ jobs:
           - 5432:5432
 
     steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+          persist-credentials: true
+          ssh-key: ${{ secrets.BOTSU_PRIVATE_SSH_KEY }}
+
+      - uses: digitalocean/action-doctl@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          token: ${{ secrets.DO_WRITE_API_KEY }}
+
       - name: Configure environment for CI postgres
         run: |
           echo "DATABASE_URL=postgres://postgres:postgres@postgres:$POSTGRES_PORT/postgres" >> .env
