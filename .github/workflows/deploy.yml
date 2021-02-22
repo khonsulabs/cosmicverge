@@ -116,7 +116,7 @@ jobs:
         run: |
           doctl kubernetes cluster kubeconfig save $CLUSTER_ID
 
-          sed -i s/cosmicverge:main/sha-$GITHUB_SHA/g kubernetes/production.yml
+          sed -i s/cosmicverge:main/cosmicverge:sha-$GITHUB_SHA/g kubernetes/production.yml
           kubectl apply -f kubernetes/production.yml
           # Wait for the deployment to finish
           kubectl rollout status deployment/cosmicverge --timeout=120s
