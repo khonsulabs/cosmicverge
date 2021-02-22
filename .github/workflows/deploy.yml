@@ -4,7 +4,7 @@ on:
   push:
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
 
     # Service containers to run with `runner-job`
@@ -53,6 +53,11 @@ jobs:
         with:
           entrypoint: /test.sh
 
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    needs: test
+    steps:
       - name: Build
         uses: docker://khonsulabs/cosmicverge-build:latest
         with:
@@ -74,6 +79,21 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: |
           doctl kubernetes cluster kubeconfig save $CLUSTER_ID
-          kubectl rollout restart deployment/cosmicverge
+
+          sed -i s/cosmicverge:main/sha-$GITHUB_SHA/g kubernetes/production.yml
+          kubectl apply kubernetes/production.yml
+          # Wait for the deployment to finish
+          kubectl rollout status deployment/cosmicverge
         env:
           CLUSTER_ID: ${{ secrets.PRODUCTION_CLUSTER_ID }}
+
+        # This is because each worker sends some static resources. We could deploy the static resources before the new CACHEBUSTER gets deployed
+        # but we need to deploy it using a simple SPA wrapper which is kind of annoying. For now, there may be cache confusion while kube updates
+        # but we purge the cache afterwards to clean it up
+      - name: Purge Cloudflare Cache
+        environment: production
+        uses: jakejarvis/cloudflare-purge-action@0.3.0
+        env:
+          # Zone is required by both authentication methods
+          CLOUDFLARE_ZONE: ${{ secrets.CLOUDFLARE_ZONE }}
+          CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
