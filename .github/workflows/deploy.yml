@@ -33,7 +33,7 @@ jobs:
           persist-credentials: true
           ssh-key: ${{ secrets.BOTSU_PRIVATE_SSH_KEY }}
       - uses: digitalocean/action-doctl@v2
-        if: github.ref == 'refs/heads/testdigitalocean'
+        if: github.ref == 'refs/heads/main'
         with:
           token: ${{ secrets.DO_WRITE_API_KEY }}
 
@@ -48,10 +48,10 @@ jobs:
         with:
           entrypoint: /migrate.sh
 
-      # - name: Run tests
-      #   uses: docker://khonsulabs/cosmicverge-build:latest
-      #   with:
-      #     entrypoint: /test.sh
+      - name: Run tests
+        uses: docker://khonsulabs/cosmicverge-build:latest
+        with:
+          entrypoint: /test.sh
 
       - name: Build
         uses: docker://khonsulabs/cosmicverge-build:latest
@@ -60,18 +60,18 @@ jobs:
           args: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
 
       - name: Authenticate with DigitalOcean Registry
-        if: github.ref == 'refs/heads/testdigitalocean'
+        if: github.ref == 'refs/heads/main'
         run: |
           doctl registry login --expiry-seconds 600
 
       - name: Publish Docker Image
-        if: github.ref == 'refs/heads/testdigitalocean'
+        if: github.ref == 'refs/heads/main'
         run: |
           docker build . -t registry.digitalocean.com/khonsulabs/cosmicverge:sha-$GITHUB_SHA -t registry.digitalocean.com/khonsulabs/cosmicverge:main
           docker push -a registry.digitalocean.com/khonsulabs/cosmicverge
 
       - name: Update Kubernetes
-        if: github.ref == 'refs/heads/testdigitalocean'
+        if: github.ref == 'refs/heads/main'
         run: |
           doctl kubernetes cluster kubeconfig save $CLUSTER_ID
           kubectl rollout restart deployment/cosmicverge
