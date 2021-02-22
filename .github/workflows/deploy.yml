@@ -37,22 +37,31 @@ jobs:
         with:
           token: ${{ secrets.DO_WRITE_API_KEY }}
 
-      - name: Run tests
+      - name: Configure environment for CI postgres
         run: |
-          echo "DATABASE_URL=postgres://postgres:postgres@localhost:$POSTGRES_PORT/postgres" >> .env
+          echo "DATABASE_URL=postgres://postgres:postgres@postgres:$POSTGRES_PORT/postgres" >> .env
           # cd web
           # cargo test --target wasm32-unknown-unknown --release --verbose
           cd native
           cargo run --bin migrator --release
           cargo test --release --verbose
         env:
-          # Fake value for the encryption key for this step, because any branch can run this
-          BASWS_CLIENT_ENCRYPTION_KEY: "abcdefghijklmnopqrstuvwxzy123456"
           POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+
+      - name: Run migrations on CI postgres
+        uses: docker://khonsulabs/cosmicverge-build:latest
+        with:
+          entrypoint: /migrate.sh
+
+      # - name: Run tests
+      #   uses: docker://khonsulabs/cosmicverge-build:latest
+      #   with:
+      #     entrypoint: /test.sh
 
       - name: Build
         uses: docker://khonsulabs/cosmicverge-build:latest
         with:
+          entrypoint: /build.sh
           args: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
 
       - name: Authenticate with DigitalOcean Registry
