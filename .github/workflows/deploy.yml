@@ -40,11 +40,6 @@ jobs:
       - name: Configure environment for CI postgres
         run: |
           echo "DATABASE_URL=postgres://postgres:postgres@postgres:$POSTGRES_PORT/postgres" >> .env
-          # cd web
-          # cargo test --target wasm32-unknown-unknown --release --verbose
-          cd native
-          cargo run --bin migrator --release
-          cargo test --release --verbose
         env:
           POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
 
