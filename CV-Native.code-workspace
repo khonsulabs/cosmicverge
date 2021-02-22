@@ -10,7 +10,7 @@
 		"path": ".github"
 	},
 	{
-		"path": "cloudformation"
+		"path": "kubernetes"
 	}
 ],
   "settings": {}

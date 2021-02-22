@@ -6,9 +6,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: khonsulabs/build-rust:latest
-      options: "--security-opt seccomp=unconfined"
 
     # Service containers to run with `runner-job`
     services:
@@ -35,54 +32,48 @@ jobs:
           submodules: true
           persist-credentials: true
           ssh-key: ${{ secrets.BOTSU_PRIVATE_SSH_KEY }}
-
-      - name: Run tests
-        run: |
-          echo "DATABASE_URL=postgres://postgres:postgres@postgres:$POSTGRES_PORT/postgres" >> .env
-          # cd web
-          # cargo test --target wasm32-unknown-unknown --release --verbose
-          cd native
-          cargo run --bin migrator --release
-          cargo test --release --verbose
-        env:
-          # Fake value for the encryption key for this step, because any branch can run this
-          BASWS_CLIENT_ENCRYPTION_KEY: "abcdefghijklmnopqrstuvwxzy123456"
-          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
-
-      - name: Build
-        env:
-          BASWS_CLIENT_ENCRYPTION_KEY: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
-        run: |
-          cd web
-          sed -i s/CACHEBUSTER/`uuidgen`/g static/bootstrap.html
-          cargo make build -p release
-
-          cd ../native
-          cargo build --bin cosmicverge-server --release
-          cargo run --bin cosmicverge-server --release -- generate-assets ../web/static/
-
-      - name: Configure Production
-        if: github.ref == 'refs/heads/main'
-        env:
-          DOTENVFILE: ${{ secrets.DOTENVFILE }}
-        run: echo "$DOTENVFILE" > .env
-
-      - uses: kciter/aws-ecr-action@v1
+      - uses: digitalocean/action-doctl@v2
         if: github.ref == 'refs/heads/main'
         with:
-          access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          account_id: ${{ secrets.AWS_ACCOUNT_ID }}
-          repo: khonsulabs/cosmicverge
-          region: us-east-1
-          tags: latest,sha-${{ github.sha }}
+          token: ${{ secrets.DO_WRITE_API_KEY }}
 
-      - name: Deploy API
-        if: github.ref == 'refs/heads/main'
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: us-east-1
+      - name: Configure environment for CI postgres
         run: |
-          aws cloudformation wait stack-update-complete --stack-name cosmicverge-server
-          aws cloudformation update-stack --stack-name cosmicverge-server --use-previous-template --capabilities CAPABILITY_NAMED_IAM --parameters ParameterKey=VpcId,UsePreviousValue=true ParameterKey=PrivateSubnetIds,UsePreviousValue=true ParameterKey=PublicSubnetIds,UsePreviousValue=true ParameterKey=DeployedTag,ParameterValue=sha-${{ github.sha }}
+          echo "DATABASE_URL=postgres://postgres:postgres@postgres:$POSTGRES_PORT/postgres" >> .env
+        env:
+          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+
+      - name: Run migrations on CI postgres
+        uses: docker://khonsulabs/cosmicverge-build:latest
+        with:
+          entrypoint: /migrate.sh
+
+      - name: Run tests
+        uses: docker://khonsulabs/cosmicverge-build:latest
+        with:
+          entrypoint: /test.sh
+
+      - name: Build
+        uses: docker://khonsulabs/cosmicverge-build:latest
+        with:
+          entrypoint: /build.sh
+          args: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
+
+      - name: Authenticate with DigitalOcean Registry
+        if: github.ref == 'refs/heads/main'
+        run: |
+          doctl registry login --expiry-seconds 600
+
+      - name: Publish Docker Image
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker build . -t registry.digitalocean.com/khonsulabs/cosmicverge:sha-$GITHUB_SHA -t registry.digitalocean.com/khonsulabs/cosmicverge:main
+          docker push -a registry.digitalocean.com/khonsulabs/cosmicverge
+
+      - name: Update Kubernetes
+        if: github.ref == 'refs/heads/main'
+        run: |
+          doctl kubernetes cluster kubeconfig save $CLUSTER_ID
+          kubectl rollout restart deployment/cosmicverge
+        env:
+          CLUSTER_ID: ${{ secrets.PRODUCTION_CLUSTER_ID }}
