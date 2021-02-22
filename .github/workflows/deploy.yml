@@ -55,7 +55,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    environment: production
+    environment: Production
     needs: test
     steps:
       - name: Build
@@ -91,7 +91,6 @@ jobs:
         # but we need to deploy it using a simple SPA wrapper which is kind of annoying. For now, there may be cache confusion while kube updates
         # but we purge the cache afterwards to clean it up
       - name: Purge Cloudflare Cache
-        environment: production
         uses: jakejarvis/cloudflare-purge-action@0.3.0
         env:
           # Zone is required by both authentication methods
