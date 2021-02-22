@@ -4,20 +4,49 @@ This page walks through how Cosmic Verge is deployed into a Kubernetes cluster. 
 
 ## PostgreSQL
 
-Currently PostgreSQL is being hosted outside of the Kubernetes cluster. This may not always be the case (I want to investigate [postgres-operator](https://github.com/CrunchyData/postgres-operator)), but for now you must create a PostgreSQL 12.x or 13.x database. Previous versions may work, but they aren't actively used.
-
-Once you have a PostgreSQL cluster running, here's an example of how to create a user and database:
-
-```sql
-CREATE ROLE cv_user LOGIN PASSWORD '***' CONNECTION LIMIT -1;
-CREATE DATABASE cosmicverge OWNER cv_user CONNECTION LIMIT -1;
-```
-
-Once you've created your database, you'll need to store the DATABASE_URL in Kubernetes as a secret. Here's an example using `kubectl`:
+### Install postgres-operator
 
 ```bash
-kubectl create secret generic database-url --from-literal=url='postgresql://cv_user:***@hostname:port/cosmicverge?sslmode=require'
+kubectl create namespace pgo
+kubectl apply -f kubernetes/postgres-operator.yml
 ```
+
+You will need to wait for the installer to finish, then run this cleanup step:
+
+```bash
+kubectl delete -f kubernetes/postgres-operator.yml
+```
+
+### Create the postgres cluster
+
+Configure the [pgo client](https://access.crunchydata.com/documentation/postgres-operator/4.6.1/installation/pgo-client/) before proceeding/
+
+```bash
+pgo create cluster primary \
+  --username=cosmicuser \
+  --password='***' \
+  --pvc-size=20Gi \
+  --replica-count=1 \
+  --sync-replication \
+  --metrics \
+  --pgbadger \
+  --pgbouncer \
+  --database=cosmicverge
+```
+
+Wait for the cluster to be ready:
+
+```bash
+pgo test primary
+```
+
+Once you've created your cluster, you'll need to store the DATABASE_URL in Kubernetes as a secret. Here's an example using `kubectl`:
+
+```bash
+kubectl create secret generic database-url --from-literal=url='postgresql://cosmicuser:***@primary-pgbouncer.pgo.svc.cluster.local:5432/cosmicverge'
+```
+
+Due to how postgres-operator deploys pgbouncer and replicas to try to ensure spread across nodes, you might have issues with all of those services running. For a "less nodes required" setup, remove `--pgbouncer` and change the hostname to not include `-pgbouncer`. The Cosmic Verge executables already do connection pooling, and the value of pgbouncer in this setup hasn't been tested.
 
 ## Twitch OAuth
 
