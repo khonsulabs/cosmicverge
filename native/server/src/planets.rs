@@ -7,8 +7,10 @@ use cosmicverge_shared::{
         sm0a9f4::SM0A9F4, system2::System2, universe, SolarSystemId, SolarSystemObject,
     },
 };
-use magrathea::{planet::GeneratedPlanet, ElevationColor, Kilometers, Planet};
-use uuid::Uuid;
+use magrathea::{
+    planet::{GeneratedPlanet, SurfaceDefinition},
+    ElevationColor, Kilometers, Planet,
+};
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum ObjectElevations {
@@ -24,7 +26,10 @@ pub enum ObjectElevations {
     Snow,
 
     SunlikeDeepBase,
+    SunlikeBase,
+    SunlikeMiddle,
     SunlikeBrightMiddle,
+    SunlikeTop,
     SunlikeHotTop,
 }
 
@@ -37,44 +42,26 @@ impl ObjectElevations {
                 19,
                 30,
                 180,
-                Kilometers::new(-1000.),
+                Kilometers::new(0.),
             ),
             ElevationColor::from_u8(
                 ObjectElevations::ShallowOcean,
                 98,
                 125,
                 223,
-                Kilometers::new(0.),
+                Kilometers::new(10.),
             ),
-            ElevationColor::from_u8(
-                ObjectElevations::Beach,
-                209,
-                207,
-                169,
-                Kilometers::new(100.),
-            ),
-            ElevationColor::from_u8(
-                ObjectElevations::Grass,
-                152,
-                214,
-                102,
-                Kilometers::new(200.),
-            ),
-            ElevationColor::from_u8(ObjectElevations::Forest, 47, 106, 42, Kilometers::new(600.)),
+            ElevationColor::from_u8(ObjectElevations::Beach, 209, 207, 169, Kilometers::new(11.)),
+            ElevationColor::from_u8(ObjectElevations::Grass, 152, 214, 102, Kilometers::new(13.)),
+            ElevationColor::from_u8(ObjectElevations::Forest, 47, 106, 42, Kilometers::new(15.)),
             ElevationColor::from_u8(
                 ObjectElevations::Mountain,
                 100,
                 73,
                 53,
-                Kilometers::new(1600.),
+                Kilometers::new(18.),
             ),
-            ElevationColor::from_u8(
-                ObjectElevations::Snow,
-                238,
-                246,
-                245,
-                Kilometers::new(1700.),
-            ),
+            ElevationColor::from_u8(ObjectElevations::Snow, 238, 246, 245, Kilometers::new(20.)),
         ]
     }
 
@@ -85,28 +72,28 @@ impl ObjectElevations {
                 0x69,
                 0x1D,
                 0x1D,
-                Kilometers::new(-1000.),
+                Kilometers::new(0.),
             ),
             ElevationColor::from_u8(
                 ObjectElevations::Crater,
                 0x96,
                 0x48,
                 0x48,
-                Kilometers::new(-50.),
+                Kilometers::new(1.),
             ),
             ElevationColor::from_u8(
                 ObjectElevations::Ground,
                 0xB8,
                 0x6F,
                 0x6F,
-                Kilometers::new(200.),
+                Kilometers::new(2.),
             ),
             ElevationColor::from_u8(
                 ObjectElevations::Mountain,
                 0x74,
                 0x20,
                 0x20,
-                Kilometers::new(1000.),
+                Kilometers::new(3.),
             ),
         ]
     }
@@ -118,28 +105,28 @@ impl ObjectElevations {
                 0x9B,
                 0xA8,
                 0xA8,
-                Kilometers::new(-1000.),
+                Kilometers::new(0.),
             ),
             ElevationColor::from_u8(
                 ObjectElevations::Crater,
                 0xE9,
                 0xF6,
                 0xF6,
-                Kilometers::new(-50.),
+                Kilometers::new(1.),
             ),
             ElevationColor::from_u8(
                 ObjectElevations::Ground,
                 0xCE,
                 0xDF,
                 0xDF,
-                Kilometers::new(200.),
+                Kilometers::new(2.),
             ),
             ElevationColor::from_u8(
                 ObjectElevations::Mountain,
                 0xAA,
                 0xB9,
                 0xB9,
-                Kilometers::new(1000.),
+                Kilometers::new(3.),
             ),
         ]
     }
@@ -152,15 +139,35 @@ impl ObjectElevations {
                 189,
                 31,
                 10,
-                Kilometers::new(-200.),
+                Kilometers::new(0.),
             ),
-            // Bright middle
+            ElevationColor::from_u8(
+                ObjectElevations::SunlikeBase,
+                220,
+                94,
+                33,
+                Kilometers::new(1.),
+            ),
+            ElevationColor::from_u8(
+                ObjectElevations::SunlikeMiddle,
+                235,
+                125,
+                45,
+                Kilometers::new(2.),
+            ),
             ElevationColor::from_u8(
                 ObjectElevations::SunlikeBrightMiddle,
                 250,
                 156,
                 56,
-                Kilometers::new(-180.),
+                Kilometers::new(3.),
+            ),
+            ElevationColor::from_u8(
+                ObjectElevations::SunlikeTop,
+                253,
+                187,
+                49,
+                Kilometers::new(4.),
             ),
             // Hot top
             ElevationColor::from_u8(
@@ -168,7 +175,7 @@ impl ObjectElevations {
                 255,
                 218,
                 41,
-                Kilometers::new(200.),
+                Kilometers::new(5.),
             ),
         ]
     }
@@ -181,15 +188,35 @@ impl ObjectElevations {
                 10,
                 31,
                 189,
-                Kilometers::new(-200.),
+                Kilometers::new(0.),
             ),
-            // Bright middle
+            ElevationColor::from_u8(
+                ObjectElevations::SunlikeBase,
+                39,
+                110,
+                228,
+                Kilometers::new(1.),
+            ),
+            ElevationColor::from_u8(
+                ObjectElevations::SunlikeMiddle,
+                45,
+                125,
+                235,
+                Kilometers::new(2.),
+            ),
             ElevationColor::from_u8(
                 ObjectElevations::SunlikeBrightMiddle,
                 56,
                 156,
                 250,
-                Kilometers::new(-180.),
+                Kilometers::new(1.),
+            ),
+            ElevationColor::from_u8(
+                ObjectElevations::SunlikeTop,
+                49,
+                187,
+                253,
+                Kilometers::new(4.),
             ),
             // Hot top
             ElevationColor::from_u8(
@@ -197,9 +224,15 @@ impl ObjectElevations {
                 41,
                 218,
                 255,
-                Kilometers::new(200.),
+                Kilometers::new(2.),
             ),
         ]
+    }
+}
+
+impl SurfaceDefinition for ObjectElevations {
+    fn max_chaos() -> f32 {
+        7.
     }
 }
 
@@ -213,20 +246,21 @@ pub fn planet_for_location(
                 .into_location::<SM0A9F4>()
                 .expect("wrong type of location")
             {
-                SM0A9F4::Sun => Planet::new_from_iter(
-                    Uuid::from_u128(311297988823460753720839672646651867567),
+                SM0A9F4::Sun => Planet::new_from_iter_with_chaos(
+                    3112979882346075372,
                     Default::default(),
                     Length::new(4000.),
                     ObjectElevations::sunlike(),
+                    30.,
                 ),
                 SM0A9F4::Earth => Planet::new_from_iter(
-                    Uuid::from_u128(311297988823460753720839672646651867567),
+                    1231681870008051569,
                     Default::default(),
                     Length::new(6371.),
                     ObjectElevations::earthlike(),
                 ),
                 SM0A9F4::Mercury => Planet::new_from_iter(
-                    Uuid::from_u128(311297988823460753720839672646651867564),
+                    3112969882346075372,
                     Default::default(),
                     Length::new(400.),
                     ObjectElevations::redrock(),
@@ -234,20 +268,21 @@ pub fn planet_for_location(
             }
         }
         SolarSystemId::System2 => match location.into_location::<System2>().unwrap() {
-            System2::Sun => Planet::new_from_iter(
-                Uuid::from_u128(311297988823460753720839672646651867565),
+            System2::Sun => Planet::new_from_iter_with_chaos(
+                3112979882346076372,
                 Default::default(),
                 Length::new(4000.),
                 ObjectElevations::blue_sunlike(),
+                30.,
             ),
             System2::Mercury => Planet::new_from_iter(
-                Uuid::from_u128(311297988823460753720839672646651867561),
+                3112979882346075362,
                 Default::default(),
                 Length::new(200.),
                 ObjectElevations::whiterock(),
             ),
             System2::Earth => Planet::new_from_iter(
-                Uuid::from_u128(311297988823460753720839672646651867562),
+                3112979882346075372,
                 Default::default(),
                 Length::new(6371.),
                 ObjectElevations::earthlike(),

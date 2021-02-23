@@ -37,4 +37,4 @@ redis = { version = "0.19", default-features = false, features = [
 async-channel = "1"
 uuid = { version = "0.8", features = ["v4", "serde"] }
 structopt = "0.3"
-magrathea = { version = "0.0.2" }
+magrathea = { version = "0.0.3" }
