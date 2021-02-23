@@ -32,9 +32,6 @@ pub fn base_dir() -> PathBuf {
 }
 
 #[cfg(debug_assertions)]
-pub const PRIVATE_ASSETS_PATH: &str = "../../private/assets";
-
-#[cfg(debug_assertions)]
 pub fn webserver_base_url() -> warp::http::uri::Builder {
     warp::http::uri::Uri::builder()
         .scheme("http")
@@ -119,17 +116,7 @@ pub async fn run_webserver() -> anyhow::Result<()> {
 
     let spa = warp::get().and(warp::fs::dir(static_path).or(index_handler));
 
-    #[cfg(debug_assertions)]
-    let routes = {
-        let private_assets_path = base_dir().join(PRIVATE_ASSETS_PATH);
-        let private_assets = warp::fs::dir(private_assets_path);
-
-        private_assets.or(api)
-    };
-    #[cfg(not(debug_assertions))]
-    let routes = api;
-
-    warp::serve(routes.or(healthcheck).or(spa).with(custom_logger))
+    warp::serve(api.or(healthcheck).or(spa).with(custom_logger))
         .run(([0, 0, 0, 0], 7879))
         .await;
 

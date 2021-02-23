@@ -191,33 +191,34 @@ impl View for SystemRenderer {
         context.set_image_smoothing_enabled(false);
 
         context.set_fill_style(&JsValue::from_str("#000"));
-
-        let backdrop = self.backdrop.as_ref().unwrap();
         context.fill_rect(0., 0., size.width as f64, size.height as f64);
-        if backdrop.complete() {
-            // The backdrop is tiled and panned based on the look_at unaffected by zoom
-            let backdrop_center = canvas_center - self.look_at.to_vector() * scale * 0.1;
-            let size = size.ceil().to_i32();
-            let backdrop_width = backdrop.width() as i32;
-            let backdrop_height = backdrop.height() as i32;
-            let mut y = (backdrop_center.y) as i32 % backdrop_height;
-            if y > 0 {
-                y -= backdrop_height;
-            }
-            while y < size.height {
-                let mut x = (backdrop_center.x) as i32 % backdrop_width;
-                if x > 0 {
-                    x -= backdrop_width;
+
+        if let Some(backdrop) = self.backdrop.as_ref() {
+            if backdrop.complete() {
+                // The backdrop is tiled and panned based on the look_at unaffected by zoom
+                let backdrop_center = canvas_center - self.look_at.to_vector() * scale * 0.1;
+                let size = size.ceil().to_i32();
+                let backdrop_width = backdrop.width() as i32;
+                let backdrop_height = backdrop.height() as i32;
+                let mut y = (backdrop_center.y) as i32 % backdrop_height;
+                if y > 0 {
+                    y -= backdrop_height;
                 }
-                while x < size.width {
-                    if let Err(err) =
-                        context.draw_image_with_html_image_element(backdrop, x as f64, y as f64)
-                    {
-                        error!("Error rendering backdrop: {:#?}", err);
+                while y < size.height {
+                    let mut x = (backdrop_center.x) as i32 % backdrop_width;
+                    if x > 0 {
+                        x -= backdrop_width;
                     }
-                    x += backdrop_width;
+                    while x < size.width {
+                        if let Err(err) =
+                            context.draw_image_with_html_image_element(backdrop, x as f64, y as f64)
+                        {
+                            error!("Error rendering backdrop: {:#?}", err);
+                        }
+                        x += backdrop_width;
+                    }
+                    y += backdrop_height;
                 }
-                y += backdrop_height;
             }
         }
 

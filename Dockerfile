@@ -5,7 +5,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY native/target/release/cosmicverge-server .env ./
-COPY web/static/ private/assets/ ./static/
+COPY web/static/ ./static/
 
 EXPOSE 7879/tcp
 

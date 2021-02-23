@@ -22,7 +22,6 @@ impl Named for System2 {
 
 pub fn system() -> SolarSystem {
     SolarSystem::new(SolarSystemId::System2, Point2D::new(0., 0.))
-        .with_background("/helianthusgames/Backgrounds/Red1.png")
         .define_object(System2::Sun, 196., |location| location)
         .define_object(System2::Earth, 64., |location| {
             location.orbiting_at(1400., 600., 30).owned_by(System2::Sun)
