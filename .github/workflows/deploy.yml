@@ -60,7 +60,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: Production
     if: github.ref == 'refs/heads/main'
-    # needs: test
+    needs: test
 
     # Service containers to run with `runner-job`
     services:
@@ -198,5 +198,5 @@ jobs:
           folder: native/target/doc/
           git-config-name: kl-botsu
           git-config-email: botsu@khonsulabs.com
-          target-folder: main/native/
+          target-folder: main/
           clean: true
