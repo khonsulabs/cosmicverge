@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["connect_to_redis",""],["connect_to_redis_multiplex",""],["initialize",""],["redis",""]],"mod":[["lock","a helper type making it easier to read locking code"]],"static":[["SHARED_REDIS_CONNECTION",""]]});

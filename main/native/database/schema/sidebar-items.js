@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["PilotError",""]],"fn":[["convert_db_pilots",""]],"struct":[["Account",""],["Installation",""],["OAuthToken",""],["Pilot",""],["TwitchProfile",""]]});

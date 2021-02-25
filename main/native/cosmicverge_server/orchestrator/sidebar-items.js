@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["orchestrate","launches the orchestrator and all dependencies"]],"mod":[["connected_pilots","manages tracking and timing out connected pilots"],["location_store","manages loading and saving all pilot location data"],["system_updater","manages running queued updates for systems"]],"struct":[["Orchestrator",""]]});

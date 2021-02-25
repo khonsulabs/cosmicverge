@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["__wasm_bindgen_generated_run_app",""],["run_app",""]],"macro":[["localize",""],["localize_html",""],["todo",""]],"mod":[["strings",""]]});

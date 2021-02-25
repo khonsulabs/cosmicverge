@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["cosmicverge_server"] = [{"text":"impl Serialize for JwtKey","synthetic":false,"types":[]},{"text":"impl Serialize for TwitchTokenResponse","synthetic":false,"types":[]},{"text":"impl Serialize for TwitchUserInfo","synthetic":false,"types":[]},{"text":"impl Serialize for TwitchUsersResponse","synthetic":false,"types":[]},{"text":"impl Serialize for JwtKeys","synthetic":false,"types":[]},{"text":"impl Serialize for JwtClaims","synthetic":false,"types":[]},{"text":"impl Serialize for ConnectedPilotInfo","synthetic":false,"types":[]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
