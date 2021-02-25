@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 use warp::{Filter, Rejection};
 
-use crate::{env, http::webserver_base_url, jwk::JwtKey};
+use crate::{http::webserver_base_url, jwk::JwtKey};
 
 #[derive(Deserialize)]
 struct TwitchCallback {
@@ -50,7 +50,7 @@ pub fn authorization_url(installation_id: Uuid) -> String {
     Url::parse_with_params(
         "https://id.twitch.tv/oauth2/authorize",
         &[
-            ("client_id", env("TWITCH_CLIENT_ID")),
+            ("client_id", std::env::var("TWITCH_CLIENT_ID").unwrap()),
             ("scope", "openid".to_owned()),
             ("response_type", "code".to_owned()),
             ("redirect_uri", callback_uri()),
@@ -114,8 +114,11 @@ pub async fn login_twitch(installation_id: Uuid, code: String) -> Result<(), any
         .post("https://id.twitch.tv/oauth2/token")
         .query(&[
             ("code", code),
-            ("client_id", env("TWITCH_CLIENT_ID")),
-            ("client_secret", env("TWITCH_CLIENT_SECRET")),
+            ("client_id", std::env::var("TWITCH_CLIENT_ID").unwrap()),
+            (
+                "client_secret",
+                std::env::var("TWITCH_CLIENT_SECRET").unwrap(),
+            ),
             ("grant_type", "authorization_code".to_owned()),
             ("redirect_uri", callback_uri()),
         ])
@@ -157,7 +160,7 @@ pub async fn login_twitch(installation_id: Uuid, code: String) -> Result<(), any
             reqwest::header::AUTHORIZATION,
             format!("Bearer {}", tokens.access_token),
         )
-        .header("client-id", env("TWITCH_CLIENT_ID"))
+        .header("client-id", std::env::var("TWITCH_CLIENT_ID").unwrap())
         .send()
         .await?
         .json()

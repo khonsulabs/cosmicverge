@@ -5,14 +5,23 @@ use std::path::PathBuf;
 
 use structopt::StructOpt;
 
+/// the definition of the http server.
 mod http;
+/// parsing support for JSON Web Keys
 mod jwk;
+/// controls the game loop logic
 mod orchestrator;
+/// defines procedurally generated planets
 mod planets;
+/// pub-sub message exchanging with other servers
 mod pubsub;
+/// shared connection pools
 mod redis;
+/// a helper type making it easier to read locking code
 mod redis_lock;
+/// the websocket api logic
 mod server;
+/// twitch oauth support
 mod twitch;
 
 #[derive(StructOpt, Debug)]
@@ -20,6 +29,7 @@ mod twitch;
     name = "cosmicverge",
     about = "Cosmic Verge web server and associated tools"
 )]
+/// the command line interface for the executable
 struct CLI {
     /// The command to execute
     #[structopt(subcommand)]
@@ -28,6 +38,7 @@ struct CLI {
 
 #[derive(StructOpt, Debug)]
 #[structopt(about = "commands to execute")]
+/// commands that the server can execute
 enum Command {
     Serve,
     GenerateAssets { static_folder: PathBuf },
@@ -43,10 +54,6 @@ async fn main() -> anyhow::Result<()> {
         Command::Serve => http::run_webserver().await,
         Command::GenerateAssets { static_folder } => generate_assets(static_folder).await,
     }
-}
-
-fn env(var: &str) -> String {
-    std::env::var(var).unwrap()
 }
 
 pub fn initialize_logging() {

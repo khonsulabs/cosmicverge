@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use chrono::{DateTime, Utc};
 use cosmicverge_shared::protocol::PilotId;
 use once_cell::sync::OnceCell;
-use redis::{aio::MultiplexedConnection, AsyncCommands, RedisError};
+use redis::{aio::MultiplexedConnection, AsyncCommands};
 use serde::{Deserialize, Serialize};
 use tokio::time::Duration;
 
@@ -25,7 +25,7 @@ impl Default for ConnectedPilotInfo {
     }
 }
 
-pub(crate) async fn run(mut connection: MultiplexedConnection) -> Result<(), RedisError> {
+pub(crate) async fn run(mut connection: MultiplexedConnection) -> Result<(), anyhow::Error> {
     let pilot_reader = connection_channel().1.clone();
     loop {
         let mut new_pilots = HashSet::new();
