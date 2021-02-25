@@ -112,7 +112,7 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@releases/v4
         with:
           branch: gh-pages
-          folder: target/doc/
+          folder: native/target/doc/
           git-config-name: kl-botsu
           git-config-email: botsu@khonsulabs.com
           target-folder: main/native/
