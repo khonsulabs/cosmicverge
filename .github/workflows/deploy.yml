@@ -184,7 +184,7 @@ jobs:
       - name: Generate Docs
         run: |
           cd web
-          cargo doc --no-deps --repease
+          cargo doc --no-deps --release
           cd ../native
           cargo doc --no-deps --release
           cp -r ../web/target/doc/web target/doc/
