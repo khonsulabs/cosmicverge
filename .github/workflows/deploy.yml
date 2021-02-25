@@ -103,6 +103,21 @@ jobs:
           entrypoint: /build.sh
           args: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
 
+      - name: Generate docs
+        run: |
+          cd native
+          cargo doc --no-deps
+
+      - name: Deploy Docs
+        uses: JamesIves/github-pages-deploy-action@releases/v4
+        with:
+          branch: gh-pages
+          folder: target/doc/
+          git-config-name: kl-botsu
+          git-config-email: botsu@khonsulabs.com
+          target-folder: main/native/
+          clean: true
+
       - name: Authenticate with DigitalOcean Registry
         run: |
           doctl registry login --expiry-seconds 600
