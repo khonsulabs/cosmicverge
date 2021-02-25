@@ -103,10 +103,11 @@ jobs:
           entrypoint: /build.sh
           args: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
 
-      - name: Generate docs
-        run: |
-          cd native
-          cargo doc --no-deps
+      - name: Generate Docs
+        uses: docker://khonsulabs/cosmicverge-build:latest
+        with:
+          entrypoint: /doc.sh
+          args: ${{ secrets.CLIENT_ENCRYPTION_KEY }}
 
       - name: Deploy Docs
         uses: JamesIves/github-pages-deploy-action@releases/v4
