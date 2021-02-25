@@ -60,7 +60,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: Production
     if: github.ref == 'refs/heads/main'
-    needs: test
+    # needs: test
 
     # Service containers to run with `runner-job`
     services:
