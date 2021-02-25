@@ -38,7 +38,7 @@ jobs:
 
       - name: Configure environment for CI postgres
         run: |
-          echo "DATABASE_URL=postgres://postgres:postgres@postgres:$POSTGRES_PORT/postgres" >> .env
+          echo "DATABASE_URL=postgres://postgres:postgres@localhost:$POSTGRES_PORT/postgres" >> .env
         env:
           POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
 
@@ -127,7 +127,7 @@ jobs:
 
       - name: Configure environment for CI postgres
         run: |
-          echo "DATABASE_URL=postgres://postgres:postgres@postgres:$POSTGRES_PORT/postgres" >> .env
+          echo "DATABASE_URL=postgres://postgres:postgres@localhost:$POSTGRES_PORT/postgres" >> .env
         env:
           POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
 
