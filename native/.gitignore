@@ -1,0 +1,4 @@
+# This is redundant because of the parent .gitignore,
+# but it helps Visual Studio Code not accidentally search in this folder
+target/
+*.sleddb
