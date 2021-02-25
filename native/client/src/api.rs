@@ -1,17 +1,24 @@
+use std::collections::HashMap;
+
+use async_channel::Receiver;
 use basws_client::prelude::*;
-use cosmicverge_shared::{
-    euclid::default,
-    protocol::{
-        cosmic_verge_protocol_version, CosmicVergeRequest, CosmicVergeResponse, OAuthProvider,
-    },
+use cosmicverge_shared::protocol::{
+    cosmic_verge_protocol_version, ActivePilot, CosmicVergeRequest, CosmicVergeResponse,
+    OAuthProvider, Pilot, PilotId,
 };
 
 use crate::{database::ClientDatabase, CosmicVergeClient};
+
+use self::broadcast::BroadcastChannel;
+
+mod broadcast;
 
 pub fn initialize(server_url: Url) -> CosmicVergeClient {
     let client = Client::new(ApiClient {
         server_url,
         connected_pilots_count: Default::default(),
+        pilot_information_cache: Default::default(),
+        event_emitter: BroadcastChannel::default(),
     });
     let thread_client = client.clone();
 
@@ -26,7 +33,25 @@ pub fn initialize(server_url: Url) -> CosmicVergeClient {
 #[derive(Debug)]
 pub struct ApiClient {
     pub server_url: Url,
-    pub connected_pilots_count: Handle<Option<usize>>,
+    connected_pilots_count: Handle<Option<usize>>,
+    pilot_information_cache: Handle<HashMap<PilotId, Pilot>>,
+    event_emitter: BroadcastChannel<ApiEvent>,
+}
+
+#[derive(Debug, Clone)]
+pub enum ApiEvent {
+    PilotChanged(ActivePilot),
+}
+
+impl ApiClient {
+    pub async fn connected_pilots_count(&self) -> Option<usize> {
+        let connected_pilots_count = self.connected_pilots_count.read().await;
+        *connected_pilots_count
+    }
+
+    pub async fn event_receiver(&self) -> Receiver<ApiEvent> {
+        self.event_emitter.receiver().await
+    }
 }
 
 #[async_trait]
@@ -42,7 +67,7 @@ impl ClientLogic for ApiClient {
         cosmic_verge_protocol_version()
     }
 
-    async fn state_changed(&self, state: &LoginState, client: Client<Self>) -> anyhow::Result<()> {
+    async fn state_changed(&self, state: &LoginState, _client: Client<Self>) -> anyhow::Result<()> {
         match state {
             LoginState::Disconnected => {
                 info!("Disconnected from API server");
@@ -88,7 +113,7 @@ impl ClientLogic for ApiClient {
                     error!("Could not open a browser for you. Please open this URL to proceed with authentication: {}", url);
                 }
             }
-            CosmicVergeResponse::Authenticated { user_id, pilots } => {
+            CosmicVergeResponse::Authenticated { pilots, .. } => {
                 if let Some(pilot) = pilots.first() {
                     info!("Authenticated! Picking the first pilot because avoiding UI for now");
                     client
@@ -104,19 +129,15 @@ impl ClientLogic for ApiClient {
                     .request(CosmicVergeRequest::AuthenticationUrl(OAuthProvider::Twitch))
                     .await?;
             }
-            CosmicVergeResponse::PilotChanged(_) => {
-                todo!("We have a pilot. Notify the game")
+            CosmicVergeResponse::PilotChanged(pilot) => {
+                let _ = self.event_emitter.send(ApiEvent::PilotChanged(pilot)).await;
             }
-            CosmicVergeResponse::SpaceUpdate {
-                timestamp,
-                location,
-                action,
-                ships,
-            } => {
+            CosmicVergeResponse::SpaceUpdate { .. } => {
                 info!("TODO: SpaceUpdate ignored");
             }
             CosmicVergeResponse::PilotInformation(pilot) => {
-                info!("TODO: Need to cache pilot info received");
+                let mut cache = self.pilot_information_cache.write().await;
+                cache.insert(pilot.id, pilot);
             }
             CosmicVergeResponse::Error { message } => {
                 error!("Error from API: {:?}", message);
@@ -125,7 +146,7 @@ impl ClientLogic for ApiClient {
         Ok(())
     }
 
-    async fn handle_error(&self, error: Error, client: Client<Self>) -> anyhow::Result<()> {
+    async fn handle_error(&self, error: Error, _client: Client<Self>) -> anyhow::Result<()> {
         error!("Api Error: {:?}", error);
 
         Ok(())

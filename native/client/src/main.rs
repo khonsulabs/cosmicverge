@@ -1,6 +1,6 @@
 mod api;
-mod app;
 mod database;
+mod main_window;
 
 type CosmicVergeClient = basws_client::Client<api::ApiClient>;
 
@@ -26,7 +26,7 @@ fn main() -> anyhow::Result<()> {
 
     database::ClientDatabase::initialize("cosmicverge.sleddb")?;
     let api_client = api::initialize(Url::parse("ws://localhost:7879/v1/ws").unwrap());
-    app::run(api_client)
+    main_window::run(api_client)
 }
 
 #[derive(StructOpt, Debug)]
