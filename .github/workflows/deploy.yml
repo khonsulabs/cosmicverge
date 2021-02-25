@@ -99,6 +99,17 @@ jobs:
 
           key: build-tools
 
+      - name: Install binaryen
+        run: |
+          if [ ! -f ~/binaryen/bin/wasm-opt ]; then
+            wget https://github.com/WebAssembly/binaryen/archive/version_99.tar.gz
+            mkdir ~/binaryen
+            tar -xzf version_99.tar.gz -C ~/binaryen --strip-components 1
+            cd ~/binaryen
+            cmake . 
+            make
+          fi
+
       - name: Install Rust
         uses: hecrj/setup-rust-action@v1
 
@@ -108,17 +119,6 @@ jobs:
       - name: Install Sass
         run: |
           sudo npm install -g sass
-
-      - name: Install binaryen
-        run: |
-          if [ ! -f ~/binaryen/bin/wasm-opt ]; then
-            wget https://github.com/WebAssembly/binaryen/archive/version_99.tar.gz
-            mkdir ~/binaryen
-            tar -xzf version_99.tar.gz -C /root/binaryen --strip-components 1
-            cd ~/binaryen
-            cmake . 
-            make
-          fi
 
       - uses: digitalocean/action-doctl@v2
         if: github.ref == 'refs/heads/main'
