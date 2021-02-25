@@ -10,9 +10,9 @@ use database::{
 };
 
 use crate::{
+    http::twitch,
     orchestrator::{connected_pilots, location_store::LocationStore},
     pubsub::connected_pilots_count,
-    twitch,
 };
 
 #[derive(Debug)]

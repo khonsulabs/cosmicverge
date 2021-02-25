@@ -1,6 +1,11 @@
 use once_cell::sync::OnceCell;
 use redis::aio::MultiplexedConnection;
 
+/// a helper type making it easier to read locking code
+mod lock;
+
+pub use lock::RedisLock;
+
 pub async fn initialize() {
     info!("Connecting to redis");
     let redis = connect_to_redis_multiplex().await.unwrap();

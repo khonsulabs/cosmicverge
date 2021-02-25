@@ -7,7 +7,7 @@ use redis::{aio::MultiplexedConnection, AsyncCommands};
 use serde::{Deserialize, Serialize};
 use tokio::time::Duration;
 
-use crate::redis_lock::RedisLock;
+use crate::redis::RedisLock;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ConnectedPilotInfo {

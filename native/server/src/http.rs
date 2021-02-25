@@ -4,6 +4,13 @@ use database::cosmicverge_shared::current_git_revision;
 use uuid::Uuid;
 use warp::{Filter, Reply};
 
+/// parsing support for JSON Web Keys
+mod jwk;
+/// the websocket api logic
+pub mod server;
+/// twitch oauth support
+mod twitch;
+
 #[cfg(debug_assertions)]
 pub fn static_folder() -> PathBuf {
     base_dir()
@@ -55,7 +62,7 @@ pub async fn run_webserver() -> anyhow::Result<()> {
         .expect("Error running migrations");
 
     info!("Done running migrations");
-    let websocket_server = crate::server::initialize();
+    let websocket_server = server::initialize();
     let notify_server = websocket_server.clone();
 
     crate::redis::initialize().await;
@@ -68,7 +75,7 @@ pub async fn run_webserver() -> anyhow::Result<()> {
 
     tokio::spawn(crate::orchestrator::orchestrate());
 
-    let auth = crate::twitch::callback();
+    let auth = twitch::callback();
     let websocket_route = warp::path!("ws")
         .and(warp::path::end())
         .and(warp::ws())

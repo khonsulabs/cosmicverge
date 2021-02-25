@@ -10,9 +10,9 @@ use redis::{aio::Connection, AsyncCommands};
 use tokio::time::Duration;
 
 use crate::{
+    http::server::{ConnectedAccount, CosmicVergeServer},
     orchestrator::location_store::LocationStore,
     redis::connect_to_redis,
-    server::{ConnectedAccount, CosmicVergeServer},
 };
 
 pub async fn pg_notify_loop(websockets: Server<CosmicVergeServer>) -> Result<(), anyhow::Error> {

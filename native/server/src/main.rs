@@ -7,8 +7,6 @@ use structopt::StructOpt;
 
 /// the definition of the http server.
 mod http;
-/// parsing support for JSON Web Keys
-mod jwk;
 /// controls the game loop logic
 mod orchestrator;
 /// defines procedurally generated planets
@@ -17,12 +15,6 @@ mod planets;
 mod pubsub;
 /// shared connection pools
 mod redis;
-/// a helper type making it easier to read locking code
-mod redis_lock;
-/// the websocket api logic
-mod server;
-/// twitch oauth support
-mod twitch;
 
 #[derive(StructOpt, Debug)]
 #[structopt(

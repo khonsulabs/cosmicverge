@@ -10,7 +10,8 @@ use futures::StreamExt as _;
 use redis::aio::{Connection, MultiplexedConnection};
 
 use crate::{
-    orchestrator::location_store::LocationStore, redis::connect_to_redis, redis_lock::RedisLock,
+    orchestrator::location_store::LocationStore,
+    redis::{connect_to_redis, RedisLock},
 };
 
 pub async fn run(shared_connection: MultiplexedConnection) -> Result<(), anyhow::Error> {
