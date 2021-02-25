@@ -118,7 +118,7 @@ jobs:
             cd ~/binaryen
             cmake . 
             make
-          end
+          fi
 
       - uses: digitalocean/action-doctl@v2
         if: github.ref == 'refs/heads/main'
