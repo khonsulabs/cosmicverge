@@ -107,7 +107,7 @@ jobs:
 
       - name: Install Sass
         run: |
-          npm install -g sass
+          sudo npm install -g sass
 
       - name: Install binaryen
         run: |
