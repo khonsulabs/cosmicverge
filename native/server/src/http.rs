@@ -109,6 +109,9 @@ pub async fn run_webserver() -> anyhow::Result<()> {
 
     let static_path = static_folder();
     let index_path = static_path.join("bootstrap.html");
+    if !static_path.join("pkg").join("web_bg.wasm").exists() {
+        error!("Missing WASM app resources. Run `cargo make build` inside of the web crate");
+    }
 
     #[cfg(debug_assertions)]
     let index_handler = warp::get().map(move || {
