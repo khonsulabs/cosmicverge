@@ -62,7 +62,7 @@ pub async fn wait_for_ready_to_process(
         let mut systems_processed = Vec::new();
 
         loop {
-            let (system_ids, last_timestamp): (Vec<i64>, f64) = redis::pipe()
+            let (system_ids, last_timestamp): (Vec<i64>, Option<f64>) = redis::pipe()
                 .cmd("SRANDMEMBER")
                 .arg("systems_to_process")
                 // TODO magic number needs to be a configuration
@@ -103,7 +103,9 @@ pub async fn wait_for_ready_to_process(
                     let pilots_in_system = LocationStore::pilots_in_system(system.id).await;
 
                     simulation.add_ships(pilots_in_system);
-                    simulation.step((current_timestamp - last_timestamp) as f32);
+                    if let Some(last_timestamp) = last_timestamp {
+                        simulation.step((current_timestamp - last_timestamp) as f32);
+                    }
 
                     let mut pipe = redis::pipe();
                     let mut pipe = &mut pipe;
