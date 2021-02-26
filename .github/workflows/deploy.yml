@@ -47,12 +47,10 @@ jobs:
           cargo run --bin migrator --release
 
       - name: Run tests
-        # This script should eventually run tests on the web project, and to
-        # build that we will need the BASWS_CLIENT_ENCRYPTION_KEY environment
-        # variable For tests, it can be an arbitrary 32-charcter value, for
-        # example, this string: abcdefghijklmnopqrstuvwxzy123456.
         run: |
           cargo test --release --verbose
+        env:
+          BASWS_CLIENT_ENCRYPTION_KEY: abcdefghijklmnopqrstuvwxzy123456
 
   deploy:
     runs-on: ubuntu-latest
