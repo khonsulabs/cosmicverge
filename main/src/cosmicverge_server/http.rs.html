@@ -136,6 +136,9 @@
 <span id="133">133</span>
 <span id="134">134</span>
 <span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">convert</span>::<span class="ident">Infallible</span>, <span class="ident">path</span>::<span class="ident">PathBuf</span>};
 
@@ -248,6 +251,9 @@
 
     <span class="kw">let</span> <span class="ident">static_path</span> <span class="op">=</span> <span class="ident">static_folder</span>();
     <span class="kw">let</span> <span class="ident">index_path</span> <span class="op">=</span> <span class="ident">static_path</span>.<span class="ident">join</span>(<span class="string">&quot;bootstrap.html&quot;</span>);
+    <span class="kw">if</span> <span class="op">!</span><span class="ident">static_path</span>.<span class="ident">join</span>(<span class="string">&quot;pkg&quot;</span>).<span class="ident">join</span>(<span class="string">&quot;web_bg.wasm&quot;</span>).<span class="ident">exists</span>() {
+        <span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;Missing WASM app resources. Run `cargo make build` inside of the web crate&quot;</span>);
+    }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug_assertions</span>)]</span>
     <span class="kw">let</span> <span class="ident">index_handler</span> <span class="op">=</span> <span class="ident">warp</span>::<span class="ident">get</span>().<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> {
