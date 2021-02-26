@@ -123,6 +123,13 @@ jobs:
         run: |
           sudo npm install -g sass
 
+      - name: Install x11 dependencies for Kludgine
+        run: |
+          sudo apt-get install -yqq \
+            libxcb-render-util0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev
+
       - uses: digitalocean/action-doctl@v2
         if: github.ref == 'refs/heads/main'
         with:
