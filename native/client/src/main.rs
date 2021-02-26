@@ -1,4 +1,5 @@
 mod api;
+mod cache;
 mod database;
 mod main_window;
 
@@ -25,8 +26,7 @@ fn main() -> anyhow::Result<()> {
         .try_init()?;
 
     database::ClientDatabase::initialize("cosmicverge.sleddb")?;
-    let api_client = api::initialize(Url::parse("ws://localhost:7879/v1/ws").unwrap());
-    main_window::run(api_client)
+    main_window::run()
 }
 
 #[derive(StructOpt, Debug)]

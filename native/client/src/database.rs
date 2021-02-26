@@ -21,6 +21,35 @@ impl ClientDatabase {
         Ok(())
     }
 
+    pub fn installation_config() -> Option<InstallationConfig> {
+        if let Ok(Some(config_bytes)) = client_db().get(b"installation_config") {
+            serde_cbor::from_slice(config_bytes.as_bytes()).ok()
+        } else {
+            None
+        }
+    }
+
+    pub fn set_installation_config(config: &InstallationConfig) -> sled::Result<()> {
+        client_db()
+            .insert(b"installation_config", serde_cbor::to_vec(&config).unwrap())
+            .map(|_| ())
+    }
+
+    pub fn load_cached_resource(source_url: &str) -> sled::Result<Option<Vec<u8>>> {
+        let tree = client_db().open_tree(b"cached_resources")?;
+        let ivec = tree.get(source_url.as_bytes())?;
+
+        Ok(ivec.map(|vec| vec.to_vec()))
+    }
+
+    pub async fn store_cached_resource(source_url: &str, data: &[u8]) -> sled::Result<()> {
+        let db = client_db();
+        let tree = db.open_tree(b"cached_resources")?;
+        tree.insert(source_url.as_bytes(), data)?;
+        db.flush_async().await?;
+        Ok(())
+    }
+
     // pub fn last_tiles_timestamp() -> Option<DateTime<Utc>> {
     //     let last_tiles_timestamp = client_db().get(b"last_tiles_timestamp").ok().flatten()?;
     //     let last_tiles_timestamp = std::str::from_utf8(&last_tiles_timestamp).ok()?;
@@ -37,20 +66,6 @@ impl ClientDatabase {
     //         )
     //         .map(|_| ())
     // }
-
-    pub fn installation_config() -> Option<InstallationConfig> {
-        if let Ok(Some(config_bytes)) = client_db().get(b"installation_config") {
-            serde_cbor::from_slice(config_bytes.as_bytes()).ok()
-        } else {
-            None
-        }
-    }
-
-    pub fn set_installation_config(config: &InstallationConfig) -> sled::Result<()> {
-        client_db()
-            .insert(b"installation_config", serde_cbor::to_vec(&config).unwrap())
-            .map(|_| ())
-    }
 
     // pub async fn save_tiles(tiles: &[MapTile]) -> sled::Result<()> {
     //     let mut latest_timestamp = None;

@@ -6,7 +6,10 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-kludgine = "0.0.2"
+kludgine = { git = "https://github.com/khonsulabs/kludgine.git", branch = "main", default-features = false, features = [
+    "tokio-rt",
+    "bundled-fonts"
+] }
 tokio = { version = "1.0", features = ["full"] }
 cosmicverge-shared = { path = "../../shared" }
 basws-client = "0.1"
@@ -25,3 +28,4 @@ serde_cbor = "0.11"
 once_cell = "1"
 webbrowser = "0.5"
 async-channel = "1"
+reqwest = "0.11"

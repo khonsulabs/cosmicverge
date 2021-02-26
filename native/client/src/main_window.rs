@@ -1,18 +1,26 @@
+use basws_client::Url;
 use cosmicverge_shared::protocol::ActivePilot;
 use kludgine::prelude::*;
 
-use crate::{api::ApiEvent, CosmicVergeClient};
+use crate::{
+    api::{self, ApiEvent},
+    CosmicVergeClient,
+};
 
-pub fn run(api_client: CosmicVergeClient) -> ! {
-    SingleWindowApplication::run(CosmicVerge {
-        api_client,
-        pilot: None,
-    });
+use self::solar_system_canvas::SolarSystemCanvas;
+
+mod solar_system_canvas;
+
+pub fn run() -> ! {
+    SingleWindowApplication::run(CosmicVerge::default());
 }
 
+#[derive(Default)]
 struct CosmicVerge {
-    api_client: CosmicVergeClient,
+    api_client: Option<CosmicVergeClient>,
     pilot: Option<ActivePilot>,
+    solar_system: Entity<SolarSystemCanvas>,
+    connected_pilots_count: Option<usize>,
 }
 
 impl WindowCreator for CosmicVerge {
@@ -36,9 +44,22 @@ impl InteractiveComponent for CosmicVerge {
         context: &mut Context,
         command: Self::Command,
     ) -> KludgineResult<()> {
-        let Command::PilotSelected(pilot) = command;
-        self.pilot = Some(pilot);
-        context.set_needs_redraw().await;
+        let Command::HandleApiEvent(event) = command;
+        match event {
+            ApiEvent::ConnectedPilotsCountUpdated(count) => {}
+            ApiEvent::PilotChanged(pilot) => {
+                info!("Received command PilotChanged {:?}", pilot);
+                let _ = self
+                    .solar_system
+                    .send(solar_system_canvas::Command::ViewSolarSystem(
+                        pilot.location.system,
+                    ))
+                    .await;
+
+                self.pilot = Some(pilot);
+                context.set_needs_redraw().await;
+            }
+        }
 
         Ok(())
     }
@@ -46,28 +67,23 @@ impl InteractiveComponent for CosmicVerge {
 
 #[derive(Debug, Clone)]
 pub enum Command {
-    PilotSelected(ActivePilot),
+    HandleApiEvent(ApiEvent),
 }
 
 #[async_trait]
 impl Component for CosmicVerge {
     async fn initialize(&mut self, context: &mut Context) -> KludgineResult<()> {
-        let event_receiver = self.api_client.event_receiver().await;
-        let callback_entity = self.entity(context);
+        info!("initializing");
+        self.api_client = Some(api::initialize(
+            Url::parse("ws://localhost:7879/v1/ws").unwrap(),
+        ));
+        self.spawn_api_event_receiver(context).await;
 
-        Runtime::spawn(async move {
-            while let Ok(event) = event_receiver.recv().await {
-                let ApiEvent::PilotChanged(pilot) = event;
-                if callback_entity
-                    .send(Command::PilotSelected(pilot))
-                    .await
-                    .is_err()
-                {
-                    break;
-                }
-            }
-        })
-        .detach();
+        self.solar_system = self
+            .new_entity(context, SolarSystemCanvas::default())
+            .await?
+            .insert()
+            .await?;
 
         Ok(())
     }
@@ -84,5 +100,28 @@ impl Component for CosmicVerge {
         }
 
         Ok(())
+    }
+}
+
+impl CosmicVerge {
+    fn api_client(&self) -> &CosmicVergeClient {
+        self.api_client.as_ref().unwrap()
+    }
+
+    async fn spawn_api_event_receiver(&self, context: &mut Context) {
+        let event_receiver = self.api_client().event_receiver().await;
+        let callback_entity = self.entity(context);
+
+        Runtime::spawn(async move {
+            while let Ok(event) = event_receiver.recv().await {
+                if callback_entity
+                    .send(Command::HandleApiEvent(event))
+                    .await
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        });
     }
 }

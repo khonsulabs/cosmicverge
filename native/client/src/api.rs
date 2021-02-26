@@ -6,6 +6,7 @@ use cosmicverge_shared::protocol::{
     cosmic_verge_protocol_version, ActivePilot, CosmicVergeRequest, CosmicVergeResponse,
     OAuthProvider, Pilot, PilotId,
 };
+use kludgine::runtime::Runtime;
 
 use crate::{database::ClientDatabase, CosmicVergeClient};
 
@@ -16,16 +17,12 @@ mod broadcast;
 pub fn initialize(server_url: Url) -> CosmicVergeClient {
     let client = Client::new(ApiClient {
         server_url,
-        connected_pilots_count: Default::default(),
         pilot_information_cache: Default::default(),
         event_emitter: BroadcastChannel::default(),
     });
-    let thread_client = client.clone();
 
-    std::thread::spawn(move || {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(thread_client.run()).unwrap()
-    });
+    let thread_client = client.clone();
+    Runtime::spawn(thread_client.run());
 
     client
 }
@@ -33,22 +30,17 @@ pub fn initialize(server_url: Url) -> CosmicVergeClient {
 #[derive(Debug)]
 pub struct ApiClient {
     pub server_url: Url,
-    connected_pilots_count: Handle<Option<usize>>,
     pilot_information_cache: Handle<HashMap<PilotId, Pilot>>,
     event_emitter: BroadcastChannel<ApiEvent>,
 }
 
 #[derive(Debug, Clone)]
 pub enum ApiEvent {
+    ConnectedPilotsCountUpdated(usize),
     PilotChanged(ActivePilot),
 }
 
 impl ApiClient {
-    pub async fn connected_pilots_count(&self) -> Option<usize> {
-        let connected_pilots_count = self.connected_pilots_count.read().await;
-        *connected_pilots_count
-    }
-
     pub async fn event_receiver(&self) -> Receiver<ApiEvent> {
         self.event_emitter.receiver().await
     }
@@ -105,8 +97,10 @@ impl ClientLogic for ApiClient {
     ) -> anyhow::Result<()> {
         match response {
             CosmicVergeResponse::ServerStatus { connected_pilots } => {
-                let mut connected_pilots_count = self.connected_pilots_count.write().await;
-                *connected_pilots_count = Some(connected_pilots);
+                let _ = self
+                    .event_emitter
+                    .send(ApiEvent::ConnectedPilotsCountUpdated(connected_pilots))
+                    .await;
             }
             CosmicVergeResponse::AuthenticateAtUrl { url } => {
                 if webbrowser::open(&url).is_err() {
