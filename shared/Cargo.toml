@@ -10,6 +10,7 @@ default = []
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
+serde_cbor = "0.11"
 uuid = { version = "0.8", features = ["v4", "serde"] }
 basws-shared = "0.1"
 thiserror = "1"
@@ -24,3 +25,4 @@ log = "0.4"
 approx = "0.4"
 redis = { version = "0.19", default-features = false, optional = true }
 rand = "0.8"
+persy = "0.11"

@@ -6,6 +6,7 @@ pub use num_traits;
 pub use strum;
 pub use strum_macros;
 
+pub mod persyutil;
 pub mod protocol;
 pub mod ships;
 pub mod solar_system_simulation;
