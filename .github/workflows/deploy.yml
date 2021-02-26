@@ -36,6 +36,13 @@ jobs:
       - name: Install Rust
         uses: hecrj/setup-rust-action@v1
 
+      - name: Install x11 dependencies for Kludgine
+        run: |
+          sudo apt-get install -yqq \
+            libxcb-render-util0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev
+
       - name: Configure environment for CI postgres
         run: |
           echo "DATABASE_URL=postgres://postgres:postgres@localhost:$POSTGRES_PORT/postgres" >> .env
