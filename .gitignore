@@ -5,7 +5,7 @@ shared/Cargo.lock
 .env
 .vscode
 .tasks
-*.sleddb
+*.persy
 
 web/static/styles.css*
 web/static/magrathea/

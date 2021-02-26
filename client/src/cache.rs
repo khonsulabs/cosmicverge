@@ -29,7 +29,7 @@ impl CachedResource {
     // TODO this isn't the best design for minimizing over-caching. It is fine for now, but if two areas of code
     // create cached resources independently pointing to the same location, it's possible for two copies of the data to end up in memory.
     // Whatever solution we do here should also be used for the other cache types
-    pub async fn new<S: ToString>(source_url: S) -> sled::Result<Arc<Self>> {
+    pub async fn new<S: ToString>(source_url: S) -> persy::PRes<Arc<Self>> {
         let cache = Self::cache();
         let source_url = source_url.to_string();
         {
@@ -42,7 +42,7 @@ impl CachedResource {
         let mut tracker = cache.tracker.write().await;
         let mut queue = false;
         let entry = tracker.track(source_url.clone(), || {
-            let data = ClientDatabase::load_cached_resource(&source_url).unwrap_or_default();
+            let data = ClientDatabase::load_cached_resource(&source_url);
             queue = data.is_none();
             let data = Handle::new(data);
             Self { source_url, data }
@@ -92,7 +92,7 @@ async fn load_resource(
     };
     let response = client.get(&source_url).send().await?;
     let data = response.bytes().await?;
-    ClientDatabase::store_cached_resource(&source_url, &data).await?;
+    ClientDatabase::store_cached_resource(&source_url, data.to_vec()).await?;
 
     let mut cache_data = resource.data.write().await;
     *cache_data = Some(data.to_vec());

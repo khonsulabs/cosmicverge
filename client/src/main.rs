@@ -5,7 +5,6 @@ mod main_window;
 
 type CosmicVergeClient = basws_client::Client<api::ApiClient>;
 
-use basws_client::Url;
 use structopt::StructOpt;
 use tracing_subscriber::prelude::*;
 
@@ -25,7 +24,7 @@ fn main() -> anyhow::Result<()> {
         )
         .try_init()?;
 
-    database::ClientDatabase::initialize("cosmicverge.sleddb")?;
+    database::ClientDatabase::initialize("cosmicverge.persy")?;
     main_window::run()
 }
 
