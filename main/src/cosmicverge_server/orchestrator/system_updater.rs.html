@@ -157,6 +157,8 @@
 <span id="154">154</span>
 <span id="155">155</span>
 <span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span>;
 
@@ -222,7 +224,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">systems_processed</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
 
         <span class="kw">loop</span> {
-            <span class="kw">let</span> (<span class="ident">system_ids</span>, <span class="ident">last_timestamp</span>): (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">i64</span><span class="op">&gt;</span>, <span class="ident">f64</span>) <span class="op">=</span> <span class="ident">redis</span>::<span class="ident">pipe</span>()
+            <span class="kw">let</span> (<span class="ident">system_ids</span>, <span class="ident">last_timestamp</span>): (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">i64</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>) <span class="op">=</span> <span class="ident">redis</span>::<span class="ident">pipe</span>()
                 .<span class="ident">cmd</span>(<span class="string">&quot;SRANDMEMBER&quot;</span>)
                 .<span class="ident">arg</span>(<span class="string">&quot;systems_to_process&quot;</span>)
                 <span class="comment">// TODO magic number needs to be a configuration</span>
@@ -263,7 +265,9 @@
                     <span class="kw">let</span> <span class="ident">pilots_in_system</span> <span class="op">=</span> <span class="ident">LocationStore</span>::<span class="ident">pilots_in_system</span>(<span class="ident">system</span>.<span class="ident">id</span>).<span class="kw">await</span>;
 
                     <span class="ident">simulation</span>.<span class="ident">add_ships</span>(<span class="ident">pilots_in_system</span>);
-                    <span class="ident">simulation</span>.<span class="ident">step</span>((<span class="ident">current_timestamp</span> <span class="op">-</span> <span class="ident">last_timestamp</span>) <span class="kw">as</span> <span class="ident">f32</span>);
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">last_timestamp</span>) <span class="op">=</span> <span class="ident">last_timestamp</span> {
+                        <span class="ident">simulation</span>.<span class="ident">step</span>((<span class="ident">current_timestamp</span> <span class="op">-</span> <span class="ident">last_timestamp</span>) <span class="kw">as</span> <span class="ident">f32</span>);
+                    }
 
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pipe</span> <span class="op">=</span> <span class="ident">redis</span>::<span class="ident">pipe</span>();
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pipe</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">pipe</span>;
