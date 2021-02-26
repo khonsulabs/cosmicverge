@@ -6,7 +6,7 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-cosmicverge-shared = { path = "../../shared" }
+cosmicverge-shared = { path = "../shared" }
 basws-server = "0.1"
 migrations = { path = "../migrations" }
 bcrypt = "0.9"

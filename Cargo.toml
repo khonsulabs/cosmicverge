@@ -1,5 +1,12 @@
 [workspace]
-members = ["server", "database", "migrations", "client"]
+members = ["server", "database", "migrations", "client", "web", "shared"]
+
+[profile.release]
+lto = true
+codegen-units = 1
+
+[profile.release.package.web]
+opt-level = "s"
 
 [patch.crates-io]
 # For tokio 1.0 compatibility

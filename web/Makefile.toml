@@ -1,7 +1,7 @@
 [tasks.wasm-pack-development]
 condition = { profiles = ["development"] }
 script = [
-    "cargo build --target wasm32-unknown-unknown",
+    "cargo build --target wasm32-unknown-unknown --target-dir ./target",
     "wasm-bindgen target/wasm32-unknown-unknown/debug/web.wasm --target web --out-dir static/pkg --out-name web --remove-producers-section",
     "wasm-opt -O0 static/pkg/web_bg.wasm -o static/pkg/web_bg.wasm"
 ]
@@ -9,7 +9,7 @@ script = [
 [tasks.wasm-pack-release]
 condition = { profiles = ["release"] }
 script = [
-    "cargo build --target wasm32-unknown-unknown --release",
+    "cargo build --target wasm32-unknown-unknown --release --target-dir ./target",
     "wasm-bindgen target/wasm32-unknown-unknown/release/web.wasm --target web --out-dir static/pkg --out-name web --remove-producers-section",
     "wasm-opt -Os static/pkg/web_bg.wasm -o static/pkg/web_bg.wasm"
 ]

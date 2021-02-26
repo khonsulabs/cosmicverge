@@ -16,8 +16,6 @@ pub fn static_folder() -> PathBuf {
     base_dir()
         .parent()
         .unwrap()
-        .parent()
-        .unwrap()
         .join("web")
         .join("static")
 }

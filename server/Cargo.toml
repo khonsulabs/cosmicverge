@@ -3,10 +3,10 @@ name = "cosmicverge-server"
 version = "0.1.0"
 authors = ["Jonathan Johnson <jon@nilobject.com>"]
 edition = "2018"
-build = "../../build.rs"
+build = "../build.rs"
 
 [dependencies]
-cosmicverge-shared = { path = "../../shared", features = ["redis"] }
+cosmicverge-shared = { path = "../shared", features = ["redis"] }
 database = { path = "../database" }
 tokio = { version = "1.0", features = ["full"] }
 warp = "0.3"
