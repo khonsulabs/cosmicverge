@@ -1,10 +1,10 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use async_channel::Receiver;
 use basws_client::prelude::*;
 use cosmicverge_shared::protocol::{
     cosmic_verge_protocol_version, ActivePilot, CosmicVergeRequest, CosmicVergeResponse,
-    OAuthProvider, Pilot, PilotId,
+    OAuthProvider, Pilot, PilotId, PilotLocation, PilotedShip, PilotingAction,
 };
 use kludgine::runtime::Runtime;
 
@@ -30,14 +30,26 @@ pub fn initialize(server_url: Url) -> CosmicVergeClient {
 #[derive(Debug)]
 pub struct ApiClient {
     pub server_url: Url,
-    pilot_information_cache: Handle<HashMap<PilotId, Pilot>>,
+    pub pilot_information_cache: Handle<PilotInformationCache>,
     event_emitter: BroadcastChannel<ApiEvent>,
+}
+
+#[derive(Debug, Default)]
+pub struct PilotInformationCache {
+    info: HashMap<PilotId, Pilot>,
+    requested: HashSet<PilotId>,
 }
 
 #[derive(Debug, Clone)]
 pub enum ApiEvent {
     ConnectedPilotsCountUpdated(usize),
     PilotChanged(ActivePilot),
+    SpaceUpdate {
+        timestamp: f64,
+        location: PilotLocation,
+        action: PilotingAction,
+        ships: Vec<PilotedShip>,
+    },
 }
 
 impl ApiClient {
@@ -126,12 +138,25 @@ impl ClientLogic for ApiClient {
             CosmicVergeResponse::PilotChanged(pilot) => {
                 let _ = self.event_emitter.send(ApiEvent::PilotChanged(pilot)).await;
             }
-            CosmicVergeResponse::SpaceUpdate { .. } => {
-                info!("TODO: SpaceUpdate ignored");
+            CosmicVergeResponse::SpaceUpdate {
+                timestamp,
+                location,
+                action,
+                ships,
+            } => {
+                let _ = self
+                    .event_emitter
+                    .send(ApiEvent::SpaceUpdate {
+                        timestamp,
+                        location,
+                        action,
+                        ships,
+                    })
+                    .await;
             }
             CosmicVergeResponse::PilotInformation(pilot) => {
                 let mut cache = self.pilot_information_cache.write().await;
-                cache.insert(pilot.id, pilot);
+                cache.info.insert(pilot.id, pilot);
             }
             CosmicVergeResponse::Error { message } => {
                 error!("Error from API: {:?}", message);
@@ -144,5 +169,32 @@ impl ClientLogic for ApiClient {
         error!("Api Error: {:?}", error);
 
         Ok(())
+    }
+}
+
+impl ApiClient {
+    pub async fn pilot_information(
+        &self,
+        pilot_id: &PilotId,
+        client: &Client<Self>,
+    ) -> Option<Pilot> {
+        {
+            let cache = self.pilot_information_cache.read().await;
+            if let Some(info) = cache.info.get(pilot_id) {
+                return Some(info.clone());
+            } else if cache.requested.contains(pilot_id) {
+                // Already requested, don't spam the server with more requests
+                return None;
+            }
+        }
+
+        let mut cache = self.pilot_information_cache.write().await;
+        if !cache.requested.contains(pilot_id) {
+            cache.requested.insert(*pilot_id);
+            let _ = client
+                .request(CosmicVergeRequest::GetPilotInformation(*pilot_id))
+                .await;
+        }
+        None
     }
 }

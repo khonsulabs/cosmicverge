@@ -11,12 +11,12 @@ use self::solar_system_canvas::SolarSystemCanvas;
 
 mod solar_system_canvas;
 
-pub fn run() -> ! {
-    SingleWindowApplication::run(CosmicVerge::default());
+pub fn run(server_url: &str) -> ! {
+    SingleWindowApplication::run(CosmicVerge::new(server_url));
 }
 
-#[derive(Default)]
 struct CosmicVerge {
+    server_url: String,
     api_client: Option<CosmicVergeClient>,
     pilot: Option<ActivePilot>,
     solar_system: Entity<SolarSystemCanvas>,
@@ -46,9 +46,11 @@ impl InteractiveComponent for CosmicVerge {
     ) -> KludgineResult<()> {
         let Command::HandleApiEvent(event) = command;
         match event {
-            ApiEvent::ConnectedPilotsCountUpdated(count) => {}
+            ApiEvent::ConnectedPilotsCountUpdated(count) => {
+                self.connected_pilots_count = Some(count);
+                // TODO set up a label for this
+            }
             ApiEvent::PilotChanged(pilot) => {
-                info!("Received command PilotChanged {:?}", pilot);
                 let _ = self
                     .solar_system
                     .send(solar_system_canvas::Command::ViewSolarSystem(
@@ -58,6 +60,22 @@ impl InteractiveComponent for CosmicVerge {
 
                 self.pilot = Some(pilot);
                 context.set_needs_redraw().await;
+            }
+            ApiEvent::SpaceUpdate {
+                timestamp,
+                location,
+                action,
+                ships,
+            } => {
+                let _ = self
+                    .solar_system
+                    .send(solar_system_canvas::Command::SpaceUpdate {
+                        timestamp,
+                        location,
+                        action,
+                        ships,
+                    })
+                    .await;
             }
         }
 
@@ -73,37 +91,35 @@ pub enum Command {
 #[async_trait]
 impl Component for CosmicVerge {
     async fn initialize(&mut self, context: &mut Context) -> KludgineResult<()> {
-        info!("initializing");
-        self.api_client = Some(api::initialize(
-            Url::parse("ws://localhost:7879/v1/ws").unwrap(),
-        ));
+        self.api_client = Some(api::initialize(Url::parse(&self.server_url).unwrap()));
         self.spawn_api_event_receiver(context).await;
 
         self.solar_system = self
-            .new_entity(context, SolarSystemCanvas::default())
+            .new_entity(
+                context,
+                SolarSystemCanvas::new(self.api_client.clone().unwrap()),
+            )
             .await?
             .insert()
             .await?;
 
-        Ok(())
-    }
-
-    async fn update(&mut self, context: &mut Context) -> KludgineResult<()> {
-        Ok(())
-    }
-
-    async fn render(&mut self, context: &mut StyledContext, layout: &Layout) -> KludgineResult<()> {
-        if let Some(active_pilot) = &self.pilot {
-            Text::span(&active_pilot.pilot.name, context.effective_style()?.clone())
-                .render_at(context.scene(), Point::new(0.0, 120.0), TextWrap::NoWrap)
-                .await?;
-        }
+        self.register_fonts(context).await?;
 
         Ok(())
     }
 }
 
 impl CosmicVerge {
+    pub fn new(server_url: impl ToString) -> Self {
+        Self {
+            server_url: server_url.to_string(),
+            api_client: None,
+            pilot: None,
+            solar_system: Default::default(),
+            connected_pilots_count: None,
+        }
+    }
+
     fn api_client(&self) -> &CosmicVergeClient {
         self.api_client.as_ref().unwrap()
     }
@@ -123,5 +139,18 @@ impl CosmicVerge {
                 }
             }
         });
+    }
+
+    async fn register_fonts(&self, context: &mut Context) -> KludgineResult<()> {
+        context
+            .scene()
+            .register_font(&include_font!("fonts/orbitron/Orbitron-Regular.ttf"))
+            .await;
+        context
+            .scene()
+            .register_font(&include_font!("fonts/orbitron/Orbitron-Bold.ttf"))
+            .await;
+
+        Ok(())
     }
 }

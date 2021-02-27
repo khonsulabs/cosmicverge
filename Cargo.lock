@@ -824,6 +824,7 @@ dependencies = [
  "async-channel",
  "basws-client",
  "byteorder",
+ "chrono",
  "cosmicverge-shared",
  "kludgine",
  "once_cell",
