@@ -31,11 +31,9 @@ impl ClientDatabase {
     }
 
     fn set_configuration_by_key<V: Serialize>(key: &str, value: &V) -> persy::PRes<()> {
-        KeyValueIndex::named("configuration", ValueMode::REPLACE).set(
-            key.to_string(),
-            value,
-            client_db(),
-        )
+        KeyValueIndex::named("configuration", ValueMode::REPLACE)
+            .set(key.to_string(), value, client_db().into())
+            .map(|_| ())
     }
 
     fn configuration_by_key<D: DeserializeOwned>(key: &str) -> Option<D> {
@@ -45,7 +43,8 @@ impl ClientDatabase {
         // within Persey -- IndexType should be implemented for &str, but it's
         // invalid if its used outside of get methods, so potentially a second
         // trait type needs to be used for the get methods
-        KeyValueIndex::named("configuration", ValueMode::REPLACE).get(&key.to_string(), client_db())
+        KeyValueIndex::named("configuration", ValueMode::REPLACE)
+            .get(&key.to_string(), &mut client_db().into())
     }
 
     pub fn installation_config() -> Option<InstallationConfig> {
@@ -58,15 +57,17 @@ impl ClientDatabase {
 
     pub fn load_cached_resource(source_url: &str) -> Option<Vec<u8>> {
         Index::named("cached_resources", ValueMode::REPLACE)
-            .get(&source_url.to_string(), client_db())
+            .get(&source_url.to_string(), &mut client_db().into())
             .map(|value: ByteVec| value.0.to_vec())
     }
 
     pub async fn store_cached_resource(source_url: &str, data: Vec<u8>) -> persy::PRes<()> {
-        Index::named("cached_resources", ValueMode::REPLACE).set(
-            source_url.to_string(),
-            ByteVec::from(data),
-            client_db(),
-        )
+        Index::named("cached_resources", ValueMode::REPLACE)
+            .set(
+                source_url.to_string(),
+                ByteVec::from(data),
+                client_db().into(),
+            )
+            .map(|_| ())
     }
 }

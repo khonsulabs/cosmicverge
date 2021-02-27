@@ -1,7 +1,7 @@
-use persy::{ByteVec, IndexType, PRes, Persy, ValueMode};
+use persy::{ByteVec, IndexType, PRes, ValueMode};
 use serde::{de::DeserializeOwned, Serialize};
 
-use super::{read::PersyReadable, Index};
+use super::{Index, PersyConnection};
 
 pub struct KeyValueIndex<'a, K> {
     index: Index<'a, K, ByteVec>,
@@ -17,16 +17,17 @@ where
         }
     }
 
-    pub fn set<V: Serialize>(&self, key: K, value: &V, db: &Persy) -> PRes<()> {
+    pub fn set<'c, V: Serialize>(
+        &self,
+        key: K,
+        value: &V,
+        db: PersyConnection<'c>,
+    ) -> PRes<PersyConnection<'c>> {
         self.index
             .set(key, ByteVec::from(serde_cbor::to_vec(value).unwrap()), db)
     }
 
-    pub fn get<D: DeserializeOwned, DB: Into<PersyReadable<'a>>>(
-        &self,
-        key: &K,
-        db: DB,
-    ) -> Option<D> {
+    pub fn get<'c, D: DeserializeOwned>(&self, key: &K, db: &mut PersyConnection<'c>) -> Option<D> {
         self.index
             .get(key, db)
             .map(|value| serde_cbor::from_slice(&value.0).ok())

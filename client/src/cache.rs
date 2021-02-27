@@ -3,7 +3,7 @@ use std::sync::Arc;
 use basws_client::Handle;
 use kludgine::runtime::Runtime;
 
-use crate::{database::ClientDatabase, CosmicVergeClient};
+use crate::database::ClientDatabase;
 use async_channel::{Receiver, Sender};
 use once_cell::sync::OnceCell;
 

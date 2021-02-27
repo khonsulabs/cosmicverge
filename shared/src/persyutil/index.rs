@@ -1,6 +1,6 @@
-use persy::{IndexType, PRes, Persy, Value, ValueMode};
+use persy::{IndexType, PRes, Value, ValueMode};
 
-use super::read::PersyReadable;
+use super::PersyConnection;
 
 pub struct Index<'a, K, V> {
     name: &'a str,
@@ -21,36 +21,40 @@ where
         }
     }
 
-    pub fn ensure_index_exists(&'a self, db: &Persy) -> PRes<()> {
+    pub fn ensure_index_exists<'c>(&self, db: PersyConnection<'c>) -> PRes<PersyConnection<'c>> {
         if !db.exists_index(self.name)? {
             let mut tx = db.begin()?;
             // Check that the segment wasn't created by another caller before creating it
             if !tx.exists_index(self.name)? {
                 // TODO ValueMode feels like it should be clone
                 tx.create_index::<K, V>(self.name, self.value_mode.clone())?;
-                let prepared = tx.prepare()?;
-                return prepared.commit();
+                tx = tx.commit()?;
             }
+
+            return Ok(tx);
         }
 
-        Ok(())
+        Ok(db)
     }
 
-    pub fn set(&self, key: K, value: V, db: &Persy) -> PRes<()> {
-        self.ensure_index_exists(db)?;
-
-        let mut tx = db.begin()?;
-        tx.put(self.name, key, value)?;
-        let prepared = tx.prepare()?;
-        prepared.commit()
-    }
-
-    pub fn get<DB: Into<PersyReadable<'a>>>(&self, key: &K, db: DB) -> Option<V> {
-        let mut db = db.into();
+    pub fn get<'c>(&self, key: &K, db: &mut PersyConnection<'c>) -> Option<V> {
         if let Ok(Some(Value::SINGLE(value))) = db.get::<K, V>(self.name, &key) {
             Some(value)
         } else {
             None
         }
+    }
+
+    pub fn set<'c>(
+        &self,
+        key: K,
+        value: V,
+        mut db: PersyConnection<'c>,
+    ) -> PRes<PersyConnection<'c>> {
+        db = self.ensure_index_exists(db)?;
+
+        let mut tx = db.begin()?;
+        tx.put(self.name, key, value)?;
+        tx.commit()
     }
 }
