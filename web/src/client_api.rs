@@ -45,7 +45,7 @@ impl ClientLogic for CosmicVergeApiClient {
 
     #[cfg(debug_assertions)]
     fn server_url(&self) -> Url {
-        Url::parse("ws://10.0.0.130:7879/v1/ws").unwrap()
+        Url::parse("ws://localhost:7879/v1/ws").unwrap()
     }
 
     #[cfg(not(debug_assertions))]

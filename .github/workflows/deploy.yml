@@ -99,12 +99,13 @@ jobs:
             ~/.cargo/.crates2.json
             ~/.cargo/bin/wasm-bindgen
             ~/binaryen/bin/wasm-opt
+            ~/binaryen/lib/libbinaryen.so
 
           key: build-tools
 
       - name: Install binaryen
         run: |
-          if [ ! -f ~/binaryen/bin/wasm-opt ]; then
+          if [ ! -f ~/binaryen/lib/libbinaryen.so ]; then
             wget https://github.com/WebAssembly/binaryen/archive/version_99.tar.gz
             mkdir ~/binaryen
             tar -xzf version_99.tar.gz -C ~/binaryen --strip-components 1
