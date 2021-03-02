@@ -233,8 +233,8 @@ impl InteractiveComponent for SolarSystemCanvas {
             Command::SpaceUpdate {
                 timestamp,
                 location,
-                action,
                 ships,
+                ..
             } => {
                 self.simulator
                     .update(ships, location.system, timestamp, current_timestamp());

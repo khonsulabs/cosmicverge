@@ -125,6 +125,7 @@ impl SolarSystem {
         self
     }
 
+    #[allow(dead_code)] // This will be used eventually when we have more art
     fn with_background(mut self, background: &'static str) -> Self {
         self.background = Some(background);
         self

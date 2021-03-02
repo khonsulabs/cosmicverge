@@ -1927,9 +1927,9 @@ dependencies = [
 
 [[package]]
 name = "h2"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b67e66362108efccd8ac053abafc8b7a8d86a37e6e48fc4f6f7485eb5e9e6a5"
+checksum = "d832b01df74254fe364568d6ddc294443f61cbec82816b60904303af87efae78"
 dependencies = [
  "bytes",
  "fnv",
@@ -1942,7 +1942,6 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
- "tracing-futures",
 ]
 
 [[package]]
@@ -2327,7 +2326,7 @@ dependencies = [
 [[package]]
 name = "kludgine"
 version = "0.0.2"
-source = "git+https://github.com/khonsulabs/kludgine.git?branch=main#0d6bb9df697c04b0734b0fc97cc03400027005b1"
+source = "git+https://github.com/khonsulabs/kludgine.git?branch=main#86d73692d9cedbf15c258b992f54ea7c8f45b8b9"
 dependencies = [
  "anyhow",
  "anymap",
@@ -3847,9 +3846,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.63"
+version = "1.0.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43535db9747a4ba938c0ce0a98cc631a46ebf943c9e1d604e091df6007620bf6"
+checksum = "799e97dc9fdae36a5c8b8f2cae9ce2ee9fdce2058c57a93e6099d919fd982f79"
 dependencies = [
  "indexmap",
  "itoa",
