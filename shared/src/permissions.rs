@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use once_cell::sync::OnceCell;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 
@@ -27,6 +27,26 @@ pub enum Permission {
 }
 
 #[derive(
+    Clone,
+    Copy,
+    Hash,
+    Eq,
+    PartialEq,
+    Debug,
+    Serialize,
+    Deserialize,
+    strum_macros::EnumString,
+    strum_macros::ToString,
+    strum_macros::EnumIter,
+)]
+pub enum AccountPermission {
+    PermanentBan,
+    TemporaryBan,
+    List,
+    View,
+}
+
+#[derive(
     Hash,
     Eq,
     PartialEq,
@@ -43,8 +63,7 @@ pub enum Service {
 
 impl Service {
     pub fn permissions(&self) -> Vec<Permission> {
-        static SERVICE_MAP: OnceCell<HashMap<Service, Vec<Permission>>> = OnceCell::new();
-        SERVICE_MAP.get_or_init(|| {
+        static SERVICE_MAP: Lazy<HashMap<Service, Vec<Permission>>> = Lazy::new(|| {
             let mut permissions = HashMap::<Service, Vec<Permission>>::new();
             for permission in Permission::iter() {
                 let service_permissions = permissions.entry(permission.service()).or_default();
@@ -52,8 +71,8 @@ impl Service {
             }
 
             permissions
-        })[self]
-            .clone()
+        });
+        SERVICE_MAP[self].clone()
     }
 }
 
