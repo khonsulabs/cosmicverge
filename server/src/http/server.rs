@@ -3,7 +3,7 @@ use cosmicverge_shared::protocol::{self, ActivePilot};
 use database::{
     basws_server::prelude::*,
     cosmicverge_shared::protocol::{
-        cosmic_verge_protocol_version_requirements, CosmicVergeRequest, CosmicVergeResponse,
+        cosmic_verge_protocol_version_requirements, Request, Response,
         OAuthProvider,
     },
     schema::{convert_db_pilots, Account, Installation, Pilot, PilotError},
@@ -56,8 +56,8 @@ pub fn initialize() -> Server<CosmicVergeServer> {
 
 #[async_trait]
 impl ServerLogic for CosmicVergeServer {
-    type Request = CosmicVergeRequest;
-    type Response = CosmicVergeResponse;
+    type Request = Request;
+    type Response = Response;
     type Client = ClientData;
     type Account = ConnectedAccount;
     type AccountId = i64;
@@ -69,22 +69,19 @@ impl ServerLogic for CosmicVergeServer {
         _server: &Server<Self>,
     ) -> anyhow::Result<RequestHandling<Self::Response>> {
         match request {
-            CosmicVergeRequest::Fly(action) => {
-                if let Some(pilot_id) = client
-                    .map_client(|c| c.pilot.as_ref().map(|p| p.id()))
-                    .await
-                {
+            Request::Fly(action) => {
+                if let Some(pilot_id) = client.map_client(|c| c.as_ref().map(|p| p.id())).await {
                     LocationStore::set_piloting_action(pilot_id, &action).await?;
                     Ok(RequestHandling::NoResponse)
                 } else {
                     anyhow::bail!("attempted to fly without having a pilot selected")
                 }
             }
-            CosmicVergeRequest::AuthenticationUrl(provider) => match provider {
+            Request::AuthenticationUrl(provider) => match provider {
                 OAuthProvider::Twitch => {
                     if let Some(installation) = client.installation().await {
                         Ok(RequestHandling::Respond(
-                            CosmicVergeResponse::AuthenticateAtUrl {
+                            Response::AuthenticateAtUrl {
                                 url: twitch::authorization_url(installation.id),
                             },
                         ))
@@ -93,45 +90,45 @@ impl ServerLogic for CosmicVergeServer {
                     }
                 }
             },
-            CosmicVergeRequest::SelectPilot(pilot_id) => {
+            Request::SelectPilot(pilot_id) => {
                 if let Some(pilot) = Pilot::load(pilot_id, database::pool()).await? {
                     self.select_pilot(pilot, client).await
                 } else {
-                    Ok(RequestHandling::Respond(CosmicVergeResponse::error(
+                    Ok(RequestHandling::Respond(Response::error(
                         "not-found",
                     )))
                 }
             }
-            CosmicVergeRequest::CreatePilot { name } => {
+            Request::CreatePilot { name } => {
                 if let Some(connected_account) = client.account().await {
                     let connected_account = connected_account.read().await;
                     match Pilot::create(connected_account.account.id, &name, database::pool()).await
                     {
                         Ok(pilot) => self.select_pilot(pilot, client).await,
                         Err(PilotError::NameAlreadyTaken) => Ok(RequestHandling::Respond(
-                            CosmicVergeResponse::error("pilot-error-name-already-taken"),
+                            Response::error("pilot-error-name-already-taken"),
                         )),
                         Err(PilotError::InvalidName) => Ok(RequestHandling::Respond(
-                            CosmicVergeResponse::error("pilot-error-invalid-name"),
+                            Response::error("pilot-error-invalid-name"),
                         )),
                         Err(PilotError::TooManyPilots) => Ok(RequestHandling::Respond(
-                            CosmicVergeResponse::error("pilot-error-too-many-pilots"),
+                            Response::error("pilot-error-too-many-pilots"),
                         )),
                         Err(PilotError::Database(db)) => Err(db.into()),
                     }
                 } else {
-                    Ok(RequestHandling::Respond(CosmicVergeResponse::error(
+                    Ok(RequestHandling::Respond(Response::error(
                         "unauthenticated",
                     )))
                 }
             }
             // TODO this should use a cache
-            CosmicVergeRequest::GetPilotInformation(pilot_id) => {
+            Request::GetPilotInformation(pilot_id) => {
                 match Pilot::load(pilot_id, database::pool()).await? {
                     Some(pilot) => Ok(RequestHandling::Respond(
-                        CosmicVergeResponse::PilotInformation(pilot.into()),
+                        Response::PilotInformation(pilot.into()),
                     )),
-                    None => Ok(RequestHandling::Respond(CosmicVergeResponse::error(
+                    None => Ok(RequestHandling::Respond(Response::error(
                         "pilot not found",
                     ))),
                 }
@@ -184,11 +181,14 @@ impl ServerLogic for CosmicVergeServer {
             };
 
             Ok(RequestHandling::Respond(
-                CosmicVergeResponse::Authenticated { account, pilots },
+                Response::Authenticated {
+                    account,
+                    pilots,
+                },
             ))
         } else {
             Ok(RequestHandling::Respond(
-                CosmicVergeResponse::Unauthenticated,
+                Response::Unauthenticated,
             ))
         }
     }
@@ -202,8 +202,8 @@ impl ServerLogic for CosmicVergeServer {
         _client: &ConnectedClient<Self>,
     ) -> anyhow::Result<RequestHandling<Self::Response>> {
         Ok(RequestHandling::Batch(vec![
-            CosmicVergeResponse::Unauthenticated,
-            CosmicVergeResponse::ServerStatus {
+            Response::Unauthenticated,
+            Response::ServerStatus {
                 connected_pilots: connected_pilots_count(),
             },
         ]))
@@ -253,7 +253,7 @@ impl CosmicVergeServer {
         &self,
         pilot: Pilot,
         client: &ConnectedClient<Self>,
-    ) -> anyhow::Result<RequestHandling<CosmicVergeResponse>> {
+    ) -> anyhow::Result<RequestHandling<Response>> {
         let api_pilot = pilot.clone().into();
         let info = LocationStore::lookup(pilot.id()).await;
         client
@@ -261,7 +261,7 @@ impl CosmicVergeServer {
                 client.pilot = Some(pilot);
             })
             .await;
-        Ok(RequestHandling::Respond(CosmicVergeResponse::PilotChanged(
+        Ok(RequestHandling::Respond(Response::PilotChanged(
             ActivePilot {
                 pilot: api_pilot,
                 location: info.location,

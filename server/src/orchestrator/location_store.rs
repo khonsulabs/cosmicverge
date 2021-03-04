@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use cosmicverge_shared::{
     protocol::{
-        PilotId, PilotLocation, PilotPhysics, PilotedShip, PilotingAction, ShipInformation,
+        Id, PilotLocation, PilotPhysics, PilotedShip, Action, ShipInformation,
         SolarSystemLocation,
     },
     solar_systems::SolarSystemId,
@@ -65,11 +65,11 @@ impl LocationStore {
             .arg("pilot_ships")
             .query_async(&mut redis)
             .await?;
-        let pilots: Vec<PilotId> = pilots;
-        let locations: HashMap<PilotId, String> = locations;
-        let actions: HashMap<PilotId, String> = actions;
-        let physics: HashMap<PilotId, String> = physics;
-        let ships: HashMap<PilotId, String> = ships;
+        let pilots: Vec<Id> = pilots;
+        let locations: HashMap<Id, String> = locations;
+        let actions: HashMap<Id, String> = actions;
+        let physics: HashMap<Id, String> = physics;
+        let ships: HashMap<Id, String> = ships;
 
         let mut pilot_cache = HashMap::new();
         for pilot_id in pilots {
@@ -89,7 +89,7 @@ impl LocationStore {
             );
         }
 
-        let mut system_pilots: HashMap<SolarSystemId, Vec<PilotId>> =
+        let mut system_pilots: HashMap<SolarSystemId, Vec<Id>> =
             HashMap::with_capacity(SolarSystemId::COUNT);
         for (pilot_id, cache) in pilot_cache.iter() {
             system_pilots
@@ -104,7 +104,7 @@ impl LocationStore {
         })
     }
 
-    pub async fn lookup(pilot_id: PilotId) -> PilotCache {
+    pub async fn lookup(pilot_id: Id) -> PilotCache {
         let store = SHARED_STORE.get().expect("Uninitialized cache access");
         let cache = store.cache.read().await;
         cache
@@ -115,8 +115,8 @@ impl LocationStore {
     }
 
     pub async fn set_piloting_action(
-        pilot_id: PilotId,
-        action: &PilotingAction,
+        pilot_id: Id,
+        action: &Action,
     ) -> Result<(), redis::RedisError> {
         let store = SHARED_STORE.get().expect("Uninitialized cache access");
         let mut redis = store.redis.clone();
@@ -163,15 +163,15 @@ impl LocationStore {
 
 #[derive(Clone)]
 pub struct PilotCache {
-    pub pilot_id: PilotId,
+    pub pilot_id: Id,
     pub location: PilotLocation,
-    pub action: PilotingAction,
+    pub action: Action,
     pub ship: ShipInformation,
     pub physics: PilotPhysics,
 }
 
 impl PilotCache {
-    pub fn new_for(pilot_id: PilotId) -> Self {
+    pub fn new_for(pilot_id: Id) -> Self {
         Self {
             pilot_id,
             location: Default::default(),
@@ -195,13 +195,13 @@ impl PilotCache {
 
 #[derive(Default)]
 struct LocationCache {
-    system_pilots: HashMap<SolarSystemId, Vec<PilotId>>,
-    pilot_cache: HashMap<PilotId, PilotCache>,
+    system_pilots: HashMap<SolarSystemId, Vec<Id>>,
+    pilot_cache: HashMap<Id, PilotCache>,
 }
 
 fn parse_value_from_pilot_json_map<'de, T: Deserialize<'de> + Default>(
-    pilot_id: PilotId,
-    json_map: &'de HashMap<PilotId, String>,
+    pilot_id: Id,
+    json_map: &'de HashMap<Id, String>,
 ) -> T {
     match json_map.get(&pilot_id) {
         Some(json) => serde_json::from_str(json).unwrap_or_default(),

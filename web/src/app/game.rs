@@ -2,7 +2,7 @@ use std::{cmp::Ordering, collections::HashMap, time::Duration};
 
 use cosmicverge_shared::{
     euclid::Point2D,
-    protocol::CosmicVergeResponse,
+    protocol::Response,
     solar_systems::{universe, Pixels, SolarSystemId},
 };
 use crossbeam::channel::Sender;
@@ -455,12 +455,12 @@ impl Component for Game {
                         .send(controller::Command::UpdateServerRoundtripTime(roundtrip));
                 }
                 AgentResponse::Response(response) => match response {
-                    CosmicVergeResponse::PilotChanged(active_pilot) => {
+                    Response::PilotChanged(active_pilot) => {
                         let _ = self
                             .space_sender
                             .send(controller::Command::SetPilot(active_pilot));
                     }
-                    CosmicVergeResponse::SpaceUpdate {
+                    Response::SpaceUpdate {
                         ships,
                         location,
                         timestamp,

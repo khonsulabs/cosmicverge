@@ -200,7 +200,7 @@ impl GameController {
             self.simulator
                 .simulation
                 .as_ref()
-                .map(|s| s.lookup_ship(&pilot.pilot.id))
+                .map(|s| s.lookup_ship(pilot.pilot.id))
                 .flatten()
                 .cloned()
         } else {

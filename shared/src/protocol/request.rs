@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-use crate::protocol::{navigation::PilotingAction, OAuthProvider, PilotId};
+use crate::protocol::{navigation::Action, Id, OAuthProvider};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum CosmicVergeRequest {
+pub enum Request {
     AuthenticationUrl(OAuthProvider),
-    SelectPilot(PilotId),
+    SelectPilot(Id),
     CreatePilot { name: String },
 
-    Fly(PilotingAction),
-    GetPilotInformation(PilotId),
+    Fly(Action),
+    GetPilotInformation(Id),
 }

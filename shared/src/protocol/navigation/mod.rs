@@ -14,6 +14,7 @@ mod piloting;
 pub struct SolarSystemLocationId(pub i64);
 
 impl SolarSystemLocationId {
+    #[must_use]
     pub fn into_location<T: FromPrimitive>(self) -> Option<T> {
         T::from_i64(self.0)
     }
@@ -58,7 +59,7 @@ impl Default for PilotLocation {
     fn default() -> Self {
         Self {
             system: SolarSystemId::SM0A9F4,
-            location: SolarSystemLocation::InSpace(Default::default()),
+            location: SolarSystemLocation::InSpace(Point2D::default()),
         }
     }
 }

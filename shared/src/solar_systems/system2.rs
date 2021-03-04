@@ -20,6 +20,7 @@ impl Named for System2 {
     }
 }
 
+#[must_use]
 pub fn system() -> SolarSystem {
     SolarSystem::new(SolarSystemId::System2, Point2D::new(0., 0.))
         .define_object(System2::Sun, 196., |location| location)

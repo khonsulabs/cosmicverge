@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Utc};
-use cosmicverge_shared::protocol::PilotId;
+use cosmicverge_shared::protocol::Id;
 use once_cell::sync::OnceCell;
 use redis::{aio::MultiplexedConnection, AsyncCommands};
 use serde::{Deserialize, Serialize};
@@ -57,7 +57,7 @@ pub(crate) async fn run(mut connection: MultiplexedConnection) -> Result<(), any
         {
             let mut disconnected = HashSet::new();
             let cutoff = Utc::now() - chrono::Duration::minutes(1);
-            let connected_pilots: HashMap<PilotId, String> =
+            let connected_pilots: HashMap<Id, String> =
                 connection.hgetall("connected_pilots").await?;
             for (pilot_id, payload) in connected_pilots {
                 if let Ok(info) = serde_json::from_str::<ConnectedPilotInfo>(&payload) {
@@ -98,16 +98,16 @@ pub(crate) async fn run(mut connection: MultiplexedConnection) -> Result<(), any
 }
 
 fn connection_channel() -> &'static (
-    async_channel::Sender<PilotId>,
-    async_channel::Receiver<PilotId>,
+    async_channel::Sender<Id>,
+    async_channel::Receiver<Id>,
 ) {
     static REUSED_CHANNEL: OnceCell<(
-        async_channel::Sender<PilotId>,
-        async_channel::Receiver<PilotId>,
+        async_channel::Sender<Id>,
+        async_channel::Receiver<Id>,
     )> = OnceCell::new();
     REUSED_CHANNEL.get_or_init(async_channel::unbounded)
 }
 
-pub async fn note(pilot_id: PilotId) {
+pub async fn note(pilot_id: Id) {
     let _ = connection_channel().0.send(pilot_id).await;
 }

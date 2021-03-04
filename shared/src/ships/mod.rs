@@ -20,7 +20,7 @@ pub fn hangar() -> &'static Hangar {
 impl Hangar {
     fn new() -> Self {
         let mut hangar = Self {
-            ships: Default::default(),
+            ships: HashMap::default(),
         };
 
         hangar.insert(shuttle::ship());
@@ -32,8 +32,9 @@ impl Hangar {
         self.ships.insert(ship.id, ship);
     }
 
+    #[must_use]
     pub fn load(&self, ship: &ShipId) -> &ShipSpecification {
-        self.ships.get(&ship).unwrap()
+        self.ships.get(ship).unwrap()
     }
 }
 
@@ -46,6 +47,7 @@ pub struct ShipSpecification {
 }
 
 impl ShipSpecification {
+    #[must_use]
     pub fn acceleration(&self) -> f32 {
         self.thruster_force / self.mass
     }

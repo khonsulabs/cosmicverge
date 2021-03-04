@@ -1,9 +1,11 @@
 use basws_shared::{Version, VersionReq};
 
+#[must_use]
 pub fn cosmic_verge_protocol_version() -> Version {
     Version::parse("0.0.1").unwrap()
 }
 
+#[must_use]
 pub fn cosmic_verge_protocol_version_requirements() -> VersionReq {
     VersionReq::parse("=0.0.1").unwrap()
 }

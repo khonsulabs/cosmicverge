@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use cosmicverge_shared::{
-    protocol::{CosmicVergeRequest, CosmicVergeResponse, OAuthProvider, Pilot, PilotId},
+    protocol::{Request, Response, OAuthProvider, Pilot, Id},
     MAX_PILOTS_PER_ACCOUNT,
 };
 use wasm_bindgen::__rt::std::borrow::Cow;
@@ -44,7 +44,7 @@ pub enum Message {
     LogInWith(OAuthProvider),
     ApiMessage(AgentResponse),
     ToggleStatus,
-    SelectPilot(PilotId),
+    SelectPilot(Id),
     NewPilot,
     CreatePilot,
     ListPilots,
@@ -72,7 +72,7 @@ impl Component for HomePage {
         match msg {
             Message::LogInWith(provider) => {
                 self.api.send(AgentMessage::Request(
-                    CosmicVergeRequest::AuthenticationUrl(provider),
+                    Request::AuthenticationUrl(provider),
                 ));
                 false
             }
@@ -81,7 +81,7 @@ impl Component for HomePage {
                     self.current_storage_status = status;
                     true
                 }
-                AgentResponse::Response(CosmicVergeResponse::Error { message }) => {
+                AgentResponse::Response(Response::Error { message }) => {
                     self.error_message = message;
                     match &self.pilot_state {
                         PilotLoginState::WaitingForServer => {
@@ -110,7 +110,7 @@ impl Component for HomePage {
             }
             Message::SelectPilot(pilot_id) => {
                 self.api
-                    .send(AgentMessage::Request(CosmicVergeRequest::SelectPilot(
+                    .send(AgentMessage::Request(Request::SelectPilot(
                         pilot_id,
                     )));
                 self.pilot_state = PilotLoginState::WaitingForServer;
@@ -138,7 +138,7 @@ impl Component for HomePage {
                 };
                 let name = name.unchecked_value().unwrap();
                 self.api
-                    .send(AgentMessage::Request(CosmicVergeRequest::CreatePilot {
+                    .send(AgentMessage::Request(Request::CreatePilot {
                         name,
                     }));
 

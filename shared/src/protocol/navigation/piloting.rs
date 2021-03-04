@@ -2,36 +2,36 @@ use euclid::{Angle, Point2D, Vector2D};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    protocol::{FlightPlan, Pilot, PilotId, PilotLocation},
+    protocol::{FlightPlan, Id, Pilot, PilotLocation},
     ships::ShipId,
     solar_systems::{Solar, SolarSystemId},
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum PilotingAction {
+pub enum Action {
     Idle,
     NavigateTo(PilotLocation),
 }
 
-impl Default for PilotingAction {
+impl Default for Action {
     fn default() -> Self {
-        PilotingAction::Idle
+        Action::Idle
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PilotedShip {
-    pub pilot_id: PilotId,
+    pub pilot_id: Id,
     pub ship: ShipInformation,
     pub physics: PilotPhysics,
-    pub action: PilotingAction,
+    pub action: Action,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ActivePilot {
     pub pilot: Pilot,
     pub location: PilotLocation,
-    pub action: PilotingAction,
+    pub action: Action,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -54,11 +54,11 @@ impl Default for PilotPhysics {
     fn default() -> Self {
         Self {
             system: SolarSystemId::SM0A9F4,
-            location: Default::default(),
-            rotation: Default::default(),
-            linear_velocity: Default::default(),
-            flight_plan: Default::default(),
-            effect: Default::default(),
+            location: Point2D::default(),
+            rotation: Angle::default(),
+            linear_velocity: Vector2D::default(),
+            flight_plan: None,
+            effect: None,
         }
     }
 }

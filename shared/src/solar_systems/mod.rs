@@ -34,10 +34,11 @@ pub fn universe() -> &'static Universe {
 }
 
 impl Universe {
+    #[must_use]
     pub fn cosmic_verge() -> Self {
         let mut universe = Self {
-            solar_systems: Default::default(),
-            solar_systems_by_name: Default::default(),
+            solar_systems: HashMap::new(),
+            solar_systems_by_name: HashMap::new(),
             orbits: RwLock::new(HashMap::new()),
         };
 
@@ -67,8 +68,7 @@ impl Universe {
     pub fn find_by_name(&self, name: &str) -> Option<&SolarSystem> {
         self.solar_systems_by_name
             .get(&name.trim().to_ascii_lowercase())
-            .map(|id| self.solar_systems.get(id))
-            .flatten()
+            .and_then(|id| self.solar_systems.get(id))
     }
 
     pub fn systems(&self) -> impl Iterator<Item = &SolarSystem> {
@@ -82,9 +82,9 @@ impl Universe {
         }
     }
 
-    pub fn orbits_for(&self, system: &SolarSystemId) -> SolarSystemOrbits {
+    pub fn orbits_for(&self, system: SolarSystemId) -> SolarSystemOrbits {
         let orbits = self.orbits.read().unwrap();
-        orbits[system].clone()
+        orbits[&system].clone()
     }
 }
 
@@ -102,9 +102,9 @@ impl SolarSystem {
         Self {
             id,
             galaxy_location,
-            background: Default::default(),
-            locations: Default::default(),
-            locations_by_owners: Default::default(),
+            background: None,
+            locations: HashMap::new(),
+            locations_by_owners: HashMap::new(),
         }
     }
 
@@ -126,7 +126,7 @@ impl SolarSystem {
     }
 
     #[allow(dead_code)] // This will be used eventually when we have more art
-    fn with_background(mut self, background: &'static str) -> Self {
+    const fn with_background(mut self, background: &'static str) -> Self {
         self.background = Some(background);
         self
     }
@@ -144,14 +144,14 @@ impl SolarSystem {
                     // The orbit will swing y twice as much as the x axis
                     let truncated_epoch = (timestamp as i64 + object.orbit_seed)
                         % (LONGEST_PLANET_ORBIT_DAYS * 24 * 60 * 60);
-                    let period_in_seconds = object.orbit_days as f64 * 24. * 60. * 60.;
+                    let period_in_seconds = f64::from(object.orbit_days) * 24. * 60. * 60.;
                     let orbit_amount =
                         (truncated_epoch as f64 % period_in_seconds) / period_in_seconds;
                     let orbit_angle = orbit_amount as f32 * PI * 2.;
 
                     let (x, y) = Angle::radians(orbit_angle).sin_cos();
                     let relative_location = Vector2D::new(
-                        x * object.orbit_distance * 2. + object.orbit_distance / 2.,
+                        (x * object.orbit_distance).mul_add(2., object.orbit_distance / 2.),
                         y * object.orbit_distance,
                     );
 
@@ -214,6 +214,7 @@ impl SolarSystemObject {
     //     self
     // }
 
+    #[must_use]
     pub fn image_url(&self) -> Cow<'static, str> {
         if let Some(image) = self.image {
             Cow::from(image)

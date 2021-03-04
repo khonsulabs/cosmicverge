@@ -2,17 +2,17 @@ use std::{collections::HashMap, sync::RwLock};
 
 use basws_yew::{prelude::*, ClientLogic, ClientState, Error};
 use cosmicverge_shared::protocol::{
-    cosmic_verge_protocol_version, CosmicVergeRequest, CosmicVergeResponse, Pilot, PilotId,
+    cosmic_verge_protocol_version, Request, Response, Pilot, Id,
 };
 use once_cell::sync::OnceCell;
 use url::Url;
 
-pub type AgentMessage = basws_yew::AgentMessage<CosmicVergeRequest>;
-pub type AgentResponse = basws_yew::AgentResponse<CosmicVergeResponse>;
+pub type AgentMessage = basws_yew::AgentMessage<Request>;
+pub type AgentResponse = basws_yew::AgentResponse<Response>;
 pub type ApiAgent = basws_yew::ApiAgent<CosmicVergeApiClient>;
 pub type ApiBridge = basws_yew::ApiBridge<CosmicVergeApiClient>;
 
-static PILOT_CACHE: OnceCell<RwLock<HashMap<PilotId, Pilot>>> = OnceCell::new();
+static PILOT_CACHE: OnceCell<RwLock<HashMap<Id, Pilot>>> = OnceCell::new();
 
 fn cache_pilot_information(pilot: Pilot) {
     let mut cache = PILOT_CACHE
@@ -22,7 +22,7 @@ fn cache_pilot_information(pilot: Pilot) {
     cache.insert(pilot.id, pilot);
 }
 
-pub fn pilot_information(pilot_id: PilotId, api: &mut ApiBridge) -> Option<Pilot> {
+pub fn pilot_information(pilot_id: Id, api: &mut ApiBridge) -> Option<Pilot> {
     if let Some(cache) = PILOT_CACHE.get() {
         let cache = cache.read().unwrap();
         if let Some(pilot) = cache.get(&pilot_id) {
@@ -31,7 +31,7 @@ pub fn pilot_information(pilot_id: PilotId, api: &mut ApiBridge) -> Option<Pilot
     }
 
     api.send(AgentMessage::Request(
-        CosmicVergeRequest::GetPilotInformation(pilot_id),
+        Request::GetPilotInformation(pilot_id),
     ));
     None
 }
@@ -40,8 +40,8 @@ pub fn pilot_information(pilot_id: PilotId, api: &mut ApiBridge) -> Option<Pilot
 pub struct CosmicVergeApiClient;
 
 impl ClientLogic for CosmicVergeApiClient {
-    type Request = CosmicVergeRequest;
-    type Response = CosmicVergeResponse;
+    type Request = Request;
+    type Response = Response;
 
     #[cfg(debug_assertions)]
     fn server_url(&self) -> Url {
@@ -67,17 +67,17 @@ impl ClientLogic for CosmicVergeApiClient {
         _original_request_id: Option<u64>,
     ) -> anyhow::Result<()> {
         match response {
-            CosmicVergeResponse::AuthenticateAtUrl { url } => {
+            Response::AuthenticateAtUrl { url } => {
                 let window = web_sys::window().expect("Need a window");
                 window
                     .location()
                     .set_href(&url)
                     .expect("Error setting location for redirect");
             }
-            CosmicVergeResponse::PilotInformation(pilot) => {
+            Response::PilotInformation(pilot) => {
                 cache_pilot_information(pilot);
             }
-            CosmicVergeResponse::Error { message } => error!("Error from server: {:?}", message),
+            Response::Error { message } => error!("Error from server: {:?}", message),
             _ => {}
         }
 

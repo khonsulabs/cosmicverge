@@ -16,7 +16,7 @@ use super::{
 use cosmicverge_shared::{
     euclid::{Point2D, Scale, Size2D, Vector2D},
     protocol::{
-        CosmicVergeRequest, PilotLocation, PilotingAction, SolarSystemLocation,
+        Request, PilotLocation, Action, SolarSystemLocation,
         SolarSystemLocationId,
     },
     ships::{hangar, ShipId},
@@ -152,7 +152,7 @@ impl View for SystemRenderer {
         if count == 2 && (button == Button::Left || button == Button::OneFinger) {
             let location = self.convert_canvas_to_world(location.to_f32(), &view.canvas);
             if view.active_pilot.is_some() {
-                let request = CosmicVergeRequest::Fly(PilotingAction::NavigateTo(PilotLocation {
+                let request = Request::Fly(Action::NavigateTo(PilotLocation {
                     location: SolarSystemLocation::InSpace(location),
                     system: self.solar_system.id,
                 }));
@@ -222,7 +222,7 @@ impl View for SystemRenderer {
             }
         }
 
-        let orbits = universe().orbits_for(&self.solar_system.id);
+        let orbits = universe().orbits_for(self.solar_system.id);
         for (id, location) in self.solar_system.locations.iter() {
             let image = &self.location_images[id];
             if image.complete() {

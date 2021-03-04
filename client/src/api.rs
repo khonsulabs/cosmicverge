@@ -3,8 +3,8 @@ use std::collections::{HashMap, HashSet};
 use async_channel::Receiver;
 use basws_client::prelude::*;
 use cosmicverge_shared::protocol::{
-    cosmic_verge_protocol_version, ActivePilot, CosmicVergeRequest, CosmicVergeResponse,
-    OAuthProvider, Pilot, PilotId, PilotLocation, PilotedShip, PilotingAction,
+    cosmic_verge_protocol_version, ActivePilot, Request, Response,
+    OAuthProvider, Pilot, Id, PilotLocation, PilotedShip, Action,
 };
 use kludgine::runtime::Runtime;
 
@@ -36,8 +36,8 @@ pub struct ApiClient {
 
 #[derive(Debug, Default)]
 pub struct PilotInformationCache {
-    info: HashMap<PilotId, Pilot>,
-    requested: HashSet<PilotId>,
+    info: HashMap<Id, Pilot>,
+    requested: HashSet<Id>,
 }
 
 #[derive(Debug, Clone)]
@@ -47,7 +47,7 @@ pub enum ApiEvent {
     SpaceUpdate {
         timestamp: f64,
         location: PilotLocation,
-        action: PilotingAction,
+        action: Action,
         ships: Vec<PilotedShip>,
     },
 }
@@ -60,8 +60,8 @@ impl ApiClient {
 
 #[async_trait]
 impl ClientLogic for ApiClient {
-    type Request = CosmicVergeRequest;
-    type Response = CosmicVergeResponse;
+    type Request = Request;
+    type Response = Response;
 
     fn server_url(&self) -> Url {
         self.server_url.clone()
@@ -108,37 +108,37 @@ impl ClientLogic for ApiClient {
         client: Client<Self>,
     ) -> anyhow::Result<()> {
         match response {
-            CosmicVergeResponse::ServerStatus { connected_pilots } => {
+            Response::ServerStatus { connected_pilots } => {
                 let _ = self
                     .event_emitter
                     .send(ApiEvent::ConnectedPilotsCountUpdated(connected_pilots))
                     .await;
             }
-            CosmicVergeResponse::AuthenticateAtUrl { url } => {
+            Response::AuthenticateAtUrl { url } => {
                 if webbrowser::open(&url).is_err() {
                     error!("Could not open a browser for you. Please open this URL to proceed with authentication: {}", url);
                 }
             }
-            CosmicVergeResponse::Authenticated { pilots, .. } => {
+            Response::Authenticated { pilots, .. } => {
                 if let Some(pilot) = pilots.first() {
                     info!("Authenticated! Picking the first pilot because avoiding UI for now");
                     client
-                        .request(CosmicVergeRequest::SelectPilot(pilot.id))
+                        .request(Request::SelectPilot(pilot.id))
                         .await?;
                 } else {
                     info!("Authenticated! But, you have no pilots. Create one in the browser at https://cosmicverge.com/ and come back");
                 }
             }
-            CosmicVergeResponse::Unauthenticated => {
+            Response::Unauthenticated => {
                 info!("Not authenticated, forcing you to try authenticating at twitch!");
                 client
-                    .request(CosmicVergeRequest::AuthenticationUrl(OAuthProvider::Twitch))
+                    .request(Request::AuthenticationUrl(OAuthProvider::Twitch))
                     .await?;
             }
-            CosmicVergeResponse::PilotChanged(pilot) => {
+            Response::PilotChanged(pilot) => {
                 let _ = self.event_emitter.send(ApiEvent::PilotChanged(pilot)).await;
             }
-            CosmicVergeResponse::SpaceUpdate {
+            Response::SpaceUpdate {
                 timestamp,
                 location,
                 action,
@@ -154,11 +154,11 @@ impl ClientLogic for ApiClient {
                     })
                     .await;
             }
-            CosmicVergeResponse::PilotInformation(pilot) => {
+            Response::PilotInformation(pilot) => {
                 let mut cache = self.pilot_information_cache.write().await;
                 cache.info.insert(pilot.id, pilot);
             }
-            CosmicVergeResponse::Error { message } => {
+            Response::Error { message } => {
                 error!("Error from API: {:?}", message);
             }
         }
@@ -175,7 +175,7 @@ impl ClientLogic for ApiClient {
 impl ApiClient {
     pub async fn pilot_information(
         &self,
-        pilot_id: &PilotId,
+        pilot_id: &Id,
         client: &Client<Self>,
     ) -> Option<Pilot> {
         {
@@ -192,7 +192,7 @@ impl ApiClient {
         if !cache.requested.contains(pilot_id) {
             cache.requested.insert(*pilot_id);
             let _ = client
-                .request(CosmicVergeRequest::GetPilotInformation(*pilot_id))
+                .request(Request::GetPilotInformation(*pilot_id))
                 .await;
         }
         None

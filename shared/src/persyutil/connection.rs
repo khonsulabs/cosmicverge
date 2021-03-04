@@ -9,7 +9,7 @@ use persy::{IndexType, PRes, Persy, Transaction, Value, ValueMode};
 /// inside of a Transaction, you currently must write two separate methods. This
 /// Type offers a solution to that pattern, and also adds rudimentary support
 /// for nested transactions (they become one large transaction).
-pub enum PersyConnection<'a> {
+pub enum Connection<'a> {
     Persy(&'a Persy),
     Transaction {
         tx: Transaction,
@@ -18,17 +18,17 @@ pub enum PersyConnection<'a> {
     },
 }
 
-impl<'a> Into<PersyConnection<'a>> for &'a Persy {
-    fn into(self) -> PersyConnection<'a> {
-        PersyConnection::Persy(self)
+impl<'a> From<&'a Persy> for Connection<'a> {
+    fn from(persy: &'a Persy) -> Connection<'a> {
+        Connection::Persy(persy)
     }
 }
 
-impl<'a> PersyConnection<'a> {
+impl<'a> Connection<'a> {
     pub fn exists_index(&self, index_name: &str) -> PRes<bool> {
         match self {
-            PersyConnection::Persy(db) => db.exists_index(index_name),
-            PersyConnection::Transaction { tx, .. } => tx.exists_index(index_name),
+            Connection::Persy(db) => db.exists_index(index_name),
+            Connection::Transaction { tx, .. } => tx.exists_index(index_name),
         }
     }
 
@@ -38,8 +38,8 @@ impl<'a> PersyConnection<'a> {
         V: IndexType,
     {
         match self {
-            PersyConnection::Persy(db) => db.get(index_name, k),
-            PersyConnection::Transaction { tx, .. } => tx.get(index_name, k),
+            Connection::Persy(db) => db.get(index_name, k),
+            Connection::Transaction { tx, .. } => tx.get(index_name, k),
         }
     }
 
@@ -49,10 +49,10 @@ impl<'a> PersyConnection<'a> {
         V: IndexType,
     {
         match self {
-            PersyConnection::Persy(_) => {
+            Connection::Persy(_) => {
                 panic!("put must always be called inside of a transaction")
             }
-            PersyConnection::Transaction { tx, .. } => tx.put(index_name, k, v),
+            Connection::Transaction { tx, .. } => tx.put(index_name, k, v),
         }
     }
 
@@ -62,10 +62,8 @@ impl<'a> PersyConnection<'a> {
         V: IndexType,
     {
         match self {
-            PersyConnection::Transaction { tx, .. } => {
-                tx.create_index::<K, V>(index_name, value_mode)
-            }
-            PersyConnection::Persy(_) => {
+            Connection::Transaction { tx, .. } => tx.create_index::<K, V>(index_name, value_mode),
+            Connection::Persy(_) => {
                 panic!("create_index must always be called inside of a transaction")
             }
         }
@@ -77,18 +75,18 @@ impl<'a> PersyConnection<'a> {
     /// started. If the connection is already inside of a Transaction, the
     /// number of required calls to commit() to successfully commit the
     /// transaction is incremented.
-    pub fn begin(self) -> PRes<PersyConnection<'a>> {
+    pub fn begin(self) -> PRes<Connection<'a>> {
         match self {
-            PersyConnection::Persy(db) => Ok(PersyConnection::Transaction {
+            Connection::Persy(db) => Ok(Connection::Transaction {
                 tx: db.begin()?,
                 begin_count: 1,
                 original_reference: db,
             }),
-            PersyConnection::Transaction {
+            Connection::Transaction {
                 tx,
                 begin_count,
                 original_reference,
-            } => Ok(PersyConnection::Transaction {
+            } => Ok(Connection::Transaction {
                 tx,
                 begin_count: begin_count + 1,
                 original_reference,
@@ -101,9 +99,9 @@ impl<'a> PersyConnection<'a> {
     /// commit() decrements the counter required to commit. Once an equal number
     /// of commit() and begin() calls has been reached, the transaction is
     /// committed and the connection reverts to a plain Persy connection.
-    pub fn commit(self) -> PRes<PersyConnection<'a>> {
+    pub fn commit(self) -> PRes<Connection<'a>> {
         match self {
-            PersyConnection::Transaction {
+            Connection::Transaction {
                 tx,
                 begin_count,
                 original_reference,
@@ -113,16 +111,16 @@ impl<'a> PersyConnection<'a> {
                 if begin_count == 0 {
                     let prepared = tx.prepare()?;
                     prepared.commit()?;
-                    Ok(PersyConnection::Persy(original_reference))
+                    Ok(Connection::Persy(original_reference))
                 } else {
-                    Ok(PersyConnection::Transaction {
+                    Ok(Connection::Transaction {
                         tx,
                         begin_count,
                         original_reference,
                     })
                 }
             }
-            PersyConnection::Persy(_) => panic!("commit called before begin()"),
+            Connection::Persy(_) => panic!("commit called before begin()"),
         }
     }
 
@@ -130,18 +128,18 @@ impl<'a> PersyConnection<'a> {
     ///
     /// Aborts the current transaction regardless of how many times begin() was
     /// called. The connection returned will be the original Persy reference.
-    pub fn rollback(self) -> PRes<PersyConnection<'a>> {
+    pub fn rollback(self) -> PRes<Connection<'a>> {
         match self {
-            PersyConnection::Transaction {
+            Connection::Transaction {
                 tx,
                 original_reference,
                 ..
             } => {
                 let prepared = tx.prepare()?;
                 prepared.rollback()?;
-                Ok(PersyConnection::Persy(original_reference))
+                Ok(Connection::Persy(original_reference))
             }
-            PersyConnection::Persy(_) => panic!("rollback called outside of a transaction"),
+            Connection::Persy(_) => panic!("rollback called outside of a transaction"),
         }
     }
 }

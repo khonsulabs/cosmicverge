@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use cosmicverge_shared::{
     euclid::Vector2D,
-    protocol::{PilotLocation, PilotedShip, PilotingAction, SolarSystemLocationId},
+    protocol::{PilotLocation, PilotedShip, Action, SolarSystemLocationId},
     ships::{hangar, ShipId},
     solar_systems::{universe, Solar, SolarSystem, SolarSystemId},
 };
@@ -93,7 +93,7 @@ impl Component for SolarSystemCanvas {
                     .await;
             }
 
-            let orbits = universe().orbits_for(&cache.solar_system.id);
+            let orbits = universe().orbits_for(cache.solar_system.id);
             for (id, location) in cache.solar_system.locations.iter() {
                 if let Some(image) = cache.object_images.get(id) {
                     if let Some(texture) = image.texture().await? {
@@ -210,7 +210,7 @@ pub enum Command {
     SpaceUpdate {
         timestamp: f64,
         location: PilotLocation,
-        action: PilotingAction,
+        action: Action,
         ships: Vec<PilotedShip>,
     },
 }
