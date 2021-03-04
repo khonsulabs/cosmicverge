@@ -48,14 +48,17 @@ impl<T> SqlxResultExt<T> for Result<T, sqlx::Error> {
 
 #[cfg(test)]
 mod test_util {
-    use once_cell::sync::OnceCell;
+    use once_cell::sync::Lazy;
     use sqlx::PgPool;
+    use tokio::sync::Mutex;
 
     pub async fn pool() -> &'static PgPool {
-        static INITIALIZED: OnceCell<()> = OnceCell::new();
-        if INITIALIZED.set(()).is_ok() {
+        static INITIALIZED: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
+        let mut initialized = INITIALIZED.lock().await;
+        if !*initialized {
             dotenv::dotenv().unwrap();
             migrations::initialize().await;
+            *initialized = true;
         }
         migrations::pool()
     }
