@@ -1,7 +1,5 @@
 use sqlx_simple_migrator::{migration_name, Migration};
 
-use crate::migrations::{JONS_ACCOUNT_ID, JONS_TWITCH_ID};
-
 pub fn migration() -> Migration {
     Migration::new(migration_name!())
         .with_up(
@@ -50,9 +48,5 @@ pub fn migration() -> Migration {
             )
         "#,
         )
-        .with_up(&format!(
-            "INSERT INTO twitch_profiles (id, account_id, username) values ({}, {}, 'ectondev')",
-            JONS_TWITCH_ID, JONS_ACCOUNT_ID
-        ))
         .with_down("DROP TABLE IF EXISTS twitch_profiles")
 }

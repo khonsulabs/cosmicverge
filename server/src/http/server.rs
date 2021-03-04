@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use cosmicverge_shared::protocol::ActivePilot;
+use cosmicverge_shared::protocol::{self, ActivePilot};
 use database::{
     basws_server::prelude::*,
     cosmicverge_shared::protocol::{
@@ -8,6 +8,7 @@ use database::{
     },
     schema::{convert_db_pilots, Account, Installation, Pilot, PilotError},
 };
+use protocol::AccountPermissions;
 
 use crate::{
     http::twitch,
@@ -18,6 +19,7 @@ use crate::{
 #[derive(Debug)]
 pub struct ConnectedAccount {
     pub account: Account,
+    pub permissions: AccountPermissions,
 }
 
 impl ConnectedAccount {
@@ -25,7 +27,12 @@ impl ConnectedAccount {
         let account = Account::find_by_installation_id(installation_id, database::pool())
             .await?
             .ok_or_else(|| anyhow::anyhow!("no profile found"))?;
-        Ok(Self { account })
+        let permissions = account.permissions(database::pool()).await?;
+
+        Ok(Self {
+            account,
+            permissions,
+        })
     }
 }
 
@@ -38,6 +45,11 @@ impl Identifiable for ConnectedAccount {
 
 pub struct CosmicVergeServer;
 
+#[derive(Default, Debug)]
+pub struct ClientData {
+    pub pilot: Option<Pilot>,
+}
+
 pub fn initialize() -> Server<CosmicVergeServer> {
     Server::new(CosmicVergeServer)
 }
@@ -46,7 +58,7 @@ pub fn initialize() -> Server<CosmicVergeServer> {
 impl ServerLogic for CosmicVergeServer {
     type Request = CosmicVergeRequest;
     type Response = CosmicVergeResponse;
-    type Client = Option<Pilot>;
+    type Client = ClientData;
     type Account = ConnectedAccount;
     type AccountId = i64;
 
@@ -58,7 +70,10 @@ impl ServerLogic for CosmicVergeServer {
     ) -> anyhow::Result<RequestHandling<Self::Response>> {
         match request {
             CosmicVergeRequest::Fly(action) => {
-                if let Some(pilot_id) = client.map_client(|c| c.as_ref().map(|p| p.id())).await {
+                if let Some(pilot_id) = client
+                    .map_client(|c| c.pilot.as_ref().map(|p| p.id()))
+                    .await
+                {
                     LocationStore::set_piloting_action(pilot_id, &action).await?;
                     Ok(RequestHandling::NoResponse)
                 } else {
@@ -160,11 +175,16 @@ impl ServerLogic for CosmicVergeServer {
                 Pilot::list_by_account_id(connected_account.account.id, database::pool()).await?,
             );
 
+            let account = protocol::Account {
+                id: connected_account.account.id,
+                permissions: connected_account
+                    .account
+                    .permissions(database::pool())
+                    .await?,
+            };
+
             Ok(RequestHandling::Respond(
-                CosmicVergeResponse::Authenticated {
-                    user_id: connected_account.account.id,
-                    pilots,
-                },
+                CosmicVergeResponse::Authenticated { account, pilots },
             ))
         } else {
             Ok(RequestHandling::Respond(
@@ -218,7 +238,7 @@ impl ServerLogic for CosmicVergeServer {
         client: &ConnectedClient<Self>,
     ) -> anyhow::Result<RequestHandling<Self::Response>> {
         if let Some(pilot_id) = client
-            .map_client(|client| client.as_ref().map(|p| p.id()))
+            .map_client(|client| client.pilot.as_ref().map(|p| p.id()))
             .await
         {
             connected_pilots::note(pilot_id).await;
@@ -238,7 +258,7 @@ impl CosmicVergeServer {
         let info = LocationStore::lookup(pilot.id()).await;
         client
             .map_client_mut(|client| {
-                *client = Some(pilot);
+                client.pilot = Some(pilot);
             })
             .await;
         Ok(RequestHandling::Respond(CosmicVergeResponse::PilotChanged(

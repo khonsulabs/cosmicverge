@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::protocol::{ActivePilot, Pilot, PilotLocation, PilotedShip, PilotingAction};
+use crate::protocol::{Account, ActivePilot, Pilot, PilotLocation, PilotedShip, PilotingAction};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum CosmicVergeResponse {
@@ -11,7 +11,7 @@ pub enum CosmicVergeResponse {
         url: String,
     },
     Authenticated {
-        user_id: i64,
+        account: Account,
         pilots: Vec<Pilot>,
     },
     Unauthenticated,

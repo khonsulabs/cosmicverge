@@ -1111,14 +1111,17 @@ dependencies = [
  "bcrypt",
  "chrono",
  "cosmicverge-shared",
+ "dotenv",
  "either",
  "futures",
  "maplit",
  "migrations",
+ "once_cell",
  "serde",
  "serde_json",
  "sqlx",
  "thiserror",
+ "tokio",
  "uuid",
 ]
 

@@ -13,11 +13,7 @@ mod twitch;
 
 #[cfg(debug_assertions)]
 pub fn static_folder() -> PathBuf {
-    base_dir()
-        .parent()
-        .unwrap()
-        .join("web")
-        .join("static")
+    base_dir().parent().unwrap().join("web").join("static")
 }
 
 #[cfg(not(debug_assertions))]

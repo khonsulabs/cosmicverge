@@ -45,3 +45,18 @@ impl<T> SqlxResultExt<T> for Result<T, sqlx::Error> {
         }
     }
 }
+
+#[cfg(test)]
+mod test_util {
+    use once_cell::sync::OnceCell;
+    use sqlx::PgPool;
+
+    pub async fn pool() -> &'static PgPool {
+        static INITIALIZED: OnceCell<()> = OnceCell::new();
+        if INITIALIZED.set(()).is_ok() {
+            dotenv::dotenv().unwrap();
+            migrations::initialize().await;
+        }
+        migrations::pool()
+    }
+}
