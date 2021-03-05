@@ -49,7 +49,7 @@ pub struct ClientData {
     pub pilot: Option<Pilot>,
 }
 
-pub fn initialize() -> Server<CosmicVergeServer> {
+pub fn initialize() -> basws_server::Server<Server> {
     basws_server::Server::new(Server)
 }
 
@@ -69,7 +69,8 @@ impl ServerLogic for Server {
     ) -> anyhow::Result<RequestHandling<Self::Response>> {
         match request {
             Request::Fly(action) => {
-                if let Some(pilot_id) = client.map_client(|c| c.as_ref().map(Pilot::id)).await {
+                if let Some(pilot_id) = client.map_client(|c| c.pilot.as_ref().map(Pilot::id)).await
+                {
                     LocationStore::set_piloting_action(pilot_id, &action).await?;
                     Ok(RequestHandling::NoResponse)
                 } else {
@@ -225,7 +226,7 @@ impl ServerLogic for Server {
         client: &ConnectedClient<Self>,
     ) -> anyhow::Result<RequestHandling<Self::Response>> {
         if let Some(pilot_id) = client
-            .map_client(|client| client.as_ref().map(Pilot::id))
+            .map_client(|client| client.pilot.as_ref().map(Pilot::id))
             .await
         {
             connected_pilots::note(pilot_id).await;
