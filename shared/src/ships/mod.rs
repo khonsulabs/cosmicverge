@@ -9,7 +9,7 @@ use crate::solar_systems::Named;
 mod shuttle;
 
 pub struct Hangar {
-    ships: HashMap<ShipId, ShipSpecification>,
+    ships: HashMap<Id, ShipSpecification>,
 }
 
 pub fn hangar() -> &'static Hangar {
@@ -33,13 +33,13 @@ impl Hangar {
     }
 
     #[must_use]
-    pub fn load(&self, ship: &ShipId) -> &ShipSpecification {
+    pub fn load(&self, ship: &Id) -> &ShipSpecification {
         self.ships.get(ship).unwrap()
     }
 }
 
 pub struct ShipSpecification {
-    pub id: ShipId,
+    pub id: Id,
     pub image: &'static str,
     pub mass: f32,
     pub rotation: f32,
@@ -67,14 +67,14 @@ impl ShipSpecification {
     FromPrimitive,
     ToPrimitive,
 )]
-pub enum ShipId {
+pub enum Id {
     Shuttle,
 }
 
-impl Named for ShipId {
+impl Named for Id {
     fn name(&self) -> &'static str {
         match self {
-            ShipId::Shuttle => "Shuttle",
+            Id::Shuttle => "Shuttle",
         }
     }
 }

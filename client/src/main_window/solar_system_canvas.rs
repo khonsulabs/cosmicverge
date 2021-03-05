@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 use cosmicverge_shared::{
     euclid::Vector2D,
     protocol::navigation,
-    ships::{hangar, ShipId},
+    ships::{hangar, self},
     solar_systems::{universe, Solar, SolarSystem, SystemId},
 };
 use kludgine::prelude::*;
@@ -20,7 +20,7 @@ pub struct SolarSystemCanvas {
     look_at: Point<f32, Solar>,
     zoom: f32,
     simulator: Simulator,
-    ship_images: HashMap<ShipId, Arc<CachedImage>>,
+    ship_images: HashMap<ships::Id, Arc<CachedImage>>,
 }
 
 struct SolarSystemCache {

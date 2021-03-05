@@ -4,7 +4,7 @@ use client_api::ApiAgent;
 use cosmicverge_shared::{
     euclid::{Point2D, Scale, Size2D, Vector2D},
     protocol::{navigation, Request},
-    ships::{hangar, ShipId},
+    ships::{hangar, self},
     solar_systems::{universe, Named, Pixels, Solar, SolarSystem, SystemId},
 };
 use wasm_bindgen::{JsCast, JsValue};
@@ -26,7 +26,7 @@ pub struct SystemRenderer {
     zoom: f32,
     backdrop: Option<HtmlImageElement>,
     location_images: HashMap<navigation::SolarSystemId, HtmlImageElement>,
-    ship_images: HashMap<ShipId, HtmlImageElement>,
+    ship_images: HashMap<ships::Id, HtmlImageElement>,
     solar_system: &'static SolarSystem,
     api: ApiBridge,
     camera_mode: CameraMode,

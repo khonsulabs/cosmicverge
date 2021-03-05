@@ -93,7 +93,7 @@ pub struct SolarSystem {
     pub id: SystemId,
     pub background: Option<&'static str>,
     pub galaxy_location: Point2D<f32, Galactic>,
-    pub locations: HashMap<navigation::SolarSystemId, SolarSystemObject>,
+    pub locations: HashMap<navigation::SolarSystemId, Object>,
     pub locations_by_owners: HashMap<Option<navigation::SolarSystemId>, Vec<navigation::SolarSystemId>>,
 }
 
@@ -108,13 +108,13 @@ impl SolarSystem {
         }
     }
 
-    fn define_object<F: FnOnce(SolarSystemObject) -> SolarSystemObject, ID: NamedLocation>(
+    fn define_object<F: FnOnce(Object) -> Object, ID: NamedLocation>(
         mut self,
         id: ID,
         size: f32,
         initializer: F,
     ) -> Self {
-        let location = initializer(SolarSystemObject::new(self.id, id, size));
+        let location = initializer(Object::new(self.id, id, size));
         let id = location.id.id();
         let owner_locations = self
             .locations_by_owners
@@ -171,7 +171,7 @@ impl SolarSystem {
 }
 
 #[derive(Debug)]
-pub struct SolarSystemObject {
+pub struct Object {
     pub id: Box<dyn NamedLocation>,
     pub system: SystemId,
     pub image: Option<&'static str>,
@@ -182,7 +182,7 @@ pub struct SolarSystemObject {
     pub owned_by: Option<Box<dyn NamedLocation>>,
 }
 
-impl SolarSystemObject {
+impl Object {
     fn new<ID: NamedLocation>(system: SystemId, id: ID, size: f32) -> Self {
         Self {
             id: Box::new(id),

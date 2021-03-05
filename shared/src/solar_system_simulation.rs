@@ -9,13 +9,13 @@ use crate::{
     solar_systems::{universe, Solar, SystemId},
 };
 
-pub struct SolarSystemSimulation {
+pub struct Simulation {
     pub timestamp: f64,
     system: SystemId,
     ships: HashMap<pilot::Id, navigation::Ship>,
 }
 
-impl SolarSystemSimulation {
+impl Simulation {
     #[must_use]
     pub fn new(system: SystemId, timestamp: f64) -> Self {
         Self {

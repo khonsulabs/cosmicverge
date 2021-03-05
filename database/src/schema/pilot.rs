@@ -86,7 +86,7 @@ impl Pilot {
     }
 
     pub async fn load<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
-        id: Id,
+        id: ships::Id,
         executor: E,
     ) -> Result<Option<Self>, DatabaseError> {
         sqlx::query_as!(

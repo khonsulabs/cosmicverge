@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use cosmicverge_shared::{
     euclid::Length,
     protocol::navigation,
-    solar_systems::{sm0a9f4::SM0A9F4, system2::System2, universe, SolarSystemObject, SystemId},
+    solar_systems::{sm0a9f4::SM0A9F4, system2::System2, universe, self, SystemId},
 };
 use magrathea::{
     planet::{GeneratedPlanet, SurfaceDefinition},
@@ -291,13 +291,13 @@ pub fn planet_for_location(
 
 pub fn generate_planet_for_location(
     system: &SystemId,
-    location: &SolarSystemObject,
+    location: &solar_systems::Object,
 ) -> GeneratedPlanet<ObjectElevations> {
     let planet = planet_for_location(system, &location.id.id());
     planet.generate(location.size as u32, &None)
 }
 
-fn create_world(static_path: &PathBuf, system: &SystemId, location: &SolarSystemObject) {
+fn create_world(static_path: &PathBuf, system: &SystemId, location: &solar_systems::Object) {
     let generated = generate_planet_for_location(system, &location);
 
     let system_folder = static_path

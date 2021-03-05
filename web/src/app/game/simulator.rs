@@ -1,14 +1,14 @@
 use cosmicverge_shared::{
     euclid::{Angle, Point2D},
     protocol::navigation,
-    solar_system_simulation::SolarSystemSimulation,
+    solar_system_simulation::Simulation,
     solar_systems::{Solar, SystemId},
 };
 
 #[derive(Default)]
 pub struct Simulator {
     pub simulation_system: Option<SystemId>,
-    pub simulation: Option<SolarSystemSimulation>,
+    pub simulation: Option<Simulation>,
     pub server_round_trip_avg: Option<f64>,
     last_physics_update: Option<f64>,
 }
@@ -28,7 +28,7 @@ impl Simulator {
             .as_ref()
             .map(|s| s.timestamp)
             .unwrap_or(timestamp);
-        let mut simulation = SolarSystemSimulation::new(solar_system, timestamp);
+        let mut simulation = Simulation::new(solar_system, timestamp);
         simulation.add_ships(ships);
 
         // Since the simulation keeps track of how much time it thinks has elapsed, we know how much time

@@ -3,7 +3,7 @@ use std::time::Duration;
 use cosmicverge_shared::{
     num_traits::FromPrimitive,
     protocol::navigation,
-    solar_system_simulation::SolarSystemSimulation,
+    solar_system_simulation::Simulation,
     solar_systems::{universe, SystemId},
 };
 use futures::StreamExt as _;
@@ -98,7 +98,7 @@ pub async fn wait_for_ready_to_process(
                         .get(&SystemId::from_i64(system_id).expect("invalid solar system id"));
                     debug!("updating {:?}", system.id);
 
-                    let mut simulation = SolarSystemSimulation::new(system.id, current_timestamp);
+                    let mut simulation = Simulation::new(system.id, current_timestamp);
                     // TODO limit to pilots *connected*
                     let pilots_in_system = LocationStore::pilots_in_system(system.id).await;
 

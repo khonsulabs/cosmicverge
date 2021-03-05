@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     protocol::{navigation, pilot, Pilot},
-    ships::ShipId,
+    ships,
     solar_systems::{Solar, SystemId},
 };
 
@@ -65,14 +65,14 @@ impl Default for Physics {
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ShipInformation {
-    pub ship: ShipId,
+    pub ship: ships::Id,
     pub mass_of_cargo: f32,
 }
 
 impl Default for ShipInformation {
     fn default() -> Self {
         Self {
-            ship: ShipId::Shuttle,
+            ship: ships::Id::Shuttle,
             mass_of_cargo: 0.,
         }
     }
