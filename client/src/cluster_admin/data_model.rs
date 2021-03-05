@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use cosmicverge_shared::solar_systems::{universe, SystemId};
+use cosmicverge_shared::solar_systems::{universe, SolarSystemId};
 
 pub type NodeId = u32;
 pub type SolarSystemServerId = u32;
@@ -48,7 +48,7 @@ impl Cluster {
     pub fn add_server_for_system(
         &mut self,
         node_id: NodeId,
-        system: SystemId,
+        system: SolarSystemId,
         is_leader: bool,
     ) {
         let id = self.servers.len() as SolarSystemServerId + 100;
@@ -68,7 +68,7 @@ impl Cluster {
 pub struct SolarSystemServer {
     pub id: SolarSystemServerId,
     pub node_id: NodeId,
-    pub system: SystemId,
+    pub system: SolarSystemId,
     pub is_leader: bool,
 }
 

@@ -2,13 +2,13 @@ use euclid::{Angle, Point2D, Vector2D};
 use serde::{Deserialize, Serialize};
 
 use super::{Action, Ship};
-use crate::solar_systems::{Solar, SystemId};
+use crate::solar_systems::{Solar, SolarSystemId};
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Plan {
     pub made_for: Action,
     pub elapsed_in_current_maneuver: f32,
-    pub initial_system: SystemId,
+    pub initial_system: SolarSystemId,
     pub initial_position: Point2D<f32, Solar>,
     pub initial_velocity: Vector2D<f32, Solar>,
     pub initial_orientation: Angle<f32>,
@@ -17,7 +17,7 @@ pub struct Plan {
 
 impl Plan {
     #[must_use]
-    pub fn new(ship: &Ship, current_system: SystemId) -> Self {
+    pub fn new(ship: &Ship, current_system: SolarSystemId) -> Self {
         Self {
             made_for: ship.action.clone(),
             initial_system: current_system,
@@ -30,7 +30,7 @@ impl Plan {
     }
 
     #[must_use]
-    pub fn last_system(&self) -> SystemId {
+    pub fn last_system(&self) -> SolarSystemId {
         if let Some(maneuver) = self.maneuvers.last() {
             maneuver.system
         } else {
@@ -69,7 +69,7 @@ impl Plan {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Maneuver {
     pub kind: ManeuverKind,
-    pub system: SystemId,
+    pub system: SolarSystemId,
     pub duration: f32,
     pub target: Point2D<f32, Solar>,
     pub target_rotation: Angle<f32>,

@@ -2,12 +2,12 @@ use cosmicverge_shared::{
     euclid::{Angle, Point2D},
     protocol::navigation,
     solar_system_simulation::Simulation,
-    solar_systems::{Solar, SystemId},
+    solar_systems::{Solar, SolarSystemId},
 };
 
 #[derive(Default)]
 pub struct Simulator {
-    pub simulation_system: Option<SystemId>,
+    pub simulation_system: Option<SolarSystemId>,
     pub simulation: Option<Simulation>,
     pub server_round_trip_avg: Option<f64>,
     last_physics_update: Option<f64>,
@@ -17,7 +17,7 @@ impl Simulator {
     pub fn update(
         &mut self,
         ships: Vec<navigation::Ship>,
-        solar_system: SystemId,
+        solar_system: SolarSystemId,
         timestamp: f64,
         now: f64,
     ) {

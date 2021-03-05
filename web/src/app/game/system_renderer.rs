@@ -5,7 +5,7 @@ use cosmicverge_shared::{
     euclid::{Point2D, Scale, Size2D, Vector2D},
     protocol::{navigation, Request},
     ships::{hangar, self},
-    solar_systems::{universe, Named, Pixels, Solar, SolarSystem, SystemId},
+    solar_systems::{universe, Named, Pixels, Solar, SolarSystem, SolarSystemId},
 };
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{HtmlElement, HtmlImageElement};
@@ -40,7 +40,7 @@ enum CameraMode {
 }
 
 impl SystemRenderer {
-    pub fn new(solar_system: &SystemId) -> Self {
+    pub fn new(solar_system: &SolarSystemId) -> Self {
         let solar_system = universe().get(solar_system);
         let mut renderer = Self {
             camera_mode: CameraMode::TrackPlayer,
@@ -73,7 +73,7 @@ impl SystemRenderer {
         }
     }
 
-    fn switch_system(&mut self, system: SystemId, hud: &HtmlElement) {
+    fn switch_system(&mut self, system: SolarSystemId, hud: &HtmlElement) {
         if self.solar_system.id != system {
             self.solar_system = universe().get(&system);
             self.load_solar_system_images();

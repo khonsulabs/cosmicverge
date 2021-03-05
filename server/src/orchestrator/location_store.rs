@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use cosmicverge_shared::{
     protocol::{navigation, pilot},
-    solar_systems::SystemId,
+    solar_systems::SolarSystemId,
     strum::EnumCount,
 };
 use once_cell::sync::OnceCell;
@@ -86,7 +86,7 @@ impl LocationStore {
             );
         }
 
-        let mut system_pilots: HashMap<SystemId, Vec<pilot::Id>> = HashMap::with_capacity(SystemId::COUNT);
+        let mut system_pilots: HashMap<SolarSystemId, Vec<pilot::Id>> = HashMap::with_capacity(SolarSystemId::COUNT);
         for (pilot_id, cache) in pilot_cache.iter() {
             system_pilots
                 .entry(cache.location.system)
@@ -125,7 +125,7 @@ impl LocationStore {
             .await
     }
 
-    pub async fn pilots_in_system(system: SystemId) -> Vec<navigation::Ship> {
+    pub async fn pilots_in_system(system: SolarSystemId) -> Vec<navigation::Ship> {
         let store = SHARED_STORE.get().expect("Uninitialized cache access");
         let cache = store.cache.read().await;
         if let Some(pilots) = cache.system_pilots.get(&system) {
@@ -138,7 +138,7 @@ impl LocationStore {
         }
     }
 
-    pub async fn pilots_by_system() -> HashMap<SystemId, Vec<navigation::Ship>> {
+    pub async fn pilots_by_system() -> HashMap<SolarSystemId, Vec<navigation::Ship>> {
         let store = SHARED_STORE.get().expect("Uninitialized cache access");
         let cache = store.cache.read().await;
         cache
@@ -191,7 +191,7 @@ impl PilotCache {
 
 #[derive(Default)]
 struct LocationCache {
-    system_pilots: HashMap<SystemId, Vec<pilot::Id>>,
+    system_pilots: HashMap<SolarSystemId, Vec<pilot::Id>>,
     pilot_cache: HashMap<pilot::Id, PilotCache>,
 }
 

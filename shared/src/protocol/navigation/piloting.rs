@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     protocol::{navigation, pilot, Pilot},
     ships,
-    solar_systems::{Solar, SystemId},
+    solar_systems::{Solar, SolarSystemId},
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -36,7 +36,7 @@ pub struct ActivePilot {
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Physics {
-    pub system: SystemId,
+    pub system: SolarSystemId,
     pub location: Point2D<f32, Solar>,
     pub rotation: Angle<f32>,
     pub linear_velocity: Vector2D<f32, Solar>,
@@ -53,7 +53,7 @@ pub enum ShipEffect {
 impl Default for Physics {
     fn default() -> Self {
         Self {
-            system: SystemId::SM0A9F4,
+            system: SolarSystemId::SM0A9F4,
             location: Point2D::default(),
             rotation: Angle::default(),
             linear_velocity: Vector2D::default(),

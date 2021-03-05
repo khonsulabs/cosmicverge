@@ -47,14 +47,14 @@ impl Display for SolarSystemId {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Pilot {
-    pub system: solar_systems::SystemId,
+    pub system: solar_systems::SolarSystemId,
     pub location: System,
 }
 
 impl Default for Pilot {
     fn default() -> Self {
         Self {
-            system: solar_systems::SystemId::SM0A9F4,
+            system: solar_systems::SolarSystemId::SM0A9F4,
             location: System::InSpace(Point2D::default()),
         }
     }

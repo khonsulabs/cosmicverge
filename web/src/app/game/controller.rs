@@ -1,7 +1,7 @@
 use cosmicverge_shared::{
     euclid::{Angle, Point2D, Scale, Size2D, Vector2D},
     protocol::navigation,
-    solar_systems::{Pixels, Solar, SolarSystem, SystemId},
+    solar_systems::{Pixels, Solar, SolarSystem, SolarSystemId},
 };
 use crossbeam::channel::{self, Receiver, Sender, TryRecvError};
 use wasm_bindgen::JsCast;
@@ -27,7 +27,7 @@ pub enum Command {
     UpdateServerRoundtripTime(f64),
 
     UpdateSolarSystem {
-        solar_system: SystemId,
+        solar_system: SolarSystemId,
         ships: Vec<navigation::Ship>,
         timestamp: f64,
     },
@@ -132,7 +132,7 @@ impl GameController {
         Ok(())
     }
 
-    fn view_solar_system(&mut self, solar_system: &SystemId) {
+    fn view_solar_system(&mut self, solar_system: &SolarSystemId) {
         self.set_view(SystemRenderer::new(solar_system));
     }
 
@@ -254,7 +254,7 @@ pub struct ViewContext {
     pub performance: Performance,
     pub active_pilot: Option<navigation::ActivePilot>,
     pub active_ship: Option<navigation::Ship>,
-    pub simulation_system: Option<SystemId>,
+    pub simulation_system: Option<SolarSystemId>,
     pub pilot_locations: Vec<(navigation::Ship, Point2D<f32, Solar>, Angle<f32>)>,
 }
 

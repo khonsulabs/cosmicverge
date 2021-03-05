@@ -4,7 +4,7 @@ use cosmicverge_shared::{
     euclid::Vector2D,
     protocol::navigation,
     ships::{hangar, self},
-    solar_systems::{universe, Solar, SolarSystem, SystemId},
+    solar_systems::{universe, Solar, SolarSystem, SolarSystemId},
 };
 use kludgine::prelude::*;
 
@@ -205,7 +205,7 @@ impl Component for SolarSystemCanvas {
 
 #[derive(Clone, Debug)]
 pub enum Command {
-    ViewSolarSystem(SystemId),
+    ViewSolarSystem(SolarSystemId),
     SpaceUpdate {
         timestamp: f64,
         location: navigation::Pilot,
@@ -257,7 +257,7 @@ impl SolarSystemCanvas {
 
     async fn view_solar_system(
         &mut self,
-        id: SystemId,
+        id: SolarSystemId,
         context: &mut Context,
     ) -> KludgineResult<()> {
         if let Some(cache) = &self.solar_system {

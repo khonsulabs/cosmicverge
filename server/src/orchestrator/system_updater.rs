@@ -4,7 +4,7 @@ use cosmicverge_shared::{
     num_traits::FromPrimitive,
     protocol::navigation,
     solar_system_simulation::Simulation,
-    solar_systems::{universe, SystemId},
+    solar_systems::{universe, SolarSystemId},
 };
 use futures::StreamExt as _;
 use redis::aio::{Connection, MultiplexedConnection};
@@ -95,7 +95,7 @@ pub async fn wait_for_ready_to_process(
                     // Process server update
                     systems_processed.push(system_id);
                     let system = universe()
-                        .get(&SystemId::from_i64(system_id).expect("invalid solar system id"));
+                        .get(&SolarSystemId::from_i64(system_id).expect("invalid solar system id"));
                     debug!("updating {:?}", system.id);
 
                     let mut simulation = Simulation::new(system.id, current_timestamp);

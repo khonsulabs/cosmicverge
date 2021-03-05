@@ -23,9 +23,9 @@ pub type SolarSystemOrbits = HashMap<navigation::SolarSystemId, Point2D<f32, Sol
 
 #[derive(Debug)]
 pub struct Universe {
-    solar_systems: HashMap<SystemId, SolarSystem>,
-    solar_systems_by_name: HashMap<String, SystemId>,
-    orbits: RwLock<HashMap<SystemId, SolarSystemOrbits>>,
+    solar_systems: HashMap<SolarSystemId, SolarSystem>,
+    solar_systems_by_name: HashMap<String, SolarSystemId>,
+    orbits: RwLock<HashMap<SolarSystemId, SolarSystemOrbits>>,
 }
 
 pub fn universe() -> &'static Universe {
@@ -61,7 +61,7 @@ impl Universe {
         self.solar_systems.insert(system.id, system);
     }
 
-    pub fn get(&self, id: &SystemId) -> &SolarSystem {
+    pub fn get(&self, id: &SolarSystemId) -> &SolarSystem {
         &self.solar_systems[id]
     }
 
@@ -82,7 +82,7 @@ impl Universe {
         }
     }
 
-    pub fn orbits_for(&self, system: SystemId) -> SolarSystemOrbits {
+    pub fn orbits_for(&self, system: SolarSystemId) -> SolarSystemOrbits {
         let orbits = self.orbits.read().unwrap();
         orbits[&system].clone()
     }
@@ -90,7 +90,7 @@ impl Universe {
 
 #[derive(Debug)]
 pub struct SolarSystem {
-    pub id: SystemId,
+    pub id: SolarSystemId,
     pub background: Option<&'static str>,
     pub galaxy_location: Point2D<f32, Galactic>,
     pub locations: HashMap<navigation::SolarSystemId, Object>,
@@ -98,7 +98,7 @@ pub struct SolarSystem {
 }
 
 impl SolarSystem {
-    fn new(id: SystemId, galaxy_location: Point2D<f32, Galactic>) -> Self {
+    fn new(id: SolarSystemId, galaxy_location: Point2D<f32, Galactic>) -> Self {
         Self {
             id,
             galaxy_location,
@@ -173,7 +173,7 @@ impl SolarSystem {
 #[derive(Debug)]
 pub struct Object {
     pub id: Box<dyn NamedLocation>,
-    pub system: SystemId,
+    pub system: SolarSystemId,
     pub image: Option<&'static str>,
     pub size: f32,
     pub orbit_distance: f32,
@@ -183,7 +183,7 @@ pub struct Object {
 }
 
 impl Object {
-    fn new<ID: NamedLocation>(system: SystemId, id: ID, size: f32) -> Self {
+    fn new<ID: NamedLocation>(system: SolarSystemId, id: ID, size: f32) -> Self {
         Self {
             id: Box::new(id),
             system,
@@ -268,12 +268,12 @@ impl<T> NamedLocation for T where T: Identifiable + Named + Send + Sync + std::f
     FromPrimitive,
     ToPrimitive,
 )]
-pub enum SystemId {
+pub enum SolarSystemId {
     SM0A9F4,
     System2,
 }
 
-impl Named for SystemId {
+impl Named for SolarSystemId {
     fn name(&self) -> &'static str {
         match self {
             Self::SM0A9F4 => "SM-0-A9F4",

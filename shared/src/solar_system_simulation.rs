@@ -6,18 +6,18 @@ use rand::{thread_rng, Rng};
 use crate::{
     protocol::{navigation, pilot},
     ships::{hangar, ShipSpecification},
-    solar_systems::{universe, Solar, SystemId},
+    solar_systems::{universe, Solar, SolarSystemId},
 };
 
 pub struct Simulation {
     pub timestamp: f64,
-    system: SystemId,
+    system: SolarSystemId,
     ships: HashMap<pilot::Id, navigation::Ship>,
 }
 
 impl Simulation {
     #[must_use]
-    pub fn new(system: SystemId, timestamp: f64) -> Self {
+    pub fn new(system: SolarSystemId, timestamp: f64) -> Self {
         Self {
             system,
             timestamp,
@@ -64,7 +64,7 @@ fn vector_to_angle<T>(vec: Vector2D<f32, T>) -> Angle<f32> {
 }
 
 impl navigation::Ship {
-    fn create_flight_plan(&mut self, current_system: SystemId) {
+    fn create_flight_plan(&mut self, current_system: SolarSystemId) {
         let mut plan = navigation::Plan::new(self, current_system);
         match &self.action {
             navigation::Action::NavigateTo(destination) => {
@@ -152,7 +152,7 @@ impl navigation::Ship {
     fn plan_flight_to(
         &mut self,
         plan: &mut navigation::Plan,
-        destination_system: SystemId,
+        destination_system: SolarSystemId,
         location: Point2D<f32, Solar>,
     ) {
         if plan.initial_system == destination_system {
@@ -415,7 +415,7 @@ fn execute_flight_plan(
 
 #[derive(Clone)]
 struct FlightUpdate {
-    system: SystemId,
+    system: SolarSystemId,
     location: Point2D<f32, Solar>,
     orientation: Angle<f32>,
     velocity: Vector2D<f32, Solar>,

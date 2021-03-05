@@ -3,7 +3,7 @@ use std::{cmp::Ordering, collections::HashMap, time::Duration};
 use cosmicverge_shared::{
     euclid::Point2D,
     protocol::Response,
-    solar_systems::{universe, Pixels, SystemId},
+    solar_systems::{universe, Pixels, SolarSystemId},
 };
 use crossbeam::channel::Sender;
 use web_sys::{HtmlCanvasElement, MouseEvent, WheelEvent};
@@ -200,7 +200,7 @@ impl Component for Game {
         component
             .space_sender
             .send(controller::Command::ViewSolarSystem(
-                universe().get(&SystemId::SM0A9F4),
+                universe().get(&SolarSystemId::SM0A9F4),
             ))
             .unwrap();
         component.update_title();

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use cosmicverge_shared::{
     euclid::Length,
     protocol::navigation,
-    solar_systems::{sm0a9f4::SM0A9F4, system2::System2, universe, self, SystemId},
+    solar_systems::{sm0a9f4::SM0A9F4, system2::System2, universe, self, SolarSystemId},
 };
 use magrathea::{
     planet::{GeneratedPlanet, SurfaceDefinition},
@@ -235,11 +235,11 @@ impl SurfaceDefinition for ObjectElevations {
 }
 
 pub fn planet_for_location(
-    system: &SystemId,
+    system: &SolarSystemId,
     location: &navigation::SolarSystemId,
 ) -> Planet<ObjectElevations> {
     match system {
-        SystemId::SM0A9F4 => {
+        SolarSystemId::SM0A9F4 => {
             match location
                 .into_location::<SM0A9F4>()
                 .expect("wrong type of location")
@@ -265,7 +265,7 @@ pub fn planet_for_location(
                 ),
             }
         }
-        SystemId::System2 => match location.into_location::<System2>().unwrap() {
+        SolarSystemId::System2 => match location.into_location::<System2>().unwrap() {
             System2::Sun => Planet::new_from_iter_with_chaos(
                 3112979882346076372,
                 Default::default(),
@@ -290,14 +290,14 @@ pub fn planet_for_location(
 }
 
 pub fn generate_planet_for_location(
-    system: &SystemId,
+    system: &SolarSystemId,
     location: &solar_systems::Object,
 ) -> GeneratedPlanet<ObjectElevations> {
     let planet = planet_for_location(system, &location.id.id());
     planet.generate(location.size as u32, &None)
 }
 
-fn create_world(static_path: &PathBuf, system: &SystemId, location: &solar_systems::Object) {
+fn create_world(static_path: &PathBuf, system: &SolarSystemId, location: &solar_systems::Object) {
     let generated = generate_planet_for_location(system, &location);
 
     let system_folder = static_path

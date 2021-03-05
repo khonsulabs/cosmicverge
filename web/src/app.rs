@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use cosmicverge_shared::{
     protocol::{navigation, Pilot, Request, Response},
-    solar_systems::{universe, Named, SystemId},
+    solar_systems::{universe, Named, SolarSystemId},
 };
 use yew::prelude::*;
 use yew_bulma::static_page::StaticPage;
@@ -87,7 +87,7 @@ pub enum Message {
     ToggleRendering,
     ForegroundGame,
     LogOut,
-    NavigateToLocation(SystemId, navigation::SolarSystemId),
+    NavigateToLocation(SolarSystemId, navigation::SolarSystemId),
 }
 
 fn set_document_title(title: &str) {
