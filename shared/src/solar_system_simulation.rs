@@ -370,10 +370,7 @@ fn calculate_flight_update(plan: &navigation::Plan) -> Option<FlightUpdate> {
     })
 }
 
-fn execute_flight_plan(
-    plan: &mut navigation::Plan,
-    mut duration: f32,
-) -> Option<FlightUpdate> {
+fn execute_flight_plan(plan: &mut navigation::Plan, mut duration: f32) -> Option<FlightUpdate> {
     let mut last_update = None;
     while let Some(maneuver) = plan.maneuvers.first_mut() {
         let total_elapsed = plan.elapsed_in_current_maneuver + duration;

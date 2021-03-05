@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::RwLock};
 
 use basws_yew::{prelude::*, ClientLogic, ClientState, Error};
 use cosmicverge_shared::protocol::{
-    cosmic_verge_protocol_version, Request, Response, Pilot, pilot,
+    cosmic_verge_protocol_version, pilot, Pilot, Request, Response,
 };
 use once_cell::sync::OnceCell;
 use url::Url;
@@ -30,9 +30,9 @@ pub fn pilot_information(pilot_id: pilot::Id, api: &mut ApiBridge) -> Option<Pil
         }
     }
 
-    api.send(AgentMessage::Request(
-        Request::GetPilotInformation(pilot_id),
-    ));
+    api.send(AgentMessage::Request(Request::GetPilotInformation(
+        pilot_id,
+    )));
     None
 }
 

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use cosmicverge_shared::{
     euclid::Length,
     protocol::navigation,
-    solar_systems::{sm0a9f4::SM0A9F4, system2::System2, universe, self, SolarSystemId},
+    solar_systems::{self, sm0a9f4::SM0A9F4, system2::System2, universe, SolarSystemId},
 };
 use magrathea::{
     planet::{GeneratedPlanet, SurfaceDefinition},

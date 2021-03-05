@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use cosmicverge_shared::{
-    protocol::{Request, Response, OAuthProvider, Pilot, pilot},
+    protocol::{pilot, OAuthProvider, Pilot, Request, Response},
     MAX_PILOTS_PER_ACCOUNT,
 };
 use wasm_bindgen::__rt::std::borrow::Cow;
@@ -71,9 +71,8 @@ impl Component for HomePage {
     fn update(&mut self, msg: Self::Message) -> bool {
         match msg {
             Message::LogInWith(provider) => {
-                self.api.send(AgentMessage::Request(
-                    Request::AuthenticationUrl(provider),
-                ));
+                self.api
+                    .send(AgentMessage::Request(Request::AuthenticationUrl(provider)));
                 false
             }
             Message::ApiMessage(msg) => match msg {
@@ -110,9 +109,7 @@ impl Component for HomePage {
             }
             Message::SelectPilot(pilot_id) => {
                 self.api
-                    .send(AgentMessage::Request(Request::SelectPilot(
-                        pilot_id,
-                    )));
+                    .send(AgentMessage::Request(Request::SelectPilot(pilot_id)));
                 self.pilot_state = PilotLoginState::WaitingForServer;
                 true
             }
@@ -138,9 +135,7 @@ impl Component for HomePage {
                 };
                 let name = name.unchecked_value().unwrap();
                 self.api
-                    .send(AgentMessage::Request(Request::CreatePilot {
-                        name,
-                    }));
+                    .send(AgentMessage::Request(Request::CreatePilot { name }));
 
                 true
             }

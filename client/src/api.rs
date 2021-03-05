@@ -169,7 +169,11 @@ impl ClientLogic for ApiClient {
 }
 
 impl ApiClient {
-    pub async fn pilot_information(&self, pilot_id: &pilot::Id, client: &Client<Self>) -> Option<Pilot> {
+    pub async fn pilot_information(
+        &self,
+        pilot_id: &pilot::Id,
+        client: &Client<Self>,
+    ) -> Option<Pilot> {
         {
             let cache = self.pilot_information_cache.read().await;
             if let Some(info) = cache.info.get(pilot_id) {

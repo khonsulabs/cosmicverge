@@ -1,10 +1,10 @@
+use std::path::Path;
+
 use basws_client::prelude::InstallationConfig;
+use cosmicverge_shared::persy::{Index, KvIndex};
 use once_cell::sync::OnceCell;
 use persy::{ByteVec, ValueMode};
 use serde::{de::DeserializeOwned, Serialize};
-use std::path::Path;
-
-use cosmicverge_shared::persy::{Index, KvIndex};
 
 static CLIENTDB: OnceCell<persy::Persy> = OnceCell::new();
 

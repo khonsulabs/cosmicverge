@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
+use async_channel::{Receiver, Sender};
 use basws_client::Handle;
 use kludgine::runtime::Runtime;
+use once_cell::sync::OnceCell;
 
 use crate::database::ClientDatabase;
-use async_channel::{Receiver, Sender};
-use once_cell::sync::OnceCell;
 
 mod image;
 mod tracker;

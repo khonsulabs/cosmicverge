@@ -4,7 +4,7 @@ use client_api::ApiAgent;
 use cosmicverge_shared::{
     euclid::{Point2D, Scale, Size2D, Vector2D},
     protocol::{navigation, Request},
-    ships::{hangar, self},
+    ships::{self, hangar},
     solar_systems::{universe, Named, Pixels, Solar, SolarSystem, SolarSystemId},
 };
 use wasm_bindgen::{JsCast, JsValue};

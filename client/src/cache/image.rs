@@ -1,9 +1,10 @@
 use std::{ops::Deref, sync::Arc};
 
-use super::{tracker::CacheTracker, CachedResource};
 use kludgine::prelude::*;
 use once_cell::sync::OnceCell;
 use tokio::sync::RwLock;
+
+use super::{tracker::CacheTracker, CachedResource};
 
 static CACHE_WORKERS_INITIALIZED: OnceCell<Handle<CacheTracker<CachedImage>>> = OnceCell::new();
 

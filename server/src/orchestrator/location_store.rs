@@ -86,7 +86,8 @@ impl LocationStore {
             );
         }
 
-        let mut system_pilots: HashMap<SolarSystemId, Vec<pilot::Id>> = HashMap::with_capacity(SolarSystemId::COUNT);
+        let mut system_pilots: HashMap<SolarSystemId, Vec<pilot::Id>> =
+            HashMap::with_capacity(SolarSystemId::COUNT);
         for (pilot_id, cache) in pilot_cache.iter() {
             system_pilots
                 .entry(cache.location.system)

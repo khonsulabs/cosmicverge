@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 use cosmicverge_shared::{
     euclid::Vector2D,
     protocol::navigation,
-    ships::{hangar, self},
+    ships::{self, hangar},
     solar_systems::{universe, Solar, SolarSystem, SolarSystemId},
 };
 use kludgine::prelude::*;

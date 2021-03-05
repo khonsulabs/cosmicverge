@@ -60,9 +60,7 @@ impl Simulator {
         self.last_physics_update = Some(now);
     }
 
-    pub fn pilot_locations(
-        &self,
-    ) -> Vec<(navigation::Ship, Point2D<f32, Solar>, Angle<f32>)> {
+    pub fn pilot_locations(&self) -> Vec<(navigation::Ship, Point2D<f32, Solar>, Angle<f32>)> {
         if let Some(simulation) = &self.simulation {
             simulation
                 .all_ships()
