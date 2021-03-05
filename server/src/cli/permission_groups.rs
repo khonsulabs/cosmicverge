@@ -35,8 +35,7 @@ pub async fn handle_command(group_command: Command) -> anyhow::Result<()> {
 
     let group = match group_command.operation {
         Operation::Create => {
-            let group = PermissionGroup::create(group_command.group_name, database::pool()).await?;
-            group
+            PermissionGroup::create(group_command.group_name, database::pool()).await?
         }
         other => {
             let group =
