@@ -25,7 +25,7 @@ impl From<Pilot> for protocol::Pilot {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum PilotError {
+pub enum Error {
     #[error("invalid name")]
     InvalidName,
     #[error("name already taken")]
@@ -36,7 +36,7 @@ pub enum PilotError {
     Database(#[from] DatabaseError),
 }
 
-impl From<sqlx::Error> for PilotError {
+impl From<sqlx::Error> for Error {
     fn from(err: sqlx::Error) -> Self {
         Self::Database(DatabaseError::from(err))
     }
@@ -58,7 +58,7 @@ impl Pilot {
         account_id: i64,
         name: &str,
         executor: E,
-    ) -> Result<Self, PilotError> {
+    ) -> Result<Self, Error> {
         let mut e = executor.acquire().await?;
         let existing_pilot_count = sqlx::query!(
             "SELECT count(*) as pilot_count FROM pilots WHERE account_id = $1 GROUP BY account_id",
@@ -71,7 +71,7 @@ impl Pilot {
         .flatten()
         .unwrap_or_default();
         if existing_pilot_count as usize >= MAX_PILOTS_PER_ACCOUNT {
-            return Err(PilotError::TooManyPilots);
+            return Err(Error::TooManyPilots);
         }
 
         let name = Self::validate_and_clean_name(name, &mut e).await?;
@@ -129,10 +129,10 @@ impl Pilot {
     pub async fn validate_and_clean_name<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
         name: &str,
         executor: E,
-    ) -> Result<String, PilotError> {
-        let name = protocol::Pilot::cleanup_name(name).map_err(|_| PilotError::InvalidName)?;
+    ) -> Result<String, Error> {
+        let name = protocol::Pilot::cleanup_name(name).map_err(|_| Error::InvalidName)?;
         if Self::find_by_name(&name, executor).await?.is_some() {
-            return Err(PilotError::NameAlreadyTaken);
+            return Err(Error::NameAlreadyTaken);
         }
 
         Ok(name)

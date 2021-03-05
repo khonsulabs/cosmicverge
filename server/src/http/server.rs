@@ -5,7 +5,7 @@ use database::{
     cosmicverge_shared::protocol::{
         cosmic_verge_protocol_version_requirements, OAuthProvider, Request, Response,
     },
-    schema::{convert_db_pilots, Account, Installation, Pilot, PilotError},
+    schema::{convert_db_pilots, pilot, Account, Installation, Pilot},
 };
 use protocol::AccountPermissions;
 
@@ -100,16 +100,16 @@ impl ServerLogic for CosmicVergeServer {
                     match Pilot::create(connected_account.account.id, &name, database::pool()).await
                     {
                         Ok(pilot) => self.select_pilot(pilot, client).await,
-                        Err(PilotError::NameAlreadyTaken) => Ok(RequestHandling::Respond(
+                        Err(pilot::Error::NameAlreadyTaken) => Ok(RequestHandling::Respond(
                             Response::error("pilot-error-name-already-taken"),
                         )),
-                        Err(PilotError::InvalidName) => Ok(RequestHandling::Respond(
+                        Err(pilot::Error::InvalidName) => Ok(RequestHandling::Respond(
                             Response::error("pilot-error-invalid-name"),
                         )),
-                        Err(PilotError::TooManyPilots) => Ok(RequestHandling::Respond(
+                        Err(pilot::Error::TooManyPilots) => Ok(RequestHandling::Respond(
                             Response::error("pilot-error-too-many-pilots"),
                         )),
-                        Err(PilotError::Database(db)) => Err(db.into()),
+                        Err(pilot::Error::Database(db)) => Err(db.into()),
                     }
                 } else {
                     Ok(RequestHandling::Respond(Response::error("unauthenticated")))
