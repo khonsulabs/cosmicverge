@@ -1,7 +1,6 @@
 use std::{convert::Infallible, path::PathBuf};
 
 use database::cosmicverge_shared::current_git_revision;
-use uuid::Uuid;
 use warp::{Filter, Reply};
 
 /// parsing support for JSON Web Keys
@@ -112,7 +111,7 @@ pub async fn run_webserver() -> anyhow::Result<()> {
         // To make the cache expire in debug mode, we're going to always change CACHEBUSTER in the file
         let contents = std::fs::read(&index_path).unwrap();
         let contents = String::from_utf8(contents).unwrap();
-        let contents = contents.replace("CACHEBUSTER", &Uuid::new_v4().to_string());
+        let contents = contents.replace("CACHEBUSTER", &uuid::Uuid::new_v4().to_string());
         warp::reply::with_header(contents, "Content-Type", "text/html").into_response()
     });
     #[cfg(not(debug_assertions))]
