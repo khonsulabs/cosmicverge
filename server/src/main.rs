@@ -4,6 +4,7 @@ extern crate tracing;
 use std::path::PathBuf;
 
 use structopt::StructOpt;
+use tracing_subscriber::prelude::*;
 
 /// the definition of the http server.
 mod http;
@@ -61,8 +62,15 @@ async fn main() -> anyhow::Result<()> {
 }
 
 pub fn initialize_logging() {
-    tracing_subscriber::fmt()
-        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE)
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::filter::EnvFilter::new(
+            "sqlx=warn,cosmicverge-server=trace",
+        ))
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_target(false)
+                .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE),
+        )
         .try_init()
         .unwrap();
 }
