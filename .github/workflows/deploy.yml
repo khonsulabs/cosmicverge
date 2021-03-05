@@ -8,11 +8,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
         with:
           submodules: true
-          persist-credentials: true
-          ssh-key: ${{ secrets.BOTSU_PRIVATE_SSH_KEY }}
 
       - name: Install Rust
         uses: hecrj/setup-rust-action@v1
@@ -24,11 +23,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
         with:
           submodules: true
-          persist-credentials: true
-          ssh-key: ${{ secrets.BOTSU_PRIVATE_SSH_KEY }}
 
       - name: Install Rust
         uses: hecrj/setup-rust-action@v1
@@ -71,11 +69,10 @@ jobs:
           - 5432:5432
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
         with:
           submodules: true
-          persist-credentials: true
-          ssh-key: ${{ secrets.BOTSU_PRIVATE_SSH_KEY }}
 
       - name: Install Rust
         uses: hecrj/setup-rust-action@v1
