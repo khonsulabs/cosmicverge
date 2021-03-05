@@ -46,6 +46,23 @@ impl Account {
         }
     }
 
+    pub async fn find_by_twitch_username<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
+        username: &str,
+        executor: E,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        match sqlx::query_as!(
+                Self,
+                "SELECT accounts.id, accounts.superuser FROM accounts INNER JOIN twitch_profiles ON twitch_profiles.account_id = accounts.id WHERE LOWER(twitch_profiles.username) = LOWER($1)",
+                username
+            )
+            .fetch_one(executor)
+            .await {
+            Ok(result) => Ok(Some(result)),
+            Err(sqlx::Error::RowNotFound) => Ok(None),
+            Err(err) => Err(err)
+        }
+    }
+
     pub async fn load<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
         account_id: i64,
         executor: E,
@@ -70,6 +87,15 @@ impl Account {
         sqlx::query_as!(Self, "INSERT INTO accounts DEFAULT VALUES RETURNING id, superuser")
             .fetch_one(executor)
             .await
+    }
+
+    pub async fn save<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
+        &self,
+        executor: E,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!("UPDATE accounts SET superuser = $2 WHERE id = $1", self.id, self.superuser)
+            .execute(executor)
+            .await.map(|_| ())
     }
 
     pub async fn permissions<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
