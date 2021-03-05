@@ -5,6 +5,7 @@ use sqlx::PgPool;
 
 static POOL: OnceCell<PgPool> = OnceCell::new();
 
+#[must_use]
 pub fn pool() -> &'static PgPool {
     POOL.get().expect("uninitialized pool access")
 }

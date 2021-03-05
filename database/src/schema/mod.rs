@@ -2,7 +2,7 @@ mod account;
 mod installation;
 mod oauth_token;
 mod permission_group;
-mod pilot;
+pub mod pilot;
 mod twitch_profile;
 
 pub use self::{

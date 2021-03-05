@@ -6,6 +6,7 @@ mod migration_0001_accounts;
 mod migration_0002_pilots;
 mod migration_0003_permissions;
 
+#[must_use]
 pub fn migrations() -> Vec<Migration> {
     vec![
         migration_0001_accounts::migration(),
