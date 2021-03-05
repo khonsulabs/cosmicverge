@@ -5,7 +5,8 @@ pub use euclid;
 pub use num_traits;
 pub use strum;
 pub use strum_macros;
-#[cfg(feature="persyutil")]
+pub mod permissions;
+#[cfg(feature = "persyutil")]
 pub mod persyutil;
 pub mod protocol;
 pub mod ships;

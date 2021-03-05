@@ -14,6 +14,6 @@ pub async fn initialize() {
         let pool = PgPool::connect(&env::var("DATABASE_URL").expect("DATABASE_URL not set"))
             .await
             .expect("Error initializing postgres pool");
-        let _ = POOL.set(pool).unwrap();
+        POOL.set(pool).unwrap();
     }
 }

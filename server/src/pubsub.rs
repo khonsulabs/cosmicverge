@@ -1,5 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use cosmicverge_shared::protocol;
 use database::{
     basws_server::{prelude::Uuid, Handle, Server},
     cosmicverge_shared::protocol::CosmicVergeResponse,
@@ -56,18 +57,24 @@ async fn wait_for_messages(
                 // The payload is the installation_id that logged in.
                 let installation_id = Uuid::parse_str(&payload)?;
                 if let Ok(account) = ConnectedAccount::lookup(installation_id).await {
-                    let user_id = account.account.id;
+                    let response_account = protocol::Account {
+                        id: account.account.id,
+                        permissions: account.account.permissions(database::pool()).await?,
+                    };
                     websockets
                         .associate_installation_with_account(installation_id, Handle::new(account))
                         .await?;
 
                     let pilots = convert_db_pilots(
-                        Pilot::list_by_account_id(user_id, database::pool()).await?,
+                        Pilot::list_by_account_id(response_account.id, database::pool()).await?,
                     );
                     websockets
                         .send_to_installation_id(
                             installation_id,
-                            CosmicVergeResponse::Authenticated { user_id, pilots },
+                            CosmicVergeResponse::Authenticated {
+                                account: response_account,
+                                pilots,
+                            },
                         )
                         .await;
                 }
@@ -90,7 +97,7 @@ async fn wait_for_messages(
                     |client| async move {
                         // Only send updates to connected pilots
                         if let Some(pilot_id) =
-                            client.map_client(|c| c.as_ref().map(|p| p.id())).await
+                            client.map_client(|c| c.pilot.as_ref().map(|p| p.id())).await
                         {
                             let cache = LocationStore::lookup(pilot_id).await;
                             let _ = client

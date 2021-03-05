@@ -3,6 +3,7 @@ extern crate tracing;
 
 use std::path::PathBuf;
 
+use cli::accounts::AccountCommand;
 use structopt::StructOpt;
 
 /// the definition of the http server.
@@ -15,6 +16,9 @@ mod planets;
 mod pubsub;
 /// shared connection pools
 mod redis;
+
+/// command line interface support
+mod cli;
 
 #[derive(StructOpt, Debug)]
 #[structopt(
@@ -32,8 +36,26 @@ struct CLI {
 #[structopt(about = "commands to execute")]
 /// commands that the server can execute
 enum Command {
+    /// Run the Server
     Serve,
-    GenerateAssets { static_folder: PathBuf },
+    /// Generate static assets, currently just includes procedurally generated planets
+    GenerateAssets {
+        /// The path to the static folder to generate the assets within
+        static_folder: PathBuf,
+    },
+    Account {
+        /// The ID of the account
+        #[structopt(long)]
+        id: Option<i64>,
+
+        /// The Twitch handle to look up to find the account
+        #[structopt(long)]
+        twitch: Option<String>,
+
+        /// The command to execute
+        #[structopt(subcommand)]
+        command: AccountCommand,
+    },
 }
 
 #[tokio::main]
@@ -45,6 +67,11 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Command::Serve => http::run_webserver().await,
         Command::GenerateAssets { static_folder } => generate_assets(static_folder).await,
+        Command::Account {
+            id,
+            twitch,
+            command,
+        } => cli::accounts::handle_command(id, twitch, command).await,
     }
 }
 

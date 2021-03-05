@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use cosmicverge_shared::{
     protocol::{
-        ActivePilot, CosmicVergeRequest, CosmicVergeResponse, Pilot, PilotLocation, PilotingAction,
-        SolarSystemLocation, SolarSystemLocationId,
+        Account, ActivePilot, CosmicVergeRequest, CosmicVergeResponse, Pilot, PilotLocation,
+        PilotingAction, SolarSystemLocation, SolarSystemLocationId,
     },
     solar_systems::{universe, Named, SolarSystemId},
 };
@@ -62,14 +62,14 @@ pub struct App {
 
 #[derive(PartialEq, Debug)]
 pub struct LoggedInUser {
-    pub user_id: i64,
+    pub account: Arc<Account>,
     pub pilot: PilotingState,
 }
 
 impl LoggedInUser {
     fn with_pilot(&self, pilot: ActivePilot) -> Arc<Self> {
         Arc::new(Self {
-            user_id: self.user_id,
+            account: self.account.clone(),
             pilot: PilotingState::Selected(pilot),
         })
     }
@@ -186,10 +186,11 @@ impl Component for App {
                         self.connected_pilots = Some(connected_pilots);
                         true
                     }
-                    CosmicVergeResponse::Authenticated { user_id, pilots } => {
+                    CosmicVergeResponse::Authenticated { account, pilots } => {
+                        let account = Arc::new(account);
                         if let Some(last_pilot) = &self.last_pilot {
                             self.user = Some(Arc::new(LoggedInUser {
-                                user_id,
+                                account,
                                 pilot: PilotingState::Reconnecting,
                             }));
                             self.api
@@ -198,7 +199,7 @@ impl Component for App {
                                 )));
                         } else {
                             self.user = Some(Arc::new(LoggedInUser {
-                                user_id,
+                                account,
                                 pilot: PilotingState::Unselected { available: pilots },
                             }));
                         }
