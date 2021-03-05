@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use cosmicverge_shared::{
     protocol::{self, pilot},
-    MAX_PILOTS_PER_ACCOUNT,
+    ships, MAX_PILOTS_PER_ACCOUNT,
 };
 
 use crate::{sqlx, DatabaseError, SqlxResultExt};
