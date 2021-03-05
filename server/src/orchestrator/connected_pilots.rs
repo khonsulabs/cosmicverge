@@ -7,7 +7,7 @@ use redis::{aio::MultiplexedConnection, AsyncCommands};
 use serde::{Deserialize, Serialize};
 use tokio::time::Duration;
 
-use crate::redis::RedisLock;
+use crate::redis::Lock;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ConnectedPilotInfo {
@@ -25,7 +25,7 @@ impl Default for ConnectedPilotInfo {
     }
 }
 
-pub(crate) async fn run(mut connection: MultiplexedConnection) -> Result<(), anyhow::Error> {
+pub async fn run(mut connection: MultiplexedConnection) -> Result<(), anyhow::Error> {
     let pilot_reader = connection_channel().1.clone();
     loop {
         let mut new_pilots = HashSet::new();
@@ -50,7 +50,7 @@ pub(crate) async fn run(mut connection: MultiplexedConnection) -> Result<(), any
                 .await?;
         }
 
-        if RedisLock::named("connected_pilots_cleaner")
+        if Lock::named("connected_pilots_cleaner")
             .expire_after_secs(30)
             .acquire(&mut connection)
             .await?
@@ -82,7 +82,7 @@ pub(crate) async fn run(mut connection: MultiplexedConnection) -> Result<(), any
             }
         }
 
-        if RedisLock::named("connected_pilots_counter")
+        if Lock::named("connected_pilots_counter")
             .expire_after_secs(5)
             .acquire(&mut connection)
             .await?

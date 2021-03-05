@@ -1,5 +1,27 @@
-#![allow(clippy::single_match)]
+#![forbid(unsafe_code)]
+#![warn(
+    clippy::cargo,
+    // clippy::missing_docs_in_private_items,
+    clippy::nursery,
+    clippy::pedantic,
+    future_incompatible,
+    rust_2018_idioms
+)]
+#![cfg_attr(doc, warn(rustdoc))]
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::items_after_statements,
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::option_if_let_else,
+    // Clippy is bugged
+    clippy::use_self
+)]
 #![recursion_limit = "8192"]
+
 #[allow(unused_imports)]
 #[macro_use]
 extern crate log;

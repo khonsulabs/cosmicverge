@@ -139,6 +139,7 @@ impl Pilot {
     }
 }
 
+#[must_use]
 pub fn convert_db_pilots(pilots: Vec<Pilot>) -> Vec<protocol::Pilot> {
     pilots.into_iter().map(|p| p.into()).collect()
 }

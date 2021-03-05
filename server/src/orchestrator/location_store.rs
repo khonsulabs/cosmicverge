@@ -22,12 +22,12 @@ impl LocationStore {
         if SHARED_STORE.get().is_none() {
             let store = LocationStore {
                 redis,
-                cache: Arc::new(RwLock::new(Default::default())),
+                cache: Arc::new(RwLock::new(LocationCache::default())),
             };
 
             store.reload_cache().await.unwrap();
 
-            let _ = SHARED_STORE.set(store);
+            drop(SHARED_STORE.set(store));
         }
     }
 
@@ -80,15 +80,15 @@ impl LocationStore {
                     pilot_id,
                     location,
                     action,
-                    physics,
                     ship,
+                    physics,
                 },
             );
         }
 
         let mut system_pilots: HashMap<SolarSystemId, Vec<pilot::Id>> =
             HashMap::with_capacity(SolarSystemId::COUNT);
-        for (pilot_id, cache) in pilot_cache.iter() {
+        for (pilot_id, cache) in &pilot_cache {
             system_pilots
                 .entry(cache.location.system)
                 .and_modify(|pilots| pilots.push(*pilot_id))
@@ -171,10 +171,10 @@ impl PilotCache {
     pub fn new_for(pilot_id: pilot::Id) -> Self {
         Self {
             pilot_id,
-            location: Default::default(),
-            action: Default::default(),
-            ship: Default::default(),
-            physics: Default::default(),
+            location: navigation::Pilot::default(),
+            action: navigation::Action::default(),
+            ship: navigation::ShipInformation::default(),
+            physics: navigation::Physics::default(),
         }
     }
     fn to_piloted_ship(&self) -> Option<navigation::Ship> {

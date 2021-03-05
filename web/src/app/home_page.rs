@@ -40,6 +40,7 @@ pub struct Props {
     pub user: Option<Arc<LoggedInUser>>,
 }
 
+#[allow(clippy::pub_enum_variant_names)]
 pub enum Message {
     LogInWith(OAuthProvider),
     ApiMessage(AgentResponse),

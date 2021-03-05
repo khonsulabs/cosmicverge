@@ -29,7 +29,7 @@ pub fn localize(name: &str) -> Html {
     render_markdown(&localize_raw(name))
 }
 
-pub fn localize_with_args(name: &str, args: &HashMap<String, FluentValue>) -> Html {
+pub fn localize_with_args(name: &str, args: &HashMap<String, FluentValue<'_>>) -> Html {
     render_markdown(&localize_raw_with_args(name, args))
 }
 
@@ -37,7 +37,7 @@ pub fn localize_raw(name: &str) -> String {
     LOCALES.lookup(&US_ENGLISH, name)
 }
 
-pub fn localize_raw_with_args(name: &str, args: &HashMap<String, FluentValue>) -> String {
+pub fn localize_raw_with_args(name: &str, args: &HashMap<String, FluentValue<'_>>) -> String {
     LOCALES.lookup_with_args(&US_ENGLISH, name, args)
 }
 

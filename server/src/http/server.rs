@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use cosmicverge_shared::protocol::{self, ActivePilot};
 use database::{
-    basws_server::prelude::*,
+    basws_server::{self, prelude::*},
     cosmicverge_shared::protocol::{
         cosmic_verge_protocol_version_requirements, OAuthProvider, Request, Response,
     },
@@ -42,7 +42,7 @@ impl Identifiable for ConnectedAccount {
     }
 }
 
-pub struct CosmicVergeServer;
+pub struct Server;
 
 #[derive(Default, Debug)]
 pub struct ClientData {
@@ -50,11 +50,11 @@ pub struct ClientData {
 }
 
 pub fn initialize() -> Server<CosmicVergeServer> {
-    Server::new(CosmicVergeServer)
+    basws_server::Server::new(Server)
 }
 
 #[async_trait]
-impl ServerLogic for CosmicVergeServer {
+impl ServerLogic for Server {
     type Request = Request;
     type Response = Response;
     type Client = ClientData;
@@ -65,11 +65,11 @@ impl ServerLogic for CosmicVergeServer {
         &self,
         client: &ConnectedClient<Self>,
         request: Self::Request,
-        _server: &Server<Self>,
+        _server: &basws_server::Server<Self>,
     ) -> anyhow::Result<RequestHandling<Self::Response>> {
         match request {
             Request::Fly(action) => {
-                if let Some(pilot_id) = client.map_client(|c| c.as_ref().map(|p| p.id())).await {
+                if let Some(pilot_id) = client.map_client(|c| c.as_ref().map(Pilot::id)).await {
                     LocationStore::set_piloting_action(pilot_id, &action).await?;
                     Ok(RequestHandling::NoResponse)
                 } else {
@@ -225,7 +225,7 @@ impl ServerLogic for CosmicVergeServer {
         client: &ConnectedClient<Self>,
     ) -> anyhow::Result<RequestHandling<Self::Response>> {
         if let Some(pilot_id) = client
-            .map_client(|client| client.pilot.as_ref().map(|p| p.id()))
+            .map_client(|client| client.as_ref().map(Pilot::id))
             .await
         {
             connected_pilots::note(pilot_id).await;
@@ -235,7 +235,7 @@ impl ServerLogic for CosmicVergeServer {
     }
 }
 
-impl CosmicVergeServer {
+impl Server {
     async fn select_pilot(
         &self,
         pilot: Pilot,

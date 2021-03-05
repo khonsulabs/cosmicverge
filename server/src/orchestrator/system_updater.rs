@@ -11,12 +11,12 @@ use redis::aio::{Connection, MultiplexedConnection};
 
 use crate::{
     orchestrator::location_store::LocationStore,
-    redis::{connect_to_redis, RedisLock},
+    redis::{connect, Lock},
 };
 
 pub async fn run(shared_connection: MultiplexedConnection) -> Result<(), anyhow::Error> {
     loop {
-        match connect_to_redis().await {
+        match connect().await {
             Ok(connection) => {
                 match wait_for_ready_to_process(connection, shared_connection.clone()).await {
                     Ok(_) => error!("Redis disconnected processing system updates"),
@@ -87,7 +87,7 @@ pub async fn wait_for_ready_to_process(
             };
 
             for system_id in system_ids {
-                if RedisLock::new(format!("system_update_{}", system_id))
+                if Lock::new(format!("system_update_{}", system_id))
                     .expire_after_msecs(20)
                     .acquire(&mut shared_connection)
                     .await?
@@ -137,7 +137,7 @@ pub async fn wait_for_ready_to_process(
 
         LocationStore::refresh().await?;
 
-        if RedisLock::named("system_update_completed")
+        if Lock::named("system_update_completed")
             .expire_after_msecs(900)
             .acquire(&mut shared_connection)
             .await?

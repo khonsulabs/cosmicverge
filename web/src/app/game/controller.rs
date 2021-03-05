@@ -33,7 +33,7 @@ pub enum Command {
     },
 }
 
-pub struct GameController {
+pub struct Game {
     hud: Option<HtmlElement>,
     canvas: Option<HtmlCanvasElement>,
     context: Option<CanvasRenderingContext2d>,
@@ -59,7 +59,7 @@ pub trait View {
     fn pan(&mut self, amount: Vector2D<f32, Pixels>, view: &ViewContext);
 }
 
-impl GameController {
+impl Game {
     pub fn new() -> (Self, Sender<Command>) {
         let performance = web_sys::window().unwrap().performance().unwrap();
         let (sender, receiver) = channel::unbounded();
@@ -219,7 +219,7 @@ impl GameController {
     }
 }
 
-impl Drawable for GameController {
+impl Drawable for Game {
     fn initialize(&mut self) -> anyhow::Result<()> {
         Ok(())
     }

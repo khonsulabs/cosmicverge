@@ -6,7 +6,7 @@ use cosmicverge_shared::{
 };
 use yew::prelude::*;
 use yew_bulma::static_page::StaticPage;
-use yew_router::{agent::RouteRequest, prelude::*};
+use yew_router::{agent::RouteRequest, prelude::*, route};
 
 use crate::{
     app::game::Game,
@@ -18,7 +18,7 @@ mod game;
 mod home_page;
 
 #[derive(Switch, Clone, Debug, Eq, PartialEq)]
-pub enum AppRoute {
+pub enum Route {
     // #[to = "/login!"]
     // LogIn,
     // #[to = "/backoffice/users"]
@@ -79,9 +79,10 @@ pub enum PilotingState {
     Selected(navigation::ActivePilot),
 }
 
+#[allow(clippy::pub_enum_variant_names)]
 pub enum Message {
     WsMessage(AgentResponse),
-    RouterMessage(Route),
+    RouterMessage(route::Route),
     SetTitle(String),
     ToggleNavbar,
     ToggleRendering,
@@ -141,7 +142,7 @@ impl Component for App {
             }
             Message::ForegroundGame => {
                 self.router
-                    .send(RouteRequest::ChangeRoute(Route::from(AppRoute::Game)));
+                    .send(RouteRequest::ChangeRoute(Route::Game.into()));
                 if self.navbar_expanded {
                     self.navbar_expanded = false;
                     true
@@ -229,10 +230,10 @@ impl Component for App {
         let navbar_expanded = self.navbar_expanded;
         let connected = self.connected;
         let connected_pilots = self.connected_pilots;
-        let redirect = Router::redirect(|_| AppRoute::Index);
+        let redirect = Router::redirect(|_| Route::Index);
         html! {
-            <Router<AppRoute>
-                render = Router::render(move |route: AppRoute| {
+            <Router<Route>
+                render = Router::render(move |route: Route| {
                     let app = AppRouteRenderer {
                         link: link.clone(),
                         route,
@@ -260,7 +261,7 @@ impl Component for App {
 struct AppRouteRenderer {
     user: Option<Arc<LoggedInUser>>,
     connected: Option<bool>,
-    route: AppRoute,
+    route: Route,
     link: ComponentLink<App>,
     rendering: bool,
     navbar_expanded: bool,
@@ -273,7 +274,7 @@ impl AppRouteRenderer {
 
         if self.connected.unwrap_or_default() {
             let (game_foregrounded, contents) = match &self.route {
-                AppRoute::Game => {
+                Route::Game => {
                     // Reveal the canvas
                     (true, Html::default())
                 }
@@ -320,14 +321,14 @@ impl AppRouteRenderer {
         }
     }
 
-    fn render_content(&self, route: &AppRoute) -> Html {
+    fn render_content(&self, route: &Route) -> Html {
         let set_title = self.link.callback(Message::SetTitle);
         match route {
-            AppRoute::Game => unreachable!(),
-            AppRoute::Index => {
+            Route::Game => unreachable!(),
+            Route::Index => {
                 html! {<home_page::HomePage set_title=set_title.clone() user=self.user.clone() />}
             }
-            AppRoute::NotFound => {
+            Route::NotFound => {
                 html! {<StaticPage title="Not Found" content=localize_html!("not-found") set_title=set_title.clone() />}
             }
         }
@@ -350,9 +351,9 @@ impl AppRouteRenderer {
         html! {
             <nav class=format!("navbar is-fixed-top {}", self.navbar_menu_expanded_class()) role="navigation" aria-label=localize!("navbar-label")>
                 <div class="navbar-brand">
-                    <RouterAnchor<AppRoute> classes="navbar-item" route=AppRoute::Game>
+                    <RouterAnchor<Route> classes="navbar-item" route=Route::Game>
                         { localize!("cosmic-verge") }
-                    </RouterAnchor<AppRoute>>
+                    </RouterAnchor<Route>>
 
                     <a role="button" class="navbar-burger" aria-label=localize!("navbar-menu-label") aria-expanded=self.navbar_expanded data-target="navbar-contents" onclick=self.link.callback(|_| Message::ToggleNavbar)>
                         <span aria-hidden="true"></span>
@@ -363,12 +364,12 @@ impl AppRouteRenderer {
 
                 <div id="navbar-contents" class=format!("navbar-menu {}", self.navbar_menu_expanded_class())>
                     <div class="navbar-start">
-                        <RouterAnchor<AppRoute> classes=self.navbar_item_class(AppRoute::Game) route=AppRoute::Game>
+                        <RouterAnchor<Route> classes=self.navbar_item_class(Route::Game) route=Route::Game>
                             { localize!("space") }
-                        </RouterAnchor<AppRoute>>
-                        <RouterAnchor<AppRoute> classes=self.navbar_item_class(AppRoute::Index) route=AppRoute::Index>
+                        </RouterAnchor<Route>>
+                        <RouterAnchor<Route> classes=self.navbar_item_class(Route::Index) route=Route::Index>
                             { localize!("home") }
-                        </RouterAnchor<AppRoute>>
+                        </RouterAnchor<Route>>
                         { navigate_menu }
                     </div>
                     <div class="navbar-end">
@@ -431,9 +432,9 @@ impl AppRouteRenderer {
                 }
             } else {
                 html! {
-                    <RouterAnchor<AppRoute> classes="navbar-link" route=AppRoute::Index>
+                    <RouterAnchor<Route> classes="navbar-link" route=Route::Index>
                         { localize!("no-pilot") }
-                    </RouterAnchor<AppRoute>>
+                    </RouterAnchor<Route>>
                 }
             };
 
@@ -466,7 +467,7 @@ impl AppRouteRenderer {
         }
     }
 
-    fn navbar_item_class(&self, check_route: AppRoute) -> &'static str {
+    fn navbar_item_class(&self, check_route: Route) -> &'static str {
         if self.route == check_route {
             "navbar-item is-active"
         } else {

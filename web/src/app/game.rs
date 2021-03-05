@@ -101,6 +101,7 @@ pub struct Props {
 }
 
 #[derive(Debug)]
+#[allow(clippy::pub_enum_variant_names)]
 pub enum Message {
     WheelEvent(WheelEvent),
     TouchStart(TouchEvent),
@@ -179,7 +180,7 @@ impl Component for Game {
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let mut api = ApiAgent::bridge(link.callback(Message::ApiMessage));
         api.send(AgentMessage::RegisterBroadcastHandler);
-        let (view, space_sender) = controller::GameController::new();
+        let (view, space_sender) = controller::Game::new();
         let loop_sender =
             redraw_loop::RedrawLoop::launch(view, redraw_loop::Configuration::default());
 
