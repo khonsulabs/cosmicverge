@@ -6,7 +6,7 @@ pub fn migration() -> Migration {
             r#"
             CREATE TABLE permission_groups (
                 id SERIAL PRIMARY KEY,
-                name TEXT NOT NULL,
+                name TEXT NOT NULL UNIQUE,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT now()
             )
         "#,
@@ -19,10 +19,12 @@ pub fn migration() -> Migration {
                 permission_group_id INT NOT NULL REFERENCES permission_groups(id),
                 service TEXT NOT NULL,
                 permission TEXT NULL,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                UNIQUE(permission_group_id, service, permission)
             )
         "#,
         )
+        .with_up("CREATE INDEX permission_group_statements_by_group_id ON permission_group_statements(permission_group_id)")
         .with_down("DROP TABLE IF EXISTS permission_group_statements")
         .with_up(
             r#"
