@@ -4,7 +4,7 @@ use cosmicverge_shared::{
     protocol::{navigation, Pilot, Request, Response},
     solar_systems::{universe, Named, SolarSystemId},
 };
-use yew::prelude::*;
+use yew::{prelude::*, virtual_dom::VNode};
 use yew_bulma::static_page::StaticPage;
 use yew_router::{agent::RouteRequest, prelude::*, route};
 
@@ -17,7 +17,7 @@ use crate::{
 mod game;
 mod home_page;
 
-#[derive(Switch, Clone, Debug, Eq, PartialEq)]
+#[derive(Switch, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Route {
     // #[to = "/login!"]
     // LogIn,
@@ -290,7 +290,7 @@ impl AppRouteRenderer {
                                 </div>
                             </div>
 
-                            { self.render_content(other) }
+                            { self.render_content(*other) }
                         </section>
                     },
                 ),
@@ -321,7 +321,7 @@ impl AppRouteRenderer {
         }
     }
 
-    fn render_content(&self, route: &Route) -> Html {
+    fn render_content(&self, route: Route) -> Html {
         let set_title = self.link.callback(Message::SetTitle);
         match route {
             Route::Game => unreachable!(),
@@ -345,7 +345,7 @@ impl AppRouteRenderer {
                 </div>
             }
         } else {
-            Default::default()
+            VNode::default()
         };
 
         html! {
@@ -390,9 +390,9 @@ impl AppRouteRenderer {
             if matches!(user.pilot, PilotingState::Selected(_)) {
                 let mut systems = universe().systems().collect::<Vec<_>>();
                 systems.sort_by_key(|s| s.id.name());
-                let navigate_menu = systems.into_iter().enumerate().map(|(index, system)| {
+                let navigate_menu = systems.into_iter().enumerate().flat_map(|(index, system)| {
                     let separator = if index == 0 {
-                        Default::default()
+                        VNode::default()
                     } else {
                         html!{ <hr class="navbar-divider" /> }
                     };
@@ -403,7 +403,7 @@ impl AppRouteRenderer {
                             <a class="navbar-item" onclick=self.link.callback(move |e: MouseEvent| { e.prevent_default(); Message::NavigateToLocation(system.id, location.id.id()) })>{ location.id.name() }</a>
                         }).collect::<Html>();
                     vec![separator, locations]
-                }).flatten().collect::<Html>();
+                }).collect::<Html>();
 
                 return html! {
                     <div class="navbar-item has-dropdown is-hoverable">
@@ -417,7 +417,7 @@ impl AppRouteRenderer {
             }
         }
 
-        Default::default()
+        VNode::default()
     }
 
     fn pilot_menu(&self) -> Html {
@@ -447,11 +447,11 @@ impl AppRouteRenderer {
                 </div>
             }
         } else {
-            Default::default()
+            VNode::default()
         }
     }
 
-    fn navbar_menu_expanded_class(&self) -> &'static str {
+    const fn navbar_menu_expanded_class(&self) -> &'static str {
         if self.navbar_expanded {
             "is-active"
         } else {

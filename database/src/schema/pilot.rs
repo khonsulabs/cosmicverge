@@ -43,17 +43,18 @@ impl From<sqlx::Error> for Error {
 }
 
 impl Pilot {
-    pub fn id(&self) -> pilot::Id {
+    #[must_use]
+    pub const fn id(&self) -> pilot::Id {
         pilot::Id(self.id)
     }
 
     pub async fn create<
         'e,
         E: sqlx::Acquire<
-            'e,
-            Database = sqlx::Postgres,
-            Connection = sqlx::pool::PoolConnection<sqlx::Postgres>,
-        >,
+                'e,
+                Database = sqlx::Postgres,
+                Connection = sqlx::pool::PoolConnection<sqlx::Postgres>,
+            > + Send,
     >(
         account_id: i64,
         name: &str,

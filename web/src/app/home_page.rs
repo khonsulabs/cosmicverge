@@ -5,7 +5,7 @@ use cosmicverge_shared::{
     MAX_PILOTS_PER_ACCOUNT,
 };
 use wasm_bindgen::__rt::std::borrow::Cow;
-use yew::prelude::*;
+use yew::{prelude::*, virtual_dom::VNode};
 use yew_bulma::prelude::*;
 
 use crate::{
@@ -161,7 +161,7 @@ impl Component for HomePage {
                     PilotLoginState::Creating { sent_request, name } => {
                         self.create_pilot(*sent_request, name)
                     }
-                    PilotLoginState::WaitingForServer => self.waiting_for_server(),
+                    PilotLoginState::WaitingForServer => Self::waiting_for_server(),
                 },
                 PilotingState::Selected(active_pilot) => {
                     // TODO player dashboard? Not sure.
@@ -223,7 +223,7 @@ impl HomePage {
                 </div>
             }
         } else {
-            Default::default()
+            VNode::default()
         };
 
         html! {
@@ -247,16 +247,13 @@ impl HomePage {
                 </div>
             }
         } else {
-            Default::default()
+            VNode::default()
         }
     }
 
     fn create_pilot(&self, sent_request: bool, name: &FormStorage<Option<String>>) -> Html {
-        let errors = if let Some(errors) = self.validate_pilot_name(name) {
-            Some(errors.translate(translate_error))
-        } else {
-            None
-        };
+        let errors =
+            Self::validate_pilot_name(name).map(|errors| errors.translate(translate_error));
 
         let can_save = errors.is_none();
 
@@ -293,7 +290,7 @@ impl HomePage {
         }
     }
 
-    fn waiting_for_server(&self) -> Html {
+    fn waiting_for_server() -> Html {
         html! {
             <div class="container">
                 <h1 class="is-size-1 has-text-centered">{ localize!("connecting") }</h1>
@@ -314,7 +311,6 @@ impl HomePage {
     }
 
     fn validate_pilot_name(
-        &self,
         name: &FormStorage<Option<String>>,
     ) -> Option<Rc<ErrorSet<PilotFields>>> {
         ModelValidator::default()

@@ -16,7 +16,7 @@ static PILOT_CACHE: OnceCell<RwLock<HashMap<pilot::Id, Pilot>>> = OnceCell::new(
 
 fn cache_pilot_information(pilot: Pilot) {
     let mut cache = PILOT_CACHE
-        .get_or_init(|| RwLock::new(Default::default()))
+        .get_or_init(|| RwLock::new(HashMap::new()))
         .write()
         .unwrap();
     cache.insert(pilot.id, pilot);

@@ -88,10 +88,10 @@ impl Game {
                 Command::SetPilot(active_pilot) => {
                     let pilot_system = active_pilot.location.system;
                     self.active_pilot = Some(active_pilot);
-                    self.view_solar_system(&pilot_system);
+                    self.view_solar_system(pilot_system);
                 }
                 Command::ViewSolarSystem(system) => {
-                    self.view_solar_system(&system.id);
+                    self.view_solar_system(system.id);
                 }
                 Command::Zoom(fraction, focus) => {
                     let context = self.view_context();
@@ -132,7 +132,7 @@ impl Game {
         Ok(())
     }
 
-    fn view_solar_system(&mut self, solar_system: &SolarSystemId) {
+    fn view_solar_system(&mut self, solar_system: SolarSystemId) {
         self.set_view(SystemRenderer::new(solar_system));
     }
 
@@ -200,8 +200,7 @@ impl Game {
             self.simulator
                 .simulation
                 .as_ref()
-                .map(|s| s.lookup_ship(pilot.pilot.id))
-                .flatten()
+                .and_then(|s| s.lookup_ship(pilot.pilot.id))
                 .cloned()
         } else {
             None
@@ -305,7 +304,7 @@ pub trait CanvasScalable {
         canvas: &HtmlCanvasElement,
     ) -> (f32, Point2D<f32, Unit>) {
         let scale = self.scale();
-        let new_zoom = scale.get() + scale.get() * fraction;
+        let new_zoom = scale.get().mul_add(fraction, scale.get());
         let new_zoom = new_zoom.min(10.).max(0.1);
         let new_scale = Scale::<f32, Unit, Pixels>::new(new_zoom);
 

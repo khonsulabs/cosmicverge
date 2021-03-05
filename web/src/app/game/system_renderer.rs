@@ -40,8 +40,8 @@ enum CameraMode {
 }
 
 impl SystemRenderer {
-    pub fn new(solar_system: &SolarSystemId) -> Self {
-        let solar_system = universe().get(solar_system);
+    pub fn new(solar_system: SolarSystemId) -> Self {
+        let solar_system = universe().get(&solar_system);
         let mut renderer = Self {
             camera_mode: CameraMode::TrackPlayer,
             solar_system,
@@ -49,9 +49,9 @@ impl SystemRenderer {
             api: ApiAgent::bridge(Callback::noop()),
             backdrop: None,
             hud_solar_system: None,
-            look_at: Default::default(),
-            location_images: Default::default(),
-            ship_images: Default::default(),
+            look_at: Point2D::default(),
+            location_images: HashMap::new(),
+            ship_images: HashMap::new(),
         };
         renderer.load_solar_system_images();
         renderer
@@ -66,7 +66,7 @@ impl SystemRenderer {
             image
         });
 
-        for (id, location) in self.solar_system.locations.iter() {
+        for (id, location) in &self.solar_system.locations {
             let image = HtmlImageElement::new().unwrap();
             image.set_src(&location.image_url());
             self.location_images.insert(*id, image);
@@ -78,7 +78,7 @@ impl SystemRenderer {
             self.solar_system = universe().get(&system);
             self.load_solar_system_images();
             self.zoom = 1.;
-            self.look_at = Default::default();
+            self.look_at = Point2D::default();
 
             self.update_current_system_hud(hud);
         }
@@ -158,6 +158,8 @@ impl View for SystemRenderer {
         }
     }
 
+    // TODO: split into multiple pieces
+    #[allow(clippy::cognitive_complexity, clippy::too_many_lines)]
     fn render(&mut self, view: &ViewContext) {
         if matches!(self.camera_mode, CameraMode::TrackPlayer) {
             let mut switch_system_to = None;
@@ -188,7 +190,7 @@ impl View for SystemRenderer {
         context.set_image_smoothing_enabled(false);
 
         context.set_fill_style(&JsValue::from_str("#000"));
-        context.fill_rect(0., 0., size.width as f64, size.height as f64);
+        context.fill_rect(0., 0., size.width.into(), size.height.into());
 
         if let Some(backdrop) = self.backdrop.as_ref() {
             if backdrop.complete() {
@@ -208,7 +210,7 @@ impl View for SystemRenderer {
                     }
                     while x < size.width {
                         if let Err(err) =
-                            context.draw_image_with_html_image_element(backdrop, x as f64, y as f64)
+                            context.draw_image_with_html_image_element(backdrop, x.into(), y.into())
                         {
                             error!("Error rendering backdrop: {:#?}", err);
                         }
@@ -220,10 +222,10 @@ impl View for SystemRenderer {
         }
 
         let orbits = universe().orbits_for(self.solar_system.id);
-        for (id, location) in self.solar_system.locations.iter() {
+        for (id, location) in &self.solar_system.locations {
             let image = &self.location_images[id];
             if image.complete() {
-                let render_radius = (location.size * self.zoom) as f64;
+                let render_radius = f64::from(location.size * self.zoom);
                 let render_center =
                     (center + orbits[&location.id.id()].to_vector().to_f32() * scale).to_f64();
 
@@ -243,7 +245,7 @@ impl View for SystemRenderer {
             if simulation_system == self.solar_system.id {
                 context.save();
                 context.set_font("18px Orbitron, sans-serif");
-                for (ship, location, orientation) in view.pilot_locations.iter() {
+                for (ship, location, orientation) in &view.pilot_locations {
                     let ship_spec = hangar().load(&ship.ship.ship);
                     let image = self.ship_images.entry(ship_spec.id).or_insert_with(|| {
                         let image = HtmlImageElement::new().unwrap();
@@ -251,12 +253,14 @@ impl View for SystemRenderer {
                         image
                     });
                     if image.complete() {
-                        let render_radius = (image.width() as f64 / 2.) * self.zoom as f64;
+                        let render_radius = (f64::from(image.width()) / 2.) * f64::from(self.zoom);
                         let render_center =
                             center.to_f64() + (location.to_vector() * scale).to_f64();
                         context.save();
                         context.translate(render_center.x, render_center.y).unwrap();
-                        context.rotate(orientation.signed().get() as f64).unwrap();
+                        context
+                            .rotate(f64::from(orientation.signed().get()))
+                            .unwrap();
                         if let Err(err) = context.draw_image_with_html_image_element_and_dw_and_dh(
                             image,
                             -render_radius,
@@ -279,21 +283,21 @@ impl View for SystemRenderer {
                             context.set_fill_style(&JsValue::from_str("#df0772"));
                             let text_left = (render_center.x - text_metrics.width() / 2.).floor();
                             // Since it's a square, this is the simplified version of a^2 + b^2 = c^2
-                            let maximum_ship_size = (render_radius.powf(2.) * 2.).sqrt();
+                            let maximum_ship_size = (render_radius * render_radius * 2.).sqrt();
                             let nameplate_top = (render_center.y + maximum_ship_size).ceil();
                             let text_top = nameplate_top + NAMEPLATE_PADDING;
                             context.fill_rect(
                                 text_left - NAMEPLATE_PADDING,
                                 nameplate_top,
-                                text_metrics.width() + 2. * NAMEPLATE_PADDING,
-                                text_metrics.height() + 2. * NAMEPLATE_PADDING,
+                                2.0_f64.mul_add(NAMEPLATE_PADDING, text_metrics.width()),
+                                2.0_f64.mul_add(NAMEPLATE_PADDING, text_metrics.height()),
                             );
                             context.set_fill_style(&JsValue::from_str("#FFF"));
-                            let _ = context.fill_text(
+                            drop(context.fill_text(
                                 &pilot.name,
                                 text_left,
                                 (text_top + text_metrics.height()).ceil(),
-                            );
+                            ));
                         }
                     }
                 }

@@ -13,12 +13,16 @@
     clippy::cast_possible_wrap,
     clippy::cast_precision_loss,
     clippy::cast_sign_loss,
+    clippy::implicit_hasher,
     clippy::items_after_statements,
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
+    clippy::multiple_crate_versions,
     clippy::option_if_let_else,
     // Clippy is bugged
-    clippy::use_self
+    clippy::use_self,
+    // TODO: fix clippy
+    clippy::default_trait_access
 )]
 #![recursion_limit = "8192"]
 

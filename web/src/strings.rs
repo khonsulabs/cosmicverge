@@ -21,14 +21,16 @@ fluent_templates::static_loader! {
 
 // TODO This is only here because of https://github.com/XAMPPRocky/fluent-templates/issues/2
 #[allow(dead_code)]
-fn unused() {
+const fn unused() {
     include_dir!("./src/strings");
 }
 
+#[must_use]
 pub fn localize(name: &str) -> Html {
     render_markdown(&localize_raw(name))
 }
 
+#[must_use]
 pub fn localize_with_args(name: &str, args: &HashMap<String, FluentValue<'_>>) -> Html {
     render_markdown(&localize_raw_with_args(name, args))
 }
@@ -72,10 +74,11 @@ macro_rules! localize {
 pub trait Namable {
     fn name(&self) -> &'static str;
     fn localized_name(&self) -> String {
-        localize!(&self.name())
+        localize!(self.name())
     }
 }
 
+#[must_use]
 pub fn translate_error<T>(error: &FieldError<T>) -> String
 where
     T: FormField,
