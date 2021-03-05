@@ -1,4 +1,7 @@
-use std::str::FromStr;
+use std::{
+    fmt::{Display, Write},
+    str::FromStr,
+};
 
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
@@ -29,14 +32,16 @@ pub enum AccountPermission {
     View,
 }
 
-impl ToString for Permission {
-    fn to_string(&self) -> String {
+impl Display for Permission {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let (service, permission) = match self {
             Permission::Account(perm) => (Service::Account, perm.to_string()),
             Permission::Universe(perm) => (Service::Universe, perm.to_string()),
         };
-
-        format!("{}({})", service.to_string(), permission)
+        f.write_str(&service.to_string())?;
+        f.write_char('(')?;
+        f.write_str(&permission)?;
+        f.write_char(')')
     }
 }
 
