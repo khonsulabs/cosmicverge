@@ -1,16 +1,10 @@
 use chrono::{DateTime, Utc};
 use cosmicverge_shared::permissions::{Permission, Service};
 
+#[derive(Debug)]
 pub struct PermissionGroup {
     pub id: i32,
     pub name: String,
-    pub created_at: DateTime<Utc>,
-}
-
-pub struct PermissionGroupStatement {
-    pub id: i32,
-    pub service: String,
-    pub permission: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -22,6 +16,18 @@ impl PermissionGroup {
         sqlx::query_as!(
             Self,
             "INSERT INTO permission_groups (name) VALUES ($1) RETURNING id, name, created_at",
+            name
+        )
+        .fetch_one(executor)
+        .await
+    }
+    pub async fn find_by_name<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
+        name: &str,
+        executor: E,
+    ) -> Result<Self, sqlx::Error> {
+        sqlx::query_as!(
+            Self,
+            "SELECT id, name, created_at FROM permission_groups WHERE name = $1",
             name
         )
         .fetch_one(executor)
@@ -96,7 +102,28 @@ impl PermissionGroup {
     }
 }
 
+#[derive(Debug)]
+pub struct PermissionGroupStatement {
+    pub id: i32,
+    pub service: String,
+    pub permission: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
 impl PermissionGroupStatement {
+    pub async fn list_for_group_id<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
+        group_id: i32,
+        executor: E,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Self,
+            "SELECT id, service, permission, created_at FROM permission_group_statements WHERE permission_group_id = $1",
+            group_id
+        )
+        .fetch_all(executor)
+        .await
+    }
+
     pub async fn delete<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
         &self,
         executor: E,

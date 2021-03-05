@@ -3,7 +3,6 @@ extern crate tracing;
 
 use std::path::PathBuf;
 
-use cli::accounts::AccountCommand;
 use structopt::StructOpt;
 
 /// the definition of the http server.
@@ -43,19 +42,8 @@ enum Command {
         /// The path to the static folder to generate the assets within
         static_folder: PathBuf,
     },
-    Account {
-        /// The ID of the account
-        #[structopt(long)]
-        id: Option<i64>,
-
-        /// The Twitch handle to look up to find the account
-        #[structopt(long)]
-        twitch: Option<String>,
-
-        /// The command to execute
-        #[structopt(subcommand)]
-        command: AccountCommand,
-    },
+    Account(cli::accounts::Command),
+    PermissionGroup(cli::permission_groups::Command),
 }
 
 #[tokio::main]
@@ -67,11 +55,8 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Command::Serve => http::run_webserver().await,
         Command::GenerateAssets { static_folder } => generate_assets(static_folder).await,
-        Command::Account {
-            id,
-            twitch,
-            command,
-        } => cli::accounts::handle_command(id, twitch, command).await,
+        Command::Account(command) => cli::accounts::handle_command(command).await,
+        Command::PermissionGroup(command) => cli::permission_groups::handle_command(command).await,
     }
 }
 

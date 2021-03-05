@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use basws_server::prelude::Uuid;
+use chrono::{DateTime, Utc};
 use cosmicverge_shared::{permissions::{Permission, Service, }, protocol::AccountPermissions};
 use migrations::sqlx;
 use std::str::FromStr;
@@ -9,6 +10,7 @@ use std::str::FromStr;
 pub struct Account {
     pub id: i64,
     pub superuser: bool,
+    pub created_at: DateTime<Utc>,
 }
 
 impl Account {
@@ -18,7 +20,7 @@ impl Account {
     ) -> Result<Option<Self>, sqlx::Error> {
         match sqlx::query_as!(
             Self,
-            "SELECT accounts.id, accounts.superuser FROM accounts INNER JOIN installations ON installations.account_id = accounts.id WHERE installations.id = $1",
+            "SELECT accounts.id, accounts.superuser, accounts.created_at FROM accounts INNER JOIN installations ON installations.account_id = accounts.id WHERE installations.id = $1",
             installation_id,
         )
             .fetch_one(executor)
@@ -35,7 +37,7 @@ impl Account {
     ) -> Result<Option<Self>, sqlx::Error> {
         match sqlx::query_as!(
                 Self,
-                "SELECT accounts.id, accounts.superuser FROM accounts INNER JOIN twitch_profiles ON twitch_profiles.account_id = accounts.id WHERE twitch_profiles.id = $1",
+                "SELECT accounts.id, accounts.superuser, accounts.created_at FROM accounts INNER JOIN twitch_profiles ON twitch_profiles.account_id = accounts.id WHERE twitch_profiles.id = $1",
                 twitch_id
             )
             .fetch_one(executor)
@@ -52,7 +54,7 @@ impl Account {
     ) -> Result<Option<Self>, sqlx::Error> {
         match sqlx::query_as!(
                 Self,
-                "SELECT accounts.id, accounts.superuser FROM accounts INNER JOIN twitch_profiles ON twitch_profiles.account_id = accounts.id WHERE LOWER(twitch_profiles.username) = LOWER($1)",
+                "SELECT accounts.id, accounts.superuser, accounts.created_at FROM accounts INNER JOIN twitch_profiles ON twitch_profiles.account_id = accounts.id WHERE LOWER(twitch_profiles.username) = LOWER($1)",
                 username
             )
             .fetch_one(executor)
@@ -69,7 +71,7 @@ impl Account {
     ) -> Result<Option<Self>, sqlx::Error> {
         match sqlx::query_as!(
             Self,
-            "SELECT accounts.id, accounts.superuser FROM accounts WHERE accounts.id = $1",
+            "SELECT accounts.id, accounts.superuser, accounts.created_at FROM accounts WHERE accounts.id = $1",
             account_id,
         )
         .fetch_one(executor)
@@ -84,7 +86,7 @@ impl Account {
     pub async fn create<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
         executor: E,
     ) -> Result<Self, sqlx::Error> {
-        sqlx::query_as!(Self, "INSERT INTO accounts DEFAULT VALUES RETURNING id, superuser")
+        sqlx::query_as!(Self, "INSERT INTO accounts DEFAULT VALUES RETURNING id, superuser, created_at")
             .fetch_one(executor)
             .await
     }
