@@ -150,7 +150,7 @@ impl Account {
 
 #[cfg(test)]
 mod tests {
-    use cosmicverge_shared::protocol::AccountPermissions;
+    use cosmicverge_shared::{permissions::{AccountPermission, GenericPermission}, protocol::AccountPermissions};
     use crate::test_util::pool;
     use super::*;
     use crate::schema::PermissionGroup;
@@ -165,13 +165,13 @@ mod tests {
         let group = PermissionGroup::create(String::from("account-permissions-test-group"), &mut tx).await?;
         account.assign_permission_group(group.id, &mut tx).await?;
 
-        group.add_permission(Permission::AccountView, &mut tx).await?;
+        group.add_permission(Permission::Account(AccountPermission::View), &mut tx).await?;
         group.add_all_service_permissions(Service::Universe, &mut tx).await?;
 
         let permissions = dbg!(account.permissions(&mut tx).await?);
-        assert!(permissions.has_permissions(&[Permission::UniverseEdit, Permission::UniverseList]));
-        assert!(permissions.has_permission(&Permission::AccountView));
-        assert!(!permissions.has_permission(&Permission::AccountList));
+        assert!(permissions.has_permissions(&[Permission::Universe(GenericPermission::View), Permission::Universe(GenericPermission::List)]));
+        assert!(permissions.has_permission(&Permission::Account(AccountPermission::View)));
+        assert!(!permissions.has_permission(&Permission::Account(AccountPermission::List)));
 
         Ok(())
     }

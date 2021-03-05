@@ -35,5 +35,4 @@ pub fn migration() -> Migration {
         .with_down("DROP TABLE IF EXISTS account_permission_groups")
         .with_up("ALTER TABLE accounts ADD COLUMN superuser BOOL NOT NULL DEFAULT false")
         .with_down("ALTER TABLE accounts DROP COLUMN IF EXISTS superuser")
-        .debug()
 }

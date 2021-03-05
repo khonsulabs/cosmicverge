@@ -10,6 +10,7 @@ default = []
 persyutil = ["persy"]
 
 [dependencies]
+anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 serde_cbor = "0.11"
 uuid = { version = "0.8", features = ["v4", "serde"] }
