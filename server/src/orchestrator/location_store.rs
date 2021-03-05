@@ -62,11 +62,11 @@ impl LocationStore {
             .arg("pilot_ships")
             .query_async(&mut redis)
             .await?;
-        let pilots: Vec<Id> = pilots;
-        let locations: HashMap<Id, String> = locations;
-        let actions: HashMap<Id, String> = actions;
-        let physics: HashMap<Id, String> = physics;
-        let ships: HashMap<Id, String> = ships;
+        let pilots: Vec<pilot::Id> = pilots;
+        let locations: HashMap<pilot::Id, String> = locations;
+        let actions: HashMap<pilot::Id, String> = actions;
+        let physics: HashMap<pilot::Id, String> = physics;
+        let ships: HashMap<pilot::Id, String> = ships;
 
         let mut pilot_cache = HashMap::new();
         for pilot_id in pilots {
@@ -86,7 +86,7 @@ impl LocationStore {
             );
         }
 
-        let mut system_pilots: HashMap<SystemId, Vec<Id>> = HashMap::with_capacity(SystemId::COUNT);
+        let mut system_pilots: HashMap<SystemId, Vec<pilot::Id>> = HashMap::with_capacity(SystemId::COUNT);
         for (pilot_id, cache) in pilot_cache.iter() {
             system_pilots
                 .entry(cache.location.system)
@@ -100,7 +100,7 @@ impl LocationStore {
         })
     }
 
-    pub async fn lookup(pilot_id: Id) -> PilotCache {
+    pub async fn lookup(pilot_id: pilot::Id) -> PilotCache {
         let store = SHARED_STORE.get().expect("Uninitialized cache access");
         let cache = store.cache.read().await;
         cache
@@ -111,7 +111,7 @@ impl LocationStore {
     }
 
     pub async fn set_piloting_action(
-        pilot_id: Id,
+        pilot_id: pilot::Id,
         action: &navigation::Action,
     ) -> Result<(), redis::RedisError> {
         let store = SHARED_STORE.get().expect("Uninitialized cache access");
@@ -159,7 +159,7 @@ impl LocationStore {
 
 #[derive(Clone)]
 pub struct PilotCache {
-    pub pilot_id: Id,
+    pub pilot_id: pilot::Id,
     pub location: navigation::Pilot,
     pub action: navigation::Action,
     pub ship: navigation::ShipInformation,
@@ -167,7 +167,7 @@ pub struct PilotCache {
 }
 
 impl PilotCache {
-    pub fn new_for(pilot_id: Id) -> Self {
+    pub fn new_for(pilot_id: pilot::Id) -> Self {
         Self {
             pilot_id,
             location: Default::default(),
@@ -191,13 +191,13 @@ impl PilotCache {
 
 #[derive(Default)]
 struct LocationCache {
-    system_pilots: HashMap<SystemId, Vec<Id>>,
-    pilot_cache: HashMap<Id, PilotCache>,
+    system_pilots: HashMap<SystemId, Vec<pilot::Id>>,
+    pilot_cache: HashMap<pilot::Id, PilotCache>,
 }
 
 fn parse_value_from_pilot_json_map<'de, T: Deserialize<'de> + Default>(
-    pilot_id: Id,
-    json_map: &'de HashMap<Id, String>,
+    pilot_id: pilot::Id,
+    json_map: &'de HashMap<pilot::Id, String>,
 ) -> T {
     match json_map.get(&pilot_id) {
         Some(json) => serde_json::from_str(json).unwrap_or_default(),
