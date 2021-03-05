@@ -2,7 +2,7 @@ use async_channel::{Receiver, Sender};
 use basws_client::Handle;
 
 #[derive(Debug)]
-pub struct BroadcastChannel<T> {
+pub struct Channel<T> {
     data: Handle<Option<BroadcastChannelData<T>>>,
 }
 
@@ -11,7 +11,7 @@ struct BroadcastChannelData<T> {
     receivers: Vec<Sender<T>>,
 }
 
-impl<T> Default for BroadcastChannel<T> {
+impl<T> Default for Channel<T> {
     fn default() -> Self {
         Self {
             data: Handle::new(None),
@@ -19,7 +19,7 @@ impl<T> Default for BroadcastChannel<T> {
     }
 }
 
-impl<T> Clone for BroadcastChannel<T> {
+impl<T> Clone for Channel<T> {
     fn clone(&self) -> Self {
         Self {
             data: self.data.clone(),
@@ -27,7 +27,7 @@ impl<T> Clone for BroadcastChannel<T> {
     }
 }
 
-impl<T: Clone + 'static> BroadcastChannel<T> {
+impl<T: Clone + Send + Sync + 'static> Channel<T> {
     pub async fn receiver(&self) -> Receiver<T> {
         let mut data = self.data.write().await;
         if data.is_none() {

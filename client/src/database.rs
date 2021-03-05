@@ -13,11 +13,11 @@ fn client_db() -> &'static persy::Persy {
 }
 
 #[derive(Clone)]
-pub struct ClientDatabase {
+pub struct Database {
     db: persy::Persy,
 }
 
-impl ClientDatabase {
+impl Database {
     pub fn initialize<P: AsRef<Path>>(path: P) -> anyhow::Result<()> {
         CLIENTDB
             .set(persy::Persy::open_or_create_with(

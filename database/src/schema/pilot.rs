@@ -14,12 +14,12 @@ pub struct Pilot {
     pub created_at: DateTime<Utc>,
 }
 
-impl Into<protocol::Pilot> for Pilot {
-    fn into(self) -> protocol::Pilot {
+impl From<Pilot> for protocol::Pilot {
+    fn from(pilot: Pilot) -> protocol::Pilot {
         protocol::Pilot {
-            id: self.id(),
-            created_at: self.created_at,
-            name: self.name,
+            id: pilot.id(),
+            created_at: pilot.created_at,
+            name: pilot.name,
         }
     }
 }

@@ -23,11 +23,8 @@ impl Simulator {
     ) {
         self.simulation_system = Some(solar_system);
 
-        let current_simulation_timestamp = self
-            .simulation
-            .as_ref()
-            .map(|s| s.timestamp)
-            .unwrap_or(timestamp);
+        let current_simulation_timestamp =
+            self.simulation.as_ref().map_or(timestamp, |s| s.timestamp);
         let mut simulation = Simulation::new(solar_system, timestamp);
         simulation.add_ships(ships);
 
@@ -73,7 +70,7 @@ impl Simulator {
                 })
                 .collect()
         } else {
-            Default::default()
+            Vec::new()
         }
     }
 }

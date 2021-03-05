@@ -1,6 +1,6 @@
 use std::{collections::HashMap, f32::consts::PI};
 
-use cosmicverge_shared::euclid::{Rotation2D, Size2D, Vector2D};
+use cosmicverge_shared::euclid::{Point2D, Rotation2D, Size2D, Vector2D};
 use kludgine::prelude::*;
 
 use super::data_model::{Cluster, NodeId, SolarSystemServerId};
@@ -74,7 +74,7 @@ impl Component for ClusterMap {
             if let Some(map_layout) = &self.last_layout {
                 let last_layout = self.last_layout(context).await;
                 let position = position - last_layout.inner_bounds().origin.to_vector();
-                for (id, location) in map_layout.entities.iter() {
+                for (id, location) in &map_layout.entities {
                     if location.center.distance_to(position) < location.radius.get() {
                         if self.hovered != Some(*id) {
                             self.hovered = Some(*id);
@@ -101,7 +101,7 @@ impl Component for ClusterMap {
         let bounds = layout.inner_bounds();
 
         if let Some(map_layout) = &self.last_layout {
-            for (map_layout_id, location) in map_layout.entities.iter() {
+            for (map_layout_id, location) in &map_layout.entities {
                 let (id, color) = match map_layout_id {
                     MapLayoutEntity::Node(node_id) => (*node_id, Color::LIGHTGREY),
                     MapLayoutEntity::SystemServer(server_id) => (*server_id, Color::LIGHTGREEN),
@@ -111,7 +111,7 @@ impl Component for ClusterMap {
                     &id.to_string(),
                     context,
                     bounds.origin,
-                    &location,
+                    location,
                     color,
                     self.hovered == Some(*map_layout_id),
                 )
@@ -131,10 +131,10 @@ impl InteractiveComponent for ClusterMap {
 }
 
 impl ClusterMap {
-    pub fn new(cluster: Handle<Cluster>) -> Self {
+    pub const fn new(cluster: Handle<Cluster>) -> Self {
         Self {
             cluster,
-            last_layout: Default::default(),
+            last_layout: None,
             hovered: None,
         }
     }
@@ -176,7 +176,7 @@ impl ClusterMap {
         for (index, (node_id, node)) in nodes.into_iter().enumerate() {
             let node_center =
                 Rotation2D::<f32, Scaled, Scaled>::radians(angle_between_nodes * index as f32)
-                    .transform_point(Point::from_lengths(circle_radius, Default::default()))
+                    .transform_point(Point::from_lengths(circle_radius, Length::default()))
                     + center;
             layout.entities.insert(
                 MapLayoutEntity::Node(node.id),
@@ -196,7 +196,7 @@ impl ClusterMap {
                         )
                         .transform_vector(Vector2D::from_lengths(
                             maximum_node_radius - ENTITY_RADIUS / 2.,
-                            Default::default(),
+                            Length::default(),
                         ));
                     layout.entities.insert(
                         MapLayoutEntity::SystemServer(*server_id),
@@ -226,7 +226,7 @@ impl ClusterMap {
         if hovered {
             shape = shape.stroke(Stroke::new(Color::BLUE))
         }
-        shape.render_at(Default::default(), context.scene()).await;
+        shape.render_at(Point2D::default(), context.scene()).await;
 
         let measured = Text::span(text, context.effective_style()?.clone())
             .wrap(context.scene(), TextWrap::NoWrap)

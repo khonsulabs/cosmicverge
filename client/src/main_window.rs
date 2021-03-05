@@ -4,7 +4,7 @@ use kludgine::prelude::*;
 
 use self::solar_system_canvas::SolarSystemCanvas;
 use crate::{
-    api::{self, ApiEvent},
+    api::{self},
     CosmicVergeClient,
 };
 
@@ -45,36 +45,38 @@ impl InteractiveComponent for CosmicVerge {
     ) -> KludgineResult<()> {
         let Command::HandleApiEvent(event) = command;
         match event {
-            ApiEvent::ConnectedPilotsCountUpdated(count) => {
+            api::Event::ConnectedPilotsCountUpdated(count) => {
                 self.connected_pilots_count = Some(count);
                 // TODO set up a label for this
             }
-            ApiEvent::PilotChanged(pilot) => {
-                let _ = self
-                    .solar_system
-                    .send(solar_system_canvas::Command::ViewSolarSystem(
-                        pilot.location.system,
-                    ))
-                    .await;
+            api::Event::PilotChanged(pilot) => {
+                drop(
+                    self.solar_system
+                        .send(solar_system_canvas::Command::ViewSolarSystem(
+                            pilot.location.system,
+                        ))
+                        .await,
+                );
 
                 self.pilot = Some(pilot);
                 context.set_needs_redraw().await;
             }
-            ApiEvent::SpaceUpdate {
+            api::Event::SpaceUpdate {
                 timestamp,
                 location,
                 action,
                 ships,
             } => {
-                let _ = self
-                    .solar_system
-                    .send(solar_system_canvas::Command::SpaceUpdate {
-                        timestamp,
-                        location,
-                        action,
-                        ships,
-                    })
-                    .await;
+                drop(
+                    self.solar_system
+                        .send(solar_system_canvas::Command::SpaceUpdate {
+                            timestamp,
+                            location,
+                            action,
+                            ships,
+                        })
+                        .await,
+                );
             }
         }
 
@@ -84,7 +86,7 @@ impl InteractiveComponent for CosmicVerge {
 
 #[derive(Debug, Clone)]
 pub enum Command {
-    HandleApiEvent(ApiEvent),
+    HandleApiEvent(api::Event),
 }
 
 #[async_trait]
@@ -109,16 +111,17 @@ impl Component for CosmicVerge {
 }
 
 impl CosmicVerge {
-    pub fn new(server_url: impl ToString) -> Self {
+    pub fn new(server_url: impl Into<String>) -> Self {
         Self {
-            server_url: server_url.to_string(),
+            server_url: server_url.into(),
             api_client: None,
             pilot: None,
-            solar_system: Default::default(),
+            solar_system: Entity::default(),
             connected_pilots_count: None,
         }
     }
 
+    #[allow(clippy::missing_const_for_fn)]
     fn api_client(&self) -> &CosmicVergeClient {
         self.api_client.as_ref().unwrap()
     }

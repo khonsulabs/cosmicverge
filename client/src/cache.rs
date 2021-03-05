@@ -1,3 +1,6 @@
+mod image;
+mod tracker;
+
 use std::sync::Arc;
 
 use async_channel::{Receiver, Sender};
@@ -5,17 +8,13 @@ use basws_client::Handle;
 use kludgine::runtime::Runtime;
 use once_cell::sync::OnceCell;
 
-use crate::database::ClientDatabase;
-
-mod image;
-mod tracker;
-
-pub use image::CachedImage;
+pub use self::{image::Image, tracker::Tracker};
+use crate::database::Database;
 
 static CACHE_WORKERS_INITIALIZED: OnceCell<CacheData> = OnceCell::new();
 
 struct CacheData {
-    tracker: Handle<tracker::CacheTracker<CachedResource>>,
+    tracker: Handle<Tracker<CachedResource>>,
     sender: Sender<Arc<CachedResource>>,
 }
 
@@ -29,9 +28,9 @@ impl CachedResource {
     // TODO this isn't the best design for minimizing over-caching. It is fine for now, but if two areas of code
     // create cached resources independently pointing to the same location, it's possible for two copies of the data to end up in memory.
     // Whatever solution we do here should also be used for the other cache types
-    pub async fn new<S: ToString>(source_url: S) -> persy::PRes<Arc<Self>> {
+    pub async fn new<S: Into<String> + Send>(source_url: S) -> persy::PRes<Arc<Self>> {
         let cache = Self::cache();
-        let source_url = source_url.to_string();
+        let source_url = source_url.into();
         {
             let tracker = cache.tracker.read().await;
             if let Some(existing_entry) = tracker.lookup(&source_url) {
@@ -42,14 +41,14 @@ impl CachedResource {
         let mut tracker = cache.tracker.write().await;
         let mut queue = false;
         let entry = tracker.track(source_url.clone(), || {
-            let data = ClientDatabase::load_cached_resource(&source_url);
+            let data = Database::load_cached_resource(&source_url);
             queue = data.is_none();
             let data = Handle::new(data);
             Self { source_url, data }
         });
 
         if queue {
-            let _ = cache.sender.send(entry.clone()).await;
+            drop(cache.sender.send(entry.clone()).await);
         }
 
         Ok(entry)
@@ -61,7 +60,7 @@ impl CachedResource {
             Runtime::spawn(cache_loop(receiver));
             CacheData {
                 sender,
-                tracker: Handle::new(Default::default()),
+                tracker: Handle::new(Tracker::default()),
             }
         })
     }
@@ -92,7 +91,7 @@ async fn load_resource(
     };
     let response = client.get(&source_url).send().await?;
     let data = response.bytes().await?;
-    ClientDatabase::store_cached_resource(&source_url, data.to_vec()).await?;
+    Database::store_cached_resource(&source_url, data.to_vec()).await?;
 
     let mut cache_data = resource.data.write().await;
     *cache_data = Some(data.to_vec());
