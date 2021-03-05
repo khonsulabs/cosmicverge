@@ -4,6 +4,57 @@ on:
   push:
 
 jobs:
+  format:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+          persist-credentials: true
+          ssh-key: ${{ secrets.BOTSU_PRIVATE_SSH_KEY }}
+
+      - name: Install Rust
+        uses: hecrj/setup-rust-action@v1
+
+      - name: Install x11 dependencies for Kludgine
+        run: |
+          sudo apt-get install -yqq \
+            libxcb-render-util0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev
+
+      - name: Rust Formatting
+        run: cargo fmt --verbose -- --check
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+          persist-credentials: true
+          ssh-key: ${{ secrets.BOTSU_PRIVATE_SSH_KEY }}
+
+      - name: Install Rust
+        uses: hecrj/setup-rust-action@v1
+
+      - name: Install x11 dependencies for Kludgine
+        run: |
+          sudo apt-get install -yqq \
+            libxcb-render-util0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev
+
+      - name: Clippy
+        run: cargo clippy --all-targets --verbose -- -D warnings
+
+      - name: Clippy
+        run: cargo doc --no-deps --document-private-items --workspace --verbose
+        env:
+          RUSTDOCFLAGS: -D warnings
+
   test:
     runs-on: ubuntu-latest
 
@@ -52,6 +103,12 @@ jobs:
       - name: Run migrations on CI postgres
         run: |
           cargo run --bin migrator --release
+
+      - name: Run tests
+        run: |
+          cargo test --release --verbose
+        env:
+          BASWS_CLIENT_ENCRYPTION_KEY: abcdefghijklmnopqrstuvwxzy123456
 
       - name: Run tests
         run: |

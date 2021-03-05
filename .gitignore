@@ -1,5 +1,5 @@
 target/
-shared/Cargo.lock
+Cargo.lock
 .DS_Store
 .idea
 .env

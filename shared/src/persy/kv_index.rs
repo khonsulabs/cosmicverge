@@ -3,11 +3,11 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use super::{Connection, Index};
 
-pub struct KeyValueIndex<'a, K> {
+pub struct KvIndex<'a, K> {
     index: Index<'a, K, ByteVec>,
 }
 
-impl<'a, K> KeyValueIndex<'a, K>
+impl<'a, K> KvIndex<'a, K>
 where
     K: IndexType,
 {

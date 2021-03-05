@@ -7,7 +7,6 @@ publish = false
 
 [features]
 default = []
-persyutil = ["persy"]
 
 [dependencies]
 anyhow = "1"
@@ -28,3 +27,6 @@ approx = "0.4"
 redis = { version = "0.19", default-features = false, optional = true }
 rand = "0.8"
 persy = { version = "0.11", optional = true }
+
+[dev-dependencies]
+anyhow = "1"

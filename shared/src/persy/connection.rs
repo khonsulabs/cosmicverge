@@ -69,6 +69,15 @@ impl<'a> Connection<'a> {
         }
     }
 
+    pub fn drop_index(&mut self, index_name: &str) -> PRes<()> {
+        match self {
+            Connection::Transaction { tx, .. } => tx.drop_index(index_name),
+            Connection::Persy(_) => {
+                panic!("drop_index must always be called inside of a transaction")
+            }
+        }
+    }
+
     /// Begins a transaction
     ///
     /// If the connection is currently a Persy reference a new transaction is
@@ -143,3 +152,4 @@ impl<'a> Connection<'a> {
         }
     }
 }
+

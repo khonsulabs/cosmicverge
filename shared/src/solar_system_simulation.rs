@@ -24,7 +24,7 @@ impl SolarSystemSimulation {
         Self {
             system,
             timestamp,
-            ships: HashMap::default(),
+            ships: HashMap::new(),
         }
     }
 

@@ -1,13 +1,13 @@
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 #![warn(
     clippy::cargo,
     // clippy::missing_docs_in_private_items,
     clippy::nursery,
     clippy::pedantic,
     future_incompatible,
-    rust_2018_idioms,
-    rustdoc
+    rust_2018_idioms
 )]
+#![cfg_attr(doc, warn(rustdoc))]
 #![allow(
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
@@ -25,8 +25,8 @@ pub use num_traits;
 pub use strum;
 pub use strum_macros;
 pub mod permissions;
-#[cfg(feature = "persyutil")]
-pub mod persyutil;
+#[cfg(feature = "persy")]
+pub mod persy;
 pub mod protocol;
 pub mod ships;
 pub mod solar_system_simulation;
