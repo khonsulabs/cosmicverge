@@ -25,7 +25,7 @@ impl Plan {
             initial_velocity: ship.physics.linear_velocity,
             initial_orientation: ship.physics.rotation,
             elapsed_in_current_maneuver: 0.,
-            maneuvers: Vec::default(),
+            maneuvers: Vec::new(),
         }
     }
 

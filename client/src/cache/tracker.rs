@@ -11,7 +11,7 @@ pub struct Tracker<T> {
 impl<T> Default for Tracker<T> {
     fn default() -> Self {
         Self {
-            alive: HashMap::default(),
+            alive: HashMap::new(),
         }
     }
 }

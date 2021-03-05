@@ -20,7 +20,7 @@ pub fn hangar() -> &'static Hangar {
 impl Hangar {
     fn new() -> Self {
         let mut hangar = Self {
-            ships: HashMap::default(),
+            ships: HashMap::new(),
         };
 
         hangar.insert(shuttle::ship());

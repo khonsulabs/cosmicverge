@@ -135,7 +135,7 @@ impl LocationStore {
                 .filter_map(|pilot_id| cache.pilot_cache[pilot_id].to_piloted_ship())
                 .collect()
         } else {
-            Vec::default()
+            Vec::new()
         }
     }
 
