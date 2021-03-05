@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use cosmicverge_shared::protocol::{self, ActivePilot};
+use cosmicverge_shared::protocol::{self, navigation::ActivePilot};
 use database::{
     basws_server::{self, prelude::*},
     cosmicverge_shared::protocol::{

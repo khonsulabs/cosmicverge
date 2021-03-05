@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use cosmicverge_shared::{
-    protocol::{navigation, Pilot, Request, Response},
+    protocol::{Account, navigation, Pilot, Request, Response},
     solar_systems::{universe, Named, SolarSystemId},
 };
 use yew::{prelude::*, virtual_dom::VNode};

@@ -11,6 +11,7 @@
 #![allow(
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
+    clippy::items_after_statements,
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
     clippy::option_if_let_else,

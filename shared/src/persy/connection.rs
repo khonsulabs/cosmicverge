@@ -152,4 +152,3 @@ impl<'a> Connection<'a> {
         }
     }
 }
-

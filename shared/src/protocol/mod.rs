@@ -18,4 +18,6 @@ pub mod pilot;
 mod request;
 mod response;
 
-pub use self::{account::*, installation::*, oauth_provider::*, pilot::Pilot, request::*, response::*};
+pub use self::{
+    account::*, installation::*, oauth_provider::*, pilot::Pilot, request::*, response::*,
+};

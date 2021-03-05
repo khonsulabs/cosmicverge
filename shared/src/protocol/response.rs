@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::protocol::{navigation, Pilot};
+use crate::protocol::{account::Account, navigation, Pilot};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Response {

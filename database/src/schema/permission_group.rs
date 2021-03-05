@@ -7,7 +7,7 @@ pub struct PermissionGroup {
     pub created_at: DateTime<Utc>,
 }
 
-pub struct PermissionGroupStatement {
+pub struct Statement {
     pub id: i32,
     pub service: String,
     pub permission: Option<String>,
@@ -32,9 +32,9 @@ impl PermissionGroup {
         &self,
         permission: Permission,
         executor: E,
-    ) -> Result<PermissionGroupStatement, sqlx::Error> {
+    ) -> Result<Statement, sqlx::Error> {
         sqlx::query_as!(
-            PermissionGroupStatement,
+            Statement,
             "INSERT INTO permission_group_statements (permission_group_id, service, permission) VALUES ($1, $2, $3) RETURNING id, service, permission, created_at",
             self.id, permission.service().to_string(), permission.to_string()
         )
@@ -44,12 +44,12 @@ impl PermissionGroup {
 
     pub async fn add_all_service_permissions<
         'e,
-        A: sqlx::Acquire<'e, Database = sqlx::Postgres>,
+        A: sqlx::Acquire<'e, Database = sqlx::Postgres> + Send,
     >(
         &self,
         service: Service,
         executor: A,
-    ) -> Result<PermissionGroupStatement, sqlx::Error> {
+    ) -> Result<Statement, sqlx::Error> {
         let mut conn = executor.acquire().await?;
         sqlx::query!(
             "DELETE FROM permission_group_statements WHERE permission_group_id = $1 AND service = $2",
@@ -58,7 +58,7 @@ impl PermissionGroup {
         .execute(&mut *conn)
         .await?;
         sqlx::query_as!(
-            PermissionGroupStatement,
+            Statement,
             "INSERT INTO permission_group_statements (permission_group_id, service) VALUES ($1, $2) RETURNING id, service, permission, created_at",
             self.id, service.to_string()
         )
@@ -96,7 +96,7 @@ impl PermissionGroup {
     }
 }
 
-impl PermissionGroupStatement {
+impl Statement {
     pub async fn delete<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
         &self,
         executor: E,

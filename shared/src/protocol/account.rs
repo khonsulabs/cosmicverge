@@ -11,18 +11,21 @@ pub struct Account {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[allow(clippy::module_name_repetitions)]
 pub enum AccountPermissions {
     SuperUser,
     PermissionSet(HashSet<Permission>),
 }
 
 impl AccountPermissions {
-    pub fn has_permission(&self, permission: &Permission) -> bool {
+    #[must_use]
+    pub fn has_permission(&self, permission: Permission) -> bool {
         match self {
             Self::SuperUser => true,
-            Self::PermissionSet(permissions) => permissions.contains(permission),
+            Self::PermissionSet(permissions) => permissions.contains(&permission),
         }
     }
+    #[must_use]
     pub fn has_permissions(&self, permissions_to_check: &[Permission]) -> bool {
         match self {
             Self::SuperUser => true,
