@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use cosmicverge_shared::{
     protocol::{self, pilot},
-    ships, MAX_PILOTS_PER_ACCOUNT,
+    MAX_PILOTS_PER_ACCOUNT,
 };
 
 use crate::{sqlx, DatabaseError, SqlxResultExt};
@@ -86,7 +86,7 @@ impl Pilot {
     }
 
     pub async fn load<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
-        id: ships::Id,
+        id: Id,
         executor: E,
     ) -> Result<Option<Self>, DatabaseError> {
         sqlx::query_as!(
