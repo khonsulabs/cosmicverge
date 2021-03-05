@@ -26,16 +26,13 @@ mod cli;
     about = "Cosmic Verge web server and associated tools"
 )]
 /// the command line interface for the executable
-struct CLI {
-    /// The command to execute
-    #[structopt(subcommand)]
-    command: Command,
-}
-
-#[derive(StructOpt, Debug)]
-#[structopt(about = "commands to execute")]
-/// commands that the server can execute
-enum Command {
+///
+/// For help, try executing `cosmicverge-server -h`. Here are some common commands you might need when getting started:
+///
+/// - `cosmicverge-server generate-assets <static-folder-path>`: Generates the procedurally generated assets into folder specified.
+/// - `cosmicverge-server serve`: Starts the game server
+/// - `cosmicverge-server account --id 1 set-super-user`: Sets Account ID 1 to a Superuser.
+enum CLI {
     /// Run the Server
     Serve,
     /// Generate static assets, currently just includes procedurally generated planets
@@ -53,11 +50,11 @@ async fn main() -> anyhow::Result<()> {
     initialize_logging();
 
     let cli = CLI::from_args();
-    match cli.command {
-        Command::Serve => http::run_webserver().await,
-        Command::GenerateAssets { static_folder } => generate_assets(static_folder).await,
-        Command::Account(command) => cli::accounts::handle_command(command).await,
-        Command::PermissionGroup(command) => cli::permission_groups::handle_command(command).await,
+    match cli {
+        CLI::Serve => http::run_webserver().await,
+        CLI::GenerateAssets { static_folder } => generate_assets(static_folder).await,
+        CLI::Account(command) => cli::accounts::handle_command(command).await,
+        CLI::PermissionGroup(command) => cli::permission_groups::handle_command(command).await,
     }
 }
 
