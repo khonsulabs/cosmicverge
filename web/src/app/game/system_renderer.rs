@@ -1,34 +1,31 @@
-use client_api::ApiAgent;
 use std::collections::HashMap;
+
+use client_api::ApiAgent;
+use cosmicverge_shared::{
+    euclid::{Point2D, Scale, Size2D, Vector2D},
+    protocol::{navigation, Request},
+    ships::{hangar, ShipId},
+    solar_systems::{universe, Named, Pixels, Solar, SolarSystem, SystemId},
+};
 use wasm_bindgen::{JsCast, JsValue};
+use web_sys::{HtmlElement, HtmlImageElement};
 use yew::{agent::Bridged, Callback};
 
+use super::{
+    controller::{CanvasScalable, View, ViewContext},
+    Button,
+};
 use crate::{
     client_api::{self, AgentMessage, ApiBridge},
     extended_text_metrics::ExtendedTextMetrics,
     localize,
 };
 
-use super::{
-    controller::{CanvasScalable, View, ViewContext},
-    Button,
-};
-use cosmicverge_shared::{
-    euclid::{Point2D, Scale, Size2D, Vector2D},
-    protocol::{
-        Request, PilotLocation, Action, SolarSystemLocation,
-        SolarSystemLocationId,
-    },
-    ships::{hangar, ShipId},
-    solar_systems::{universe, Named, Pixels, Solar, SolarSystem, SolarSystemId},
-};
-use web_sys::{HtmlElement, HtmlImageElement};
-
 pub struct SystemRenderer {
     look_at: Point2D<f32, Solar>,
     zoom: f32,
     backdrop: Option<HtmlImageElement>,
-    location_images: HashMap<SolarSystemLocationId, HtmlImageElement>,
+    location_images: HashMap<navigation::SolarSystemId, HtmlImageElement>,
     ship_images: HashMap<ShipId, HtmlImageElement>,
     solar_system: &'static SolarSystem,
     api: ApiBridge,
@@ -43,7 +40,7 @@ enum CameraMode {
 }
 
 impl SystemRenderer {
-    pub fn new(solar_system: &SolarSystemId) -> Self {
+    pub fn new(solar_system: &SystemId) -> Self {
         let solar_system = universe().get(solar_system);
         let mut renderer = Self {
             camera_mode: CameraMode::TrackPlayer,
@@ -76,7 +73,7 @@ impl SystemRenderer {
         }
     }
 
-    fn switch_system(&mut self, system: SolarSystemId, hud: &HtmlElement) {
+    fn switch_system(&mut self, system: SystemId, hud: &HtmlElement) {
         if self.solar_system.id != system {
             self.solar_system = universe().get(&system);
             self.load_solar_system_images();
@@ -152,8 +149,8 @@ impl View for SystemRenderer {
         if count == 2 && (button == Button::Left || button == Button::OneFinger) {
             let location = self.convert_canvas_to_world(location.to_f32(), &view.canvas);
             if view.active_pilot.is_some() {
-                let request = Request::Fly(Action::NavigateTo(PilotLocation {
-                    location: SolarSystemLocation::InSpace(location),
+                let request = Request::Fly(navigation::Action::NavigateTo(navigation::Pilot {
+                    location: navigation::System::InSpace(location),
                     system: self.solar_system.id,
                 }));
                 self.api.send(AgentMessage::Request(request));

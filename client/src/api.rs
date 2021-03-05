@@ -3,14 +3,12 @@ use std::collections::{HashMap, HashSet};
 use async_channel::Receiver;
 use basws_client::prelude::*;
 use cosmicverge_shared::protocol::{
-    cosmic_verge_protocol_version, ActivePilot, Request, Response,
-    OAuthProvider, Pilot, Id, PilotLocation, PilotedShip, Action,
+    cosmic_verge_protocol_version, navigation, pilot, OAuthProvider, Pilot, Request, Response,
 };
 use kludgine::runtime::Runtime;
 
-use crate::{database::ClientDatabase, CosmicVergeClient};
-
 use self::broadcast::BroadcastChannel;
+use crate::{database::ClientDatabase, CosmicVergeClient};
 
 mod broadcast;
 
@@ -36,19 +34,19 @@ pub struct ApiClient {
 
 #[derive(Debug, Default)]
 pub struct PilotInformationCache {
-    info: HashMap<Id, Pilot>,
-    requested: HashSet<Id>,
+    info: HashMap<pilot::Id, Pilot>,
+    requested: HashSet<pilot::Id>,
 }
 
 #[derive(Debug, Clone)]
 pub enum ApiEvent {
     ConnectedPilotsCountUpdated(usize),
-    PilotChanged(ActivePilot),
+    PilotChanged(navigation::ActivePilot),
     SpaceUpdate {
         timestamp: f64,
-        location: PilotLocation,
-        action: Action,
-        ships: Vec<PilotedShip>,
+        location: navigation::Pilot,
+        action: navigation::Action,
+        ships: Vec<navigation::Ship>,
     },
 }
 
@@ -122,9 +120,7 @@ impl ClientLogic for ApiClient {
             Response::Authenticated { pilots, .. } => {
                 if let Some(pilot) = pilots.first() {
                     info!("Authenticated! Picking the first pilot because avoiding UI for now");
-                    client
-                        .request(Request::SelectPilot(pilot.id))
-                        .await?;
+                    client.request(Request::SelectPilot(pilot.id)).await?;
                 } else {
                     info!("Authenticated! But, you have no pilots. Create one in the browser at https://cosmicverge.com/ and come back");
                 }
@@ -173,11 +169,7 @@ impl ClientLogic for ApiClient {
 }
 
 impl ApiClient {
-    pub async fn pilot_information(
-        &self,
-        pilot_id: &Id,
-        client: &Client<Self>,
-    ) -> Option<Pilot> {
+    pub async fn pilot_information(&self, pilot_id: &pilot::Id, client: &Client<Self>) -> Option<Pilot> {
         {
             let cache = self.pilot_information_cache.read().await;
             if let Some(info) = cache.info.get(pilot_id) {

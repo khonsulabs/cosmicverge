@@ -1,7 +1,7 @@
 use euclid::Point2D;
 use num_derive::{FromPrimitive, ToPrimitive};
 
-use crate::solar_systems::{Named, SolarSystem, SolarSystemId};
+use crate::solar_systems::{Named, SolarSystem, SystemId};
 
 #[derive(Debug, FromPrimitive, ToPrimitive)]
 pub enum SM0A9F4 {
@@ -22,7 +22,7 @@ impl Named for SM0A9F4 {
 
 #[must_use]
 pub fn system() -> SolarSystem {
-    SolarSystem::new(SolarSystemId::SM0A9F4, Point2D::new(0., 0.))
+    SolarSystem::new(SystemId::SM0A9F4, Point2D::new(0., 0.))
         .define_object(SM0A9F4::Sun, 128., |location| location)
         .define_object(SM0A9F4::Earth, 32., |location| {
             location.orbiting_at(600., 365., 0).owned_by(SM0A9F4::Sun)

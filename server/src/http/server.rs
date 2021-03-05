@@ -3,8 +3,7 @@ use cosmicverge_shared::protocol::{self, ActivePilot};
 use database::{
     basws_server::prelude::*,
     cosmicverge_shared::protocol::{
-        cosmic_verge_protocol_version_requirements, Request, Response,
-        OAuthProvider,
+        cosmic_verge_protocol_version_requirements, OAuthProvider, Request, Response,
     },
     schema::{convert_db_pilots, Account, Installation, Pilot, PilotError},
 };
@@ -80,11 +79,9 @@ impl ServerLogic for CosmicVergeServer {
             Request::AuthenticationUrl(provider) => match provider {
                 OAuthProvider::Twitch => {
                     if let Some(installation) = client.installation().await {
-                        Ok(RequestHandling::Respond(
-                            Response::AuthenticateAtUrl {
-                                url: twitch::authorization_url(installation.id),
-                            },
-                        ))
+                        Ok(RequestHandling::Respond(Response::AuthenticateAtUrl {
+                            url: twitch::authorization_url(installation.id),
+                        }))
                     } else {
                         anyhow::bail!("Requested authentication URL without being connected")
                     }
@@ -94,9 +91,7 @@ impl ServerLogic for CosmicVergeServer {
                 if let Some(pilot) = Pilot::load(pilot_id, database::pool()).await? {
                     self.select_pilot(pilot, client).await
                 } else {
-                    Ok(RequestHandling::Respond(Response::error(
-                        "not-found",
-                    )))
+                    Ok(RequestHandling::Respond(Response::error("not-found")))
                 }
             }
             Request::CreatePilot { name } => {
@@ -117,20 +112,16 @@ impl ServerLogic for CosmicVergeServer {
                         Err(PilotError::Database(db)) => Err(db.into()),
                     }
                 } else {
-                    Ok(RequestHandling::Respond(Response::error(
-                        "unauthenticated",
-                    )))
+                    Ok(RequestHandling::Respond(Response::error("unauthenticated")))
                 }
             }
             // TODO this should use a cache
             Request::GetPilotInformation(pilot_id) => {
                 match Pilot::load(pilot_id, database::pool()).await? {
-                    Some(pilot) => Ok(RequestHandling::Respond(
-                        Response::PilotInformation(pilot.into()),
-                    )),
-                    None => Ok(RequestHandling::Respond(Response::error(
-                        "pilot not found",
+                    Some(pilot) => Ok(RequestHandling::Respond(Response::PilotInformation(
+                        pilot.into(),
                     ))),
+                    None => Ok(RequestHandling::Respond(Response::error("pilot not found"))),
                 }
             }
         }
@@ -180,16 +171,12 @@ impl ServerLogic for CosmicVergeServer {
                     .await?,
             };
 
-            Ok(RequestHandling::Respond(
-                Response::Authenticated {
-                    account,
-                    pilots,
-                },
-            ))
+            Ok(RequestHandling::Respond(Response::Authenticated {
+                account,
+                pilots,
+            }))
         } else {
-            Ok(RequestHandling::Respond(
-                Response::Unauthenticated,
-            ))
+            Ok(RequestHandling::Respond(Response::Unauthenticated))
         }
     }
 

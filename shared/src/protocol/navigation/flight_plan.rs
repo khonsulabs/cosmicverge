@@ -1,25 +1,23 @@
 use euclid::{Angle, Point2D, Vector2D};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    protocol::{Action, PilotedShip},
-    solar_systems::{Solar, SolarSystemId},
-};
+use super::{Action, Ship};
+use crate::solar_systems::{Solar, SystemId};
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub struct FlightPlan {
+pub struct Plan {
     pub made_for: Action,
     pub elapsed_in_current_maneuver: f32,
-    pub initial_system: SolarSystemId,
+    pub initial_system: SystemId,
     pub initial_position: Point2D<f32, Solar>,
     pub initial_velocity: Vector2D<f32, Solar>,
     pub initial_orientation: Angle<f32>,
     pub maneuvers: Vec<Maneuver>,
 }
 
-impl FlightPlan {
+impl Plan {
     #[must_use]
-    pub fn new(ship: &PilotedShip, current_system: SolarSystemId) -> Self {
+    pub fn new(ship: &Ship, current_system: SystemId) -> Self {
         Self {
             made_for: ship.action.clone(),
             initial_system: current_system,
@@ -32,7 +30,7 @@ impl FlightPlan {
     }
 
     #[must_use]
-    pub fn last_system(&self) -> SolarSystemId {
+    pub fn last_system(&self) -> SystemId {
         if let Some(maneuver) = self.maneuvers.last() {
             maneuver.system
         } else {
@@ -41,7 +39,7 @@ impl FlightPlan {
     }
 
     #[must_use]
-    pub fn last_location_for(&self, ship: &PilotedShip) -> Point2D<f32, Solar> {
+    pub fn last_location_for(&self, ship: &Ship) -> Point2D<f32, Solar> {
         if let Some(maneuver) = self.maneuvers.last() {
             maneuver.target
         } else {
@@ -50,7 +48,7 @@ impl FlightPlan {
     }
 
     #[must_use]
-    pub fn last_velocity_for(&self, ship: &PilotedShip) -> Vector2D<f32, Solar> {
+    pub fn last_velocity_for(&self, ship: &Ship) -> Vector2D<f32, Solar> {
         if let Some(maneuver) = self.maneuvers.last() {
             maneuver.target_velocity
         } else {
@@ -59,7 +57,7 @@ impl FlightPlan {
     }
 
     #[must_use]
-    pub fn last_rotation_for(&self, ship: &PilotedShip) -> Angle<f32> {
+    pub fn last_rotation_for(&self, ship: &Ship) -> Angle<f32> {
         if let Some(maneuver) = self.maneuvers.last() {
             maneuver.target_rotation
         } else {
@@ -71,7 +69,7 @@ impl FlightPlan {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Maneuver {
     pub kind: ManeuverKind,
-    pub system: SolarSystemId,
+    pub system: SystemId,
     pub duration: f32,
     pub target: Point2D<f32, Solar>,
     pub target_rotation: Angle<f32>,

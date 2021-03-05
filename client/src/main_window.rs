@@ -1,13 +1,12 @@
 use basws_client::Url;
-use cosmicverge_shared::protocol::ActivePilot;
+use cosmicverge_shared::protocol::navigation;
 use kludgine::prelude::*;
 
+use self::solar_system_canvas::SolarSystemCanvas;
 use crate::{
     api::{self, ApiEvent},
     CosmicVergeClient,
 };
-
-use self::solar_system_canvas::SolarSystemCanvas;
 
 mod solar_system_canvas;
 
@@ -18,7 +17,7 @@ pub fn run(server_url: &str) -> ! {
 struct CosmicVerge {
     server_url: String,
     api_client: Option<CosmicVergeClient>,
-    pilot: Option<ActivePilot>,
+    pilot: Option<navigation::ActivePilot>,
     solar_system: Entity<SolarSystemCanvas>,
     connected_pilots_count: Option<usize>,
 }

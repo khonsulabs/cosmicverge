@@ -4,23 +4,20 @@ use euclid::{approxeq::ApproxEq, Angle, Point2D, Vector2D};
 use rand::{thread_rng, Rng};
 
 use crate::{
-    protocol::{
-        Action, FlightPlan, Id, Maneuver, ManeuverKind, PilotedShip, ShipEffect,
-        SolarSystemLocation,
-    },
+    protocol::{navigation, pilot},
     ships::{hangar, ShipSpecification},
-    solar_systems::{universe, Solar, SolarSystemId},
+    solar_systems::{universe, Solar, SystemId},
 };
 
 pub struct SolarSystemSimulation {
     pub timestamp: f64,
-    system: SolarSystemId,
-    ships: HashMap<Id, PilotedShip>,
+    system: SystemId,
+    ships: HashMap<pilot::Id, navigation::Ship>,
 }
 
 impl SolarSystemSimulation {
     #[must_use]
-    pub fn new(system: SolarSystemId, timestamp: f64) -> Self {
+    pub fn new(system: SystemId, timestamp: f64) -> Self {
         Self {
             system,
             timestamp,
@@ -46,18 +43,18 @@ impl SolarSystemSimulation {
         self.timestamp += f64::from(duration);
     }
 
-    pub fn add_ships<I: IntoIterator<Item = PilotedShip>>(&mut self, ships: I) {
+    pub fn add_ships<I: IntoIterator<Item = navigation::Ship>>(&mut self, ships: I) {
         for ship in ships {
             self.ships.insert(ship.pilot_id, ship);
         }
     }
 
-    pub fn all_ships(&self) -> impl Iterator<Item = &PilotedShip> {
+    pub fn all_ships(&self) -> impl Iterator<Item = &navigation::Ship> {
         self.ships.values()
     }
 
     #[must_use]
-    pub fn lookup_ship(&self, pilot_id: Id) -> Option<&PilotedShip> {
+    pub fn lookup_ship(&self, pilot_id: pilot::Id) -> Option<&navigation::Ship> {
         self.ships.get(&pilot_id)
     }
 }
@@ -66,15 +63,15 @@ fn vector_to_angle<T>(vec: Vector2D<f32, T>) -> Angle<f32> {
     Angle::radians(vec.y.atan2(vec.x))
 }
 
-impl crate::protocol::PilotedShip {
-    fn create_flight_plan(&mut self, current_system: SolarSystemId) {
-        let mut plan = FlightPlan::new(self, current_system);
+impl navigation::Ship {
+    fn create_flight_plan(&mut self, current_system: SystemId) {
+        let mut plan = navigation::Plan::new(self, current_system);
         match &self.action {
-            Action::NavigateTo(destination) => {
+            navigation::Action::NavigateTo(destination) => {
                 let system = destination.system;
                 let location = match destination.location {
-                    SolarSystemLocation::InSpace(location) => location,
-                    SolarSystemLocation::Docked(object_id) => {
+                    navigation::System::InSpace(location) => location,
+                    navigation::System::Docked(object_id) => {
                         let system = universe().orbits_for(destination.system);
 
                         system[&object_id]
@@ -83,14 +80,14 @@ impl crate::protocol::PilotedShip {
 
                 self.plan_flight_to(&mut plan, system, location);
             }
-            Action::Idle => {
+            navigation::Action::Idle => {
                 self.append_stop_plan_if_needed(&mut plan);
             }
         }
         self.physics.flight_plan = Some(plan);
     }
 
-    fn append_stop_plan_if_needed(&self, plan: &mut FlightPlan) {
+    fn append_stop_plan_if_needed(&self, plan: &mut navigation::Plan) {
         if let Some(normalized_velocity) = plan.last_velocity_for(self).try_normalize() {
             let current_system = plan.last_system();
             // Turn the ship around
@@ -100,8 +97,8 @@ impl crate::protocol::PilotedShip {
             let rotation_time = amount_to_turn.radians.abs() / self.max_turning_radians_per_sec();
             let position_after_rotation =
                 plan.last_location_for(self) + self.physics.linear_velocity * rotation_time;
-            plan.maneuvers.push(Maneuver {
-                kind: ManeuverKind::Movement,
+            plan.maneuvers.push(navigation::Maneuver {
+                kind: navigation::ManeuverKind::Movement,
                 system: current_system,
                 duration: rotation_time,
                 target: position_after_rotation,
@@ -117,8 +114,8 @@ impl crate::protocol::PilotedShip {
                 0.5 * -self.max_acceleration() * time_to_stop * time_to_stop,
             );
             let final_location = position_after_rotation + normalized_velocity * traveled_distance;
-            plan.maneuvers.push(Maneuver {
-                kind: ManeuverKind::Movement,
+            plan.maneuvers.push(navigation::Maneuver {
+                kind: navigation::ManeuverKind::Movement,
                 system: current_system,
                 duration: time_to_stop,
                 target: final_location,
@@ -132,7 +129,7 @@ impl crate::protocol::PilotedShip {
         PI / self.max_turning_radians_per_sec()
     }
 
-    fn append_alignment_towards(&mut self, plan: &mut FlightPlan, angle: Angle<f32>) {
+    fn append_alignment_towards(&mut self, plan: &mut navigation::Plan, angle: Angle<f32>) {
         let time_to_align = plan
             .last_rotation_for(self)
             .angle_to(angle)
@@ -142,8 +139,8 @@ impl crate::protocol::PilotedShip {
             / self.max_turning_radians_per_sec();
         let velocity = plan.last_velocity_for(self);
         let location_after_drifting = plan.last_location_for(self) + velocity * time_to_align;
-        plan.maneuvers.push(Maneuver {
-            kind: ManeuverKind::Movement,
+        plan.maneuvers.push(navigation::Maneuver {
+            kind: navigation::ManeuverKind::Movement,
             system: plan.last_system(),
             duration: time_to_align,
             target: location_after_drifting,
@@ -154,8 +151,8 @@ impl crate::protocol::PilotedShip {
 
     fn plan_flight_to(
         &mut self,
-        plan: &mut FlightPlan,
-        destination_system: SolarSystemId,
+        plan: &mut navigation::Plan,
+        destination_system: SystemId,
         location: Point2D<f32, Solar>,
     ) {
         if plan.initial_system == destination_system {
@@ -175,8 +172,8 @@ impl crate::protocol::PilotedShip {
             let sun = &destination.locations[&sun_id];
 
             let mut rng = thread_rng();
-            plan.maneuvers.push(Maneuver {
-                kind: ManeuverKind::Jump,
+            plan.maneuvers.push(navigation::Maneuver {
+                kind: navigation::ManeuverKind::Jump,
                 system: destination_system,
                 duration: 1.0,
                 target: Point2D::new(
@@ -191,7 +188,11 @@ impl crate::protocol::PilotedShip {
         }
     }
 
-    fn plan_interstellar_flight(&mut self, plan: &mut FlightPlan, location: Point2D<f32, Solar>) {
+    fn plan_interstellar_flight(
+        &mut self,
+        plan: &mut navigation::Plan,
+        location: Point2D<f32, Solar>,
+    ) {
         // We have to turn around to stop whatever motion we make
         let time_to_turn_around = self.time_to_turn_around();
 
@@ -217,8 +218,8 @@ impl crate::protocol::PilotedShip {
             // This is a shortcut for 1/2 at^2, because we already calculated at in the previous line, the remaining values are 0.5 and t
             let location_after_acceleration =
                 plan.last_location_for(self) + final_velocity * 0.5 * acceleration_time;
-            plan.maneuvers.push(Maneuver {
-                kind: ManeuverKind::Movement,
+            plan.maneuvers.push(navigation::Maneuver {
+                kind: navigation::ManeuverKind::Movement,
                 system: current_system,
                 duration: acceleration_time,
                 target: location_after_acceleration,
@@ -231,8 +232,8 @@ impl crate::protocol::PilotedShip {
             self.append_alignment_towards(plan, deceleration_angle);
 
             // We can cheat on this last one, because we know the destination and can just assume our math was good enough at this point
-            plan.maneuvers.push(Maneuver {
-                kind: ManeuverKind::Movement,
+            plan.maneuvers.push(navigation::Maneuver {
+                kind: navigation::ManeuverKind::Movement,
                 system: current_system,
                 duration: acceleration_time,
                 target: location,
@@ -310,21 +311,21 @@ fn time_to_travel_distance(initial_velocity: f32, acceleration: f32, distance: f
     }
 }
 
-fn calculate_flight_update(plan: &FlightPlan) -> Option<FlightUpdate> {
+fn calculate_flight_update(plan: &navigation::Plan) -> Option<FlightUpdate> {
     plan.maneuvers.first().map(|maneuver| {
         let percent_complete = plan.elapsed_in_current_maneuver / maneuver.duration;
         match maneuver.kind {
             // For jumps, we don't want to alter the values, just pass the effect of "jumping"
-            ManeuverKind::Jump => FlightUpdate {
+            navigation::ManeuverKind::Jump => FlightUpdate {
                 system: plan.initial_system,
                 location: plan.initial_position,
                 orientation: plan.initial_orientation,
                 velocity: plan.initial_velocity,
-                effect: Some(ShipEffect::Jumping),
+                effect: Some(navigation::ShipEffect::Jumping),
             },
 
             // Movement we interpolate
-            ManeuverKind::Movement => {
+            navigation::ManeuverKind::Movement => {
                 let (effect, movement_interpolation_mode) =
                     if plan.initial_velocity.approx_eq(&maneuver.target_velocity) {
                         (None, InterpolationMode::Linear)
@@ -332,12 +333,12 @@ fn calculate_flight_update(plan: &FlightPlan) -> Option<FlightUpdate> {
                         > maneuver.target_velocity.square_length()
                     {
                         (
-                            Some(ShipEffect::Thrusting),
+                            Some(navigation::ShipEffect::Thrusting),
                             InterpolationMode::ExponentialOut,
                         )
                     } else {
                         (
-                            Some(ShipEffect::Thrusting),
+                            Some(navigation::ShipEffect::Thrusting),
                             InterpolationMode::ExponentialIn,
                         )
                     };
@@ -369,7 +370,10 @@ fn calculate_flight_update(plan: &FlightPlan) -> Option<FlightUpdate> {
     })
 }
 
-fn execute_flight_plan(plan: &mut FlightPlan, mut duration: f32) -> Option<FlightUpdate> {
+fn execute_flight_plan(
+    plan: &mut navigation::Plan,
+    mut duration: f32,
+) -> Option<FlightUpdate> {
     let mut last_update = None;
     while let Some(maneuver) = plan.maneuvers.first_mut() {
         let total_elapsed = plan.elapsed_in_current_maneuver + duration;
@@ -389,7 +393,7 @@ fn execute_flight_plan(plan: &mut FlightPlan, mut duration: f32) -> Option<Fligh
         };
         last_update = Some(update.clone());
 
-        let jump = matches!(maneuver.kind, ManeuverKind::Jump);
+        let jump = matches!(maneuver.kind, navigation::ManeuverKind::Jump);
         plan.maneuvers.remove(0);
 
         plan.initial_system = update.system;
@@ -411,11 +415,11 @@ fn execute_flight_plan(plan: &mut FlightPlan, mut duration: f32) -> Option<Fligh
 
 #[derive(Clone)]
 struct FlightUpdate {
-    system: SolarSystemId,
+    system: SystemId,
     location: Point2D<f32, Solar>,
     orientation: Angle<f32>,
     velocity: Vector2D<f32, Solar>,
-    effect: Option<ShipEffect>,
+    effect: Option<navigation::ShipEffect>,
 }
 
 #[derive(Clone, Copy, Debug)]

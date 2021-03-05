@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use cosmicverge_shared::{
-    protocol::{self, Id},
+    protocol::{self, pilot},
     MAX_PILOTS_PER_ACCOUNT,
 };
 
@@ -43,8 +43,8 @@ impl From<sqlx::Error> for PilotError {
 }
 
 impl Pilot {
-    pub fn id(&self) -> Id {
-        Id(self.id)
+    pub fn id(&self) -> pilot::Id {
+        pilot::Id(self.id)
     }
 
     pub async fn create<

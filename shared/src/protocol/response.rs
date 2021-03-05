@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::protocol::{Action, ActivePilot, Pilot, PilotLocation, PilotedShip};
+use crate::protocol::{navigation, Pilot};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Response {
@@ -15,12 +15,12 @@ pub enum Response {
         pilots: Vec<Pilot>,
     },
     Unauthenticated,
-    PilotChanged(ActivePilot),
+    PilotChanged(navigation::ActivePilot),
     SpaceUpdate {
         timestamp: f64,
-        location: PilotLocation,
-        action: Action,
-        ships: Vec<PilotedShip>,
+        location: navigation::Pilot,
+        action: navigation::Action,
+        ships: Vec<navigation::Ship>,
     },
     PilotInformation(Pilot),
 

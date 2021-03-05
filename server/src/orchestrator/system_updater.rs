@@ -2,9 +2,9 @@ use std::time::Duration;
 
 use cosmicverge_shared::{
     num_traits::FromPrimitive,
-    protocol::{PilotLocation, SolarSystemLocation},
+    protocol::navigation,
     solar_system_simulation::SolarSystemSimulation,
-    solar_systems::{universe, SolarSystemId},
+    solar_systems::{universe, SystemId},
 };
 use futures::StreamExt as _;
 use redis::aio::{Connection, MultiplexedConnection};
@@ -95,7 +95,7 @@ pub async fn wait_for_ready_to_process(
                     // Process server update
                     systems_processed.push(system_id);
                     let system = universe()
-                        .get(&SolarSystemId::from_i64(system_id).expect("invalid solar system id"));
+                        .get(&SystemId::from_i64(system_id).expect("invalid solar system id"));
                     debug!("updating {:?}", system.id);
 
                     let mut simulation = SolarSystemSimulation::new(system.id, current_timestamp);
@@ -111,9 +111,9 @@ pub async fn wait_for_ready_to_process(
                     let mut pipe = &mut pipe;
 
                     for ship in simulation.all_ships() {
-                        let location = PilotLocation {
+                        let location = navigation::Pilot {
                             system: ship.physics.system,
-                            location: SolarSystemLocation::InSpace(ship.physics.location),
+                            location: navigation::System::InSpace(ship.physics.location),
                         };
                         pipe = pipe
                             .cmd("HSET")

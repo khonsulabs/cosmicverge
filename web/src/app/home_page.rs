@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use cosmicverge_shared::{
-    protocol::{Request, Response, OAuthProvider, Pilot, Id},
+    protocol::{Request, Response, OAuthProvider, Pilot, pilot},
     MAX_PILOTS_PER_ACCOUNT,
 };
 use wasm_bindgen::__rt::std::borrow::Cow;
@@ -44,7 +44,7 @@ pub enum Message {
     LogInWith(OAuthProvider),
     ApiMessage(AgentResponse),
     ToggleStatus,
-    SelectPilot(Id),
+    SelectPilot(pilot::Id),
     NewPilot,
     CreatePilot,
     ListPilots,

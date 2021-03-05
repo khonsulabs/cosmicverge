@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-use crate::protocol::{navigation::Action, Id, OAuthProvider};
+use crate::protocol::{navigation::Action, pilot, OAuthProvider};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Request {
     AuthenticationUrl(OAuthProvider),
-    SelectPilot(Id),
+    SelectPilot(pilot::Id),
     CreatePilot { name: String },
 
     Fly(Action),
-    GetPilotInformation(Id),
+    GetPilotInformation(pilot::Id),
 }

@@ -1,13 +1,13 @@
 use cosmicverge_shared::{
     euclid::{Angle, Point2D},
-    protocol::PilotedShip,
+    protocol::navigation,
     solar_system_simulation::SolarSystemSimulation,
-    solar_systems::{Solar, SolarSystemId},
+    solar_systems::{Solar, SystemId},
 };
 
 #[derive(Default)]
 pub struct Simulator {
-    pub simulation_system: Option<SolarSystemId>,
+    pub simulation_system: Option<SystemId>,
     pub simulation: Option<SolarSystemSimulation>,
     pub server_round_trip_avg: Option<f64>,
     last_physics_update: Option<f64>,
@@ -16,8 +16,8 @@ pub struct Simulator {
 impl Simulator {
     pub fn update(
         &mut self,
-        ships: Vec<PilotedShip>,
-        solar_system: SolarSystemId,
+        ships: Vec<navigation::Ship>,
+        solar_system: SystemId,
         timestamp: f64,
         now: f64,
     ) {
@@ -58,7 +58,7 @@ impl Simulator {
         self.last_physics_update = Some(now);
     }
 
-    pub fn pilot_locations(&self) -> Vec<(PilotedShip, Point2D<f32, Solar>, Angle<f32>)> {
+    pub fn pilot_locations(&self) -> Vec<(navigation::Ship, Point2D<f32, Solar>, Angle<f32>)> {
         if let Some(simulation) = &self.simulation {
             simulation
                 .all_ships()

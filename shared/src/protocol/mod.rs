@@ -12,13 +12,13 @@ pub fn cosmic_verge_protocol_version_requirements() -> VersionReq {
 
 mod account;
 mod installation;
-mod navigation;
+pub mod navigation;
 mod oauth_provider;
-mod pilot;
+pub mod pilot;
 mod request;
 mod response;
 
 pub use self::{
-    account::*, installation::*, navigation::*, oauth_provider::*, pilot::*, request::*,
+    account::*, installation::*, navigation::*, oauth_provider::*, pilot::Pilot, request::*,
     response::*,
 };

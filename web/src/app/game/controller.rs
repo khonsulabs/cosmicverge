@@ -1,7 +1,7 @@
 use cosmicverge_shared::{
     euclid::{Angle, Point2D, Scale, Size2D, Vector2D},
-    protocol::{ActivePilot, PilotedShip},
-    solar_systems::{Pixels, Solar, SolarSystem, SolarSystemId},
+    protocol::navigation,
+    solar_systems::{Pixels, Solar, SolarSystem, SystemId},
 };
 use crossbeam::channel::{self, Receiver, Sender, TryRecvError};
 use wasm_bindgen::JsCast;
@@ -11,7 +11,7 @@ use super::{simulator::Simulator, system_renderer::SystemRenderer, Button};
 use crate::{app::game::check_canvas_size, redraw_loop::Drawable};
 
 pub enum Command {
-    SetPilot(ActivePilot),
+    SetPilot(navigation::ActivePilot),
 
     HandleClick {
         button: Button,
@@ -27,8 +27,8 @@ pub enum Command {
     UpdateServerRoundtripTime(f64),
 
     UpdateSolarSystem {
-        solar_system: SolarSystemId,
-        ships: Vec<PilotedShip>,
+        solar_system: SystemId,
+        ships: Vec<navigation::Ship>,
         timestamp: f64,
     },
 }
@@ -38,7 +38,7 @@ pub struct GameController {
     canvas: Option<HtmlCanvasElement>,
     context: Option<CanvasRenderingContext2d>,
     performance: Performance,
-    active_pilot: Option<ActivePilot>,
+    active_pilot: Option<navigation::ActivePilot>,
     simulator: Simulator,
     receiver: Receiver<Command>,
     view: Option<Box<dyn View>>,
@@ -132,7 +132,7 @@ impl GameController {
         Ok(())
     }
 
-    fn view_solar_system(&mut self, solar_system: &SolarSystemId) {
+    fn view_solar_system(&mut self, solar_system: &SystemId) {
         self.set_view(SystemRenderer::new(solar_system));
     }
 
@@ -252,10 +252,10 @@ pub struct ViewContext {
     pub canvas: HtmlCanvasElement,
     pub context: CanvasRenderingContext2d,
     pub performance: Performance,
-    pub active_pilot: Option<ActivePilot>,
-    pub active_ship: Option<PilotedShip>,
-    pub simulation_system: Option<SolarSystemId>,
-    pub pilot_locations: Vec<(PilotedShip, Point2D<f32, Solar>, Angle<f32>)>,
+    pub active_pilot: Option<navigation::ActivePilot>,
+    pub active_ship: Option<navigation::Ship>,
+    pub simulation_system: Option<SystemId>,
+    pub pilot_locations: Vec<(navigation::Ship, Point2D<f32, Solar>, Angle<f32>)>,
 }
 
 pub trait CanvasScalable {

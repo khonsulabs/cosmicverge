@@ -1,11 +1,8 @@
 use std::sync::Arc;
 
 use cosmicverge_shared::{
-    protocol::{
-        Action, ActivePilot, Pilot, PilotLocation, Request, Response, SolarSystemLocation,
-        SolarSystemLocationId,
-    },
-    solar_systems::{universe, Named, SolarSystemId},
+    protocol::{navigation, Pilot, Request, Response},
+    solar_systems::{universe, Named, SystemId},
 };
 use yew::prelude::*;
 use yew_bulma::static_page::StaticPage;
@@ -67,7 +64,7 @@ pub struct LoggedInUser {
 }
 
 impl LoggedInUser {
-    fn with_pilot(&self, pilot: ActivePilot) -> Arc<Self> {
+    fn with_pilot(&self, pilot: navigation::ActivePilot) -> Arc<Self> {
         Arc::new(Self {
             account: self.account.clone(),
             pilot: PilotingState::Selected(pilot),
@@ -79,7 +76,7 @@ impl LoggedInUser {
 pub enum PilotingState {
     Unselected { available: Vec<Pilot> },
     Reconnecting,
-    Selected(ActivePilot),
+    Selected(navigation::ActivePilot),
 }
 
 pub enum Message {
@@ -90,7 +87,7 @@ pub enum Message {
     ToggleRendering,
     ForegroundGame,
     LogOut,
-    NavigateToLocation(SolarSystemId, SolarSystemLocationId),
+    NavigateToLocation(SystemId, navigation::SolarSystemId),
 }
 
 fn set_document_title(title: &str) {
@@ -153,13 +150,12 @@ impl Component for App {
                 }
             }
             Message::NavigateToLocation(system, location_id) => {
-                self.api
-                    .send(AgentMessage::Request(Request::Fly(Action::NavigateTo(
-                        PilotLocation {
-                            system,
-                            location: SolarSystemLocation::Docked(location_id),
-                        },
-                    ))));
+                self.api.send(AgentMessage::Request(Request::Fly(
+                    navigation::Action::NavigateTo(navigation::Pilot {
+                        system,
+                        location: navigation::System::Docked(location_id),
+                    }),
+                )));
                 self.navbar_expanded = false;
                 true
             }

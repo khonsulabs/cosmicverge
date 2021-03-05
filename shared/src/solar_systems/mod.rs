@@ -12,20 +12,20 @@ use num_traits::ToPrimitive;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
-use crate::protocol::SolarSystemLocationId;
+use crate::protocol::navigation;
 
 pub mod sm0a9f4;
 pub mod system2;
 
 const LONGEST_PLANET_ORBIT_DAYS: i64 = 3650;
 
-pub type SolarSystemOrbits = HashMap<SolarSystemLocationId, Point2D<f32, Solar>>;
+pub type SolarSystemOrbits = HashMap<navigation::SolarSystemId, Point2D<f32, Solar>>;
 
 #[derive(Debug)]
 pub struct Universe {
-    solar_systems: HashMap<SolarSystemId, SolarSystem>,
-    solar_systems_by_name: HashMap<String, SolarSystemId>,
-    orbits: RwLock<HashMap<SolarSystemId, SolarSystemOrbits>>,
+    solar_systems: HashMap<SystemId, SolarSystem>,
+    solar_systems_by_name: HashMap<String, SystemId>,
+    orbits: RwLock<HashMap<SystemId, SolarSystemOrbits>>,
 }
 
 pub fn universe() -> &'static Universe {
@@ -61,7 +61,7 @@ impl Universe {
         self.solar_systems.insert(system.id, system);
     }
 
-    pub fn get(&self, id: &SolarSystemId) -> &SolarSystem {
+    pub fn get(&self, id: &SystemId) -> &SolarSystem {
         &self.solar_systems[id]
     }
 
@@ -82,7 +82,7 @@ impl Universe {
         }
     }
 
-    pub fn orbits_for(&self, system: SolarSystemId) -> SolarSystemOrbits {
+    pub fn orbits_for(&self, system: SystemId) -> SolarSystemOrbits {
         let orbits = self.orbits.read().unwrap();
         orbits[&system].clone()
     }
@@ -90,15 +90,15 @@ impl Universe {
 
 #[derive(Debug)]
 pub struct SolarSystem {
-    pub id: SolarSystemId,
+    pub id: SystemId,
     pub background: Option<&'static str>,
     pub galaxy_location: Point2D<f32, Galactic>,
-    pub locations: HashMap<SolarSystemLocationId, SolarSystemObject>,
-    pub locations_by_owners: HashMap<Option<SolarSystemLocationId>, Vec<SolarSystemLocationId>>,
+    pub locations: HashMap<navigation::SolarSystemId, SolarSystemObject>,
+    pub locations_by_owners: HashMap<Option<navigation::SolarSystemId>, Vec<navigation::SolarSystemId>>,
 }
 
 impl SolarSystem {
-    fn new(id: SolarSystemId, galaxy_location: Point2D<f32, Galactic>) -> Self {
+    fn new(id: SystemId, galaxy_location: Point2D<f32, Galactic>) -> Self {
         Self {
             id,
             galaxy_location,
@@ -173,7 +173,7 @@ impl SolarSystem {
 #[derive(Debug)]
 pub struct SolarSystemObject {
     pub id: Box<dyn NamedLocation>,
-    pub system: SolarSystemId,
+    pub system: SystemId,
     pub image: Option<&'static str>,
     pub size: f32,
     pub orbit_distance: f32,
@@ -183,7 +183,7 @@ pub struct SolarSystemObject {
 }
 
 impl SolarSystemObject {
-    fn new<ID: NamedLocation>(system: SolarSystemId, id: ID, size: f32) -> Self {
+    fn new<ID: NamedLocation>(system: SystemId, id: ID, size: f32) -> Self {
         Self {
             id: Box::new(id),
             system,
@@ -233,7 +233,7 @@ pub struct Solar;
 pub struct Galactic;
 
 pub trait Identifiable {
-    fn id(&self) -> SolarSystemLocationId;
+    fn id(&self) -> navigation::SolarSystemId;
 }
 
 pub trait Named {
@@ -246,8 +246,8 @@ impl<T> Identifiable for T
 where
     T: ToPrimitive,
 {
-    fn id(&self) -> SolarSystemLocationId {
-        SolarSystemLocationId(self.to_i64().unwrap())
+    fn id(&self) -> navigation::SolarSystemId {
+        navigation::SolarSystemId(self.to_i64().unwrap())
     }
 }
 
@@ -268,16 +268,16 @@ impl<T> NamedLocation for T where T: Identifiable + Named + Send + Sync + std::f
     FromPrimitive,
     ToPrimitive,
 )]
-pub enum SolarSystemId {
+pub enum SystemId {
     SM0A9F4,
     System2,
 }
 
-impl Named for SolarSystemId {
+impl Named for SystemId {
     fn name(&self) -> &'static str {
         match self {
-            SolarSystemId::SM0A9F4 => "SM-0-A9F4",
-            SolarSystemId::System2 => "System 2",
+            Self::SM0A9F4 => "SM-0-A9F4",
+            Self::System2 => "System 2",
         }
     }
 }

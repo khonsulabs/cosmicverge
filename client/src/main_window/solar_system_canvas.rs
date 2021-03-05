@@ -2,15 +2,14 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use cosmicverge_shared::{
     euclid::Vector2D,
-    protocol::{PilotLocation, PilotedShip, Action, SolarSystemLocationId},
+    protocol::navigation,
     ships::{hangar, ShipId},
-    solar_systems::{universe, Solar, SolarSystem, SolarSystemId},
+    solar_systems::{universe, Solar, SolarSystem, SystemId},
 };
 use kludgine::prelude::*;
 
-use crate::{cache::CachedImage, CosmicVergeClient};
-
 use self::simulator::Simulator;
+use crate::{cache::CachedImage, CosmicVergeClient};
 
 mod simulator;
 use chrono::Utc;
@@ -27,7 +26,7 @@ pub struct SolarSystemCanvas {
 struct SolarSystemCache {
     solar_system: &'static SolarSystem,
     backdrop: Option<Arc<CachedImage>>,
-    object_images: HashMap<SolarSystemLocationId, Arc<CachedImage>>,
+    object_images: HashMap<navigation::SolarSystemId, Arc<CachedImage>>,
 }
 
 #[async_trait]
@@ -206,12 +205,12 @@ impl Component for SolarSystemCanvas {
 
 #[derive(Clone, Debug)]
 pub enum Command {
-    ViewSolarSystem(SolarSystemId),
+    ViewSolarSystem(SystemId),
     SpaceUpdate {
         timestamp: f64,
-        location: PilotLocation,
-        action: Action,
-        ships: Vec<PilotedShip>,
+        location: navigation::Pilot,
+        action: navigation::Action,
+        ships: Vec<navigation::Ship>,
     },
 }
 
@@ -258,7 +257,7 @@ impl SolarSystemCanvas {
 
     async fn view_solar_system(
         &mut self,
-        id: SolarSystemId,
+        id: SystemId,
         context: &mut Context,
     ) -> KludgineResult<()> {
         if let Some(cache) = &self.solar_system {

@@ -2,15 +2,15 @@ use euclid::{Angle, Point2D, Vector2D};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    protocol::{FlightPlan, Id, Pilot, PilotLocation},
+    protocol::{navigation, pilot, Pilot},
     ships::ShipId,
-    solar_systems::{Solar, SolarSystemId},
+    solar_systems::{Solar, SystemId},
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Action {
     Idle,
-    NavigateTo(PilotLocation),
+    NavigateTo(navigation::Pilot),
 }
 
 impl Default for Action {
@@ -20,27 +20,27 @@ impl Default for Action {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PilotedShip {
-    pub pilot_id: Id,
+pub struct Ship {
+    pub pilot_id: pilot::Id,
     pub ship: ShipInformation,
-    pub physics: PilotPhysics,
+    pub physics: Physics,
     pub action: Action,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ActivePilot {
     pub pilot: Pilot,
-    pub location: PilotLocation,
+    pub location: navigation::Pilot,
     pub action: Action,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub struct PilotPhysics {
-    pub system: SolarSystemId,
+pub struct Physics {
+    pub system: SystemId,
     pub location: Point2D<f32, Solar>,
     pub rotation: Angle<f32>,
     pub linear_velocity: Vector2D<f32, Solar>,
-    pub flight_plan: Option<FlightPlan>,
+    pub flight_plan: Option<navigation::Plan>,
     pub effect: Option<ShipEffect>,
 }
 
@@ -50,10 +50,10 @@ pub enum ShipEffect {
     Jumping,
 }
 
-impl Default for PilotPhysics {
+impl Default for Physics {
     fn default() -> Self {
         Self {
-            system: SolarSystemId::SM0A9F4,
+            system: SystemId::SM0A9F4,
             location: Point2D::default(),
             rotation: Angle::default(),
             linear_velocity: Vector2D::default(),
