@@ -6,7 +6,7 @@ use redis::{self, aio::MultiplexedConnection};
 use tokio::time::Duration;
 use uuid::Uuid;
 
-use crate::redis::{connect_to_redis_multiplex, RedisLock};
+use crate::redis::{connect_to_redis_multiplex, Lock};
 
 /// manages tracking and timing out connected pilots
 pub mod connected_pilots;
@@ -70,7 +70,7 @@ impl Orchestrator {
         loop {
             // Each solar system just needs to update once a second. This loop needs to be stable
             // and update once a second, but there's no guarantee that ticks will line up between systems
-            if RedisLock::named("system_queuer")
+            if Lock::named("system_queuer")
                 .expire_after_msecs(1000)
                 .acquire(&mut connection)
                 .await?
@@ -79,7 +79,8 @@ impl Orchestrator {
                 let (server_timestamp, nanoseconds): (i64, u32) =
                     redis::cmd("TIME").query_async(&mut connection).await?;
 
-                let current_timestamp = server_timestamp as f64 + (nanoseconds as f64 / 1_000_000.);
+                let current_timestamp =
+                    server_timestamp as f64 + (f64::from(nanoseconds) / 1_000_000.);
 
                 // Insert all the IDs into a set, and then publish a notification saying there is stuff to do
                 let mut pipe = redis::pipe();

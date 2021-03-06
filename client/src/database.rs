@@ -1,10 +1,10 @@
+use std::path::Path;
+
 use basws_client::prelude::InstallationConfig;
+use cosmicverge_shared::persy::{Index, KvIndex};
 use once_cell::sync::OnceCell;
 use persy::{ByteVec, ValueMode};
 use serde::{de::DeserializeOwned, Serialize};
-use std::path::Path;
-
-use cosmicverge_shared::persyutil::{Index, KeyValueIndex};
 
 static CLIENTDB: OnceCell<persy::Persy> = OnceCell::new();
 
@@ -13,11 +13,11 @@ fn client_db() -> &'static persy::Persy {
 }
 
 #[derive(Clone)]
-pub struct ClientDatabase {
+pub struct Database {
     db: persy::Persy,
 }
 
-impl ClientDatabase {
+impl Database {
     pub fn initialize<P: AsRef<Path>>(path: P) -> anyhow::Result<()> {
         CLIENTDB
             .set(persy::Persy::open_or_create_with(
@@ -31,7 +31,7 @@ impl ClientDatabase {
     }
 
     fn set_configuration_by_key<V: Serialize>(key: &str, value: &V) -> persy::PRes<()> {
-        KeyValueIndex::named("configuration", ValueMode::REPLACE)
+        KvIndex::named("configuration", ValueMode::REPLACE)
             .set(key.to_string(), value, client_db().into())
             .map(|_| ())
     }
@@ -43,7 +43,7 @@ impl ClientDatabase {
         // within Persey -- IndexType should be implemented for &str, but it's
         // invalid if its used outside of get methods, so potentially a second
         // trait type needs to be used for the get methods
-        KeyValueIndex::named("configuration", ValueMode::REPLACE)
+        KvIndex::named("configuration", ValueMode::REPLACE)
             .get(&key.to_string(), &mut client_db().into())
     }
 

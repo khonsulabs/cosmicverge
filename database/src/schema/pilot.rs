@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use cosmicverge_shared::{
-    protocol::{self, PilotId},
+    protocol::{self, pilot},
     MAX_PILOTS_PER_ACCOUNT,
 };
 
@@ -14,18 +14,18 @@ pub struct Pilot {
     pub created_at: DateTime<Utc>,
 }
 
-impl Into<protocol::Pilot> for Pilot {
-    fn into(self) -> protocol::Pilot {
+impl From<Pilot> for protocol::Pilot {
+    fn from(pilot: Pilot) -> protocol::Pilot {
         protocol::Pilot {
-            id: self.id(),
-            created_at: self.created_at,
-            name: self.name,
+            id: pilot.id(),
+            created_at: pilot.created_at,
+            name: pilot.name,
         }
     }
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum PilotError {
+pub enum Error {
     #[error("invalid name")]
     InvalidName,
     #[error("name already taken")]
@@ -36,29 +36,30 @@ pub enum PilotError {
     Database(#[from] DatabaseError),
 }
 
-impl From<sqlx::Error> for PilotError {
+impl From<sqlx::Error> for Error {
     fn from(err: sqlx::Error) -> Self {
         Self::Database(DatabaseError::from(err))
     }
 }
 
 impl Pilot {
-    pub fn id(&self) -> PilotId {
-        PilotId(self.id)
+    #[must_use]
+    pub const fn id(&self) -> pilot::Id {
+        pilot::Id(self.id)
     }
 
     pub async fn create<
         'e,
         E: sqlx::Acquire<
-            'e,
-            Database = sqlx::Postgres,
-            Connection = sqlx::pool::PoolConnection<sqlx::Postgres>,
-        >,
+                'e,
+                Database = sqlx::Postgres,
+                Connection = sqlx::pool::PoolConnection<sqlx::Postgres>,
+            > + Send,
     >(
         account_id: i64,
         name: &str,
         executor: E,
-    ) -> Result<Self, PilotError> {
+    ) -> Result<Self, Error> {
         let mut e = executor.acquire().await?;
         let existing_pilot_count = sqlx::query!(
             "SELECT count(*) as pilot_count FROM pilots WHERE account_id = $1 GROUP BY account_id",
@@ -71,7 +72,7 @@ impl Pilot {
         .flatten()
         .unwrap_or_default();
         if existing_pilot_count as usize >= MAX_PILOTS_PER_ACCOUNT {
-            return Err(PilotError::TooManyPilots);
+            return Err(Error::TooManyPilots);
         }
 
         let name = Self::validate_and_clean_name(name, &mut e).await?;
@@ -86,7 +87,7 @@ impl Pilot {
     }
 
     pub async fn load<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
-        id: PilotId,
+        id: pilot::Id,
         executor: E,
     ) -> Result<Option<Self>, DatabaseError> {
         sqlx::query_as!(
@@ -129,16 +130,17 @@ impl Pilot {
     pub async fn validate_and_clean_name<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
         name: &str,
         executor: E,
-    ) -> Result<String, PilotError> {
-        let name = protocol::Pilot::cleanup_name(name).map_err(|_| PilotError::InvalidName)?;
+    ) -> Result<String, Error> {
+        let name = protocol::Pilot::cleanup_name(name).map_err(|_| Error::InvalidName)?;
         if Self::find_by_name(&name, executor).await?.is_some() {
-            return Err(PilotError::NameAlreadyTaken);
+            return Err(Error::NameAlreadyTaken);
         }
 
         Ok(name)
     }
 }
 
+#[must_use]
 pub fn convert_db_pilots(pilots: Vec<Pilot>) -> Vec<protocol::Pilot> {
     pilots.into_iter().map(|p| p.into()).collect()
 }

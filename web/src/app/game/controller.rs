@@ -1,6 +1,6 @@
 use cosmicverge_shared::{
     euclid::{Angle, Point2D, Scale, Size2D, Vector2D},
-    protocol::{ActivePilot, PilotedShip},
+    protocol::navigation,
     solar_systems::{Pixels, Solar, SolarSystem, SolarSystemId},
 };
 use crossbeam::channel::{self, Receiver, Sender, TryRecvError};
@@ -11,7 +11,7 @@ use super::{simulator::Simulator, system_renderer::SystemRenderer, Button};
 use crate::{app::game::check_canvas_size, redraw_loop::Drawable};
 
 pub enum Command {
-    SetPilot(ActivePilot),
+    SetPilot(navigation::ActivePilot),
 
     HandleClick {
         button: Button,
@@ -28,17 +28,17 @@ pub enum Command {
 
     UpdateSolarSystem {
         solar_system: SolarSystemId,
-        ships: Vec<PilotedShip>,
+        ships: Vec<navigation::Ship>,
         timestamp: f64,
     },
 }
 
-pub struct GameController {
+pub struct Game {
     hud: Option<HtmlElement>,
     canvas: Option<HtmlCanvasElement>,
     context: Option<CanvasRenderingContext2d>,
     performance: Performance,
-    active_pilot: Option<ActivePilot>,
+    active_pilot: Option<navigation::ActivePilot>,
     simulator: Simulator,
     receiver: Receiver<Command>,
     view: Option<Box<dyn View>>,
@@ -59,7 +59,7 @@ pub trait View {
     fn pan(&mut self, amount: Vector2D<f32, Pixels>, view: &ViewContext);
 }
 
-impl GameController {
+impl Game {
     pub fn new() -> (Self, Sender<Command>) {
         let performance = web_sys::window().unwrap().performance().unwrap();
         let (sender, receiver) = channel::unbounded();
@@ -88,10 +88,10 @@ impl GameController {
                 Command::SetPilot(active_pilot) => {
                     let pilot_system = active_pilot.location.system;
                     self.active_pilot = Some(active_pilot);
-                    self.view_solar_system(&pilot_system);
+                    self.view_solar_system(pilot_system);
                 }
                 Command::ViewSolarSystem(system) => {
-                    self.view_solar_system(&system.id);
+                    self.view_solar_system(system.id);
                 }
                 Command::Zoom(fraction, focus) => {
                     let context = self.view_context();
@@ -132,7 +132,7 @@ impl GameController {
         Ok(())
     }
 
-    fn view_solar_system(&mut self, solar_system: &SolarSystemId) {
+    fn view_solar_system(&mut self, solar_system: SolarSystemId) {
         self.set_view(SystemRenderer::new(solar_system));
     }
 
@@ -200,8 +200,7 @@ impl GameController {
             self.simulator
                 .simulation
                 .as_ref()
-                .map(|s| s.lookup_ship(&pilot.pilot.id))
-                .flatten()
+                .and_then(|s| s.lookup_ship(pilot.pilot.id))
                 .cloned()
         } else {
             None
@@ -219,7 +218,7 @@ impl GameController {
     }
 }
 
-impl Drawable for GameController {
+impl Drawable for Game {
     fn initialize(&mut self) -> anyhow::Result<()> {
         Ok(())
     }
@@ -252,10 +251,10 @@ pub struct ViewContext {
     pub canvas: HtmlCanvasElement,
     pub context: CanvasRenderingContext2d,
     pub performance: Performance,
-    pub active_pilot: Option<ActivePilot>,
-    pub active_ship: Option<PilotedShip>,
+    pub active_pilot: Option<navigation::ActivePilot>,
+    pub active_ship: Option<navigation::Ship>,
     pub simulation_system: Option<SolarSystemId>,
-    pub pilot_locations: Vec<(PilotedShip, Point2D<f32, Solar>, Angle<f32>)>,
+    pub pilot_locations: Vec<(navigation::Ship, Point2D<f32, Solar>, Angle<f32>)>,
 }
 
 pub trait CanvasScalable {
@@ -305,7 +304,7 @@ pub trait CanvasScalable {
         canvas: &HtmlCanvasElement,
     ) -> (f32, Point2D<f32, Unit>) {
         let scale = self.scale();
-        let new_zoom = scale.get() + scale.get() * fraction;
+        let new_zoom = scale.get().mul_add(fraction, scale.get());
         let new_zoom = new_zoom.min(10.).max(0.1);
         let new_scale = Scale::<f32, Unit, Pixels>::new(new_zoom);
 

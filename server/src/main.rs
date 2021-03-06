@@ -1,3 +1,26 @@
+#![forbid(unsafe_code)]
+#![warn(
+    clippy::cargo,
+    // clippy::missing_docs_in_private_items,
+    clippy::nursery,
+    clippy::pedantic,
+    future_incompatible,
+    rust_2018_idioms
+)]
+#![cfg_attr(doc, warn(rustdoc))]
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::items_after_statements,
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::option_if_let_else,
+    // Clippy is bugged
+    clippy::use_self
+)]
+
 #[macro_use]
 extern crate tracing;
 
@@ -32,7 +55,7 @@ mod cli;
 /// - `cosmicverge-server generate-assets <static-folder-path>`: Generates the procedurally generated assets into folder specified.
 /// - `cosmicverge-server serve`: Starts the game server
 /// - `cosmicverge-server account --id 1 set-super-user`: Sets Account ID 1 to a Superuser.
-enum CLI {
+enum Cli {
     /// Run the Server
     Serve,
     /// Generate static assets, currently just includes procedurally generated planets
@@ -49,7 +72,7 @@ async fn main() -> anyhow::Result<()> {
     dotenv::dotenv().expect("Error initializing environment");
     initialize_logging();
 
-    let cli = CLI::from_args();
+    let cli = Cli::from_args();
     match cli {
         CLI::Serve => http::run_webserver().await,
         CLI::GenerateAssets { static_folder } => generate_assets(static_folder).await,
@@ -73,6 +96,6 @@ pub fn initialize_logging() {
 }
 
 async fn generate_assets(static_folder: PathBuf) -> anyhow::Result<()> {
-    planets::generate_assets(static_folder);
+    planets::generate_assets(&static_folder);
     Ok(())
 }

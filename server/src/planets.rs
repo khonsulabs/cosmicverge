@@ -1,11 +1,9 @@
-use std::path::PathBuf;
+use std::path::Path;
 
 use cosmicverge_shared::{
-    euclid::Length,
-    protocol::SolarSystemLocationId,
-    solar_systems::{
-        sm0a9f4::SM0A9F4, system2::System2, universe, SolarSystemId, SolarSystemObject,
-    },
+    euclid::{Length, Point2D},
+    protocol::navigation,
+    solar_systems::{self, sm0a9f4::SM0A9F4, system2::System2, universe, SolarSystemId},
 };
 use magrathea::{
     planet::{GeneratedPlanet, SurfaceDefinition},
@@ -237,8 +235,8 @@ impl SurfaceDefinition for ObjectElevations {
 }
 
 pub fn planet_for_location(
-    system: &SolarSystemId,
-    location: &SolarSystemLocationId,
+    system: SolarSystemId,
+    location: navigation::Id,
 ) -> Planet<ObjectElevations> {
     match system {
         SolarSystemId::SM0A9F4 => {
@@ -247,21 +245,21 @@ pub fn planet_for_location(
                 .expect("wrong type of location")
             {
                 SM0A9F4::Sun => Planet::new_from_iter_with_chaos(
-                    3112979882346075372,
-                    Default::default(),
+                    3_112_979_882_346_075_372,
+                    Point2D::default(),
                     Length::new(4000.),
                     ObjectElevations::sunlike(),
                     30.,
                 ),
                 SM0A9F4::Earth => Planet::new_from_iter(
-                    1231681870008051569,
-                    Default::default(),
+                    1_231_681_870_008_051_569,
+                    Point2D::default(),
                     Length::new(6371.),
                     ObjectElevations::earthlike(),
                 ),
                 SM0A9F4::Mercury => Planet::new_from_iter(
-                    3112969882346075372,
-                    Default::default(),
+                    3_112_969_882_346_075_372,
+                    Point2D::default(),
                     Length::new(400.),
                     ObjectElevations::redrock(),
                 ),
@@ -269,21 +267,21 @@ pub fn planet_for_location(
         }
         SolarSystemId::System2 => match location.into_location::<System2>().unwrap() {
             System2::Sun => Planet::new_from_iter_with_chaos(
-                3112979882346076372,
-                Default::default(),
+                3_112_979_882_346_076_372,
+                Point2D::default(),
                 Length::new(4000.),
                 ObjectElevations::blue_sunlike(),
                 30.,
             ),
             System2::Mercury => Planet::new_from_iter(
-                3112979882346075362,
-                Default::default(),
+                3_112_979_882_346_075_362,
+                Point2D::default(),
                 Length::new(200.),
                 ObjectElevations::whiterock(),
             ),
             System2::Earth => Planet::new_from_iter(
-                3112979882346075372,
-                Default::default(),
+                3_112_979_882_346_075_372,
+                Point2D::default(),
                 Length::new(6371.),
                 ObjectElevations::earthlike(),
             ),
@@ -292,15 +290,15 @@ pub fn planet_for_location(
 }
 
 pub fn generate_planet_for_location(
-    system: &SolarSystemId,
-    location: &SolarSystemObject,
+    system: SolarSystemId,
+    location: &solar_systems::Object,
 ) -> GeneratedPlanet<ObjectElevations> {
-    let planet = planet_for_location(system, &location.id.id());
+    let planet = planet_for_location(system, location.id.id());
     planet.generate(location.size as u32, &None)
 }
 
-fn create_world(static_path: &PathBuf, system: &SolarSystemId, location: &SolarSystemObject) {
-    let generated = generate_planet_for_location(system, &location);
+fn create_world(static_path: &Path, system: SolarSystemId, location: &solar_systems::Object) {
+    let generated = generate_planet_for_location(system, location);
 
     let system_folder = static_path
         .join("magrathea")
@@ -313,11 +311,11 @@ fn create_world(static_path: &PathBuf, system: &SolarSystemId, location: &SolarS
         .unwrap();
 }
 
-pub fn generate_assets(static_folder: PathBuf) {
+pub fn generate_assets(static_folder: &Path) {
     for system in universe().systems() {
         for location in system.locations.values() {
             if location.image.is_none() {
-                create_world(&static_folder, &system.id, location);
+                create_world(static_folder, system.id, location);
             }
         }
     }

@@ -1,10 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use cosmicverge_shared::{
-    protocol::{
-        PilotId, PilotLocation, PilotPhysics, PilotedShip, PilotingAction, ShipInformation,
-        SolarSystemLocation,
-    },
+    protocol::{navigation, pilot},
     solar_systems::SolarSystemId,
     strum::EnumCount,
 };
@@ -25,12 +22,12 @@ impl LocationStore {
         if SHARED_STORE.get().is_none() {
             let store = LocationStore {
                 redis,
-                cache: Arc::new(RwLock::new(Default::default())),
+                cache: Arc::new(RwLock::new(LocationCache::default())),
             };
 
             store.reload_cache().await.unwrap();
 
-            let _ = SHARED_STORE.set(store);
+            drop(SHARED_STORE.set(store));
         }
     }
 
@@ -65,11 +62,11 @@ impl LocationStore {
             .arg("pilot_ships")
             .query_async(&mut redis)
             .await?;
-        let pilots: Vec<PilotId> = pilots;
-        let locations: HashMap<PilotId, String> = locations;
-        let actions: HashMap<PilotId, String> = actions;
-        let physics: HashMap<PilotId, String> = physics;
-        let ships: HashMap<PilotId, String> = ships;
+        let pilots: Vec<pilot::Id> = pilots;
+        let locations: HashMap<pilot::Id, String> = locations;
+        let actions: HashMap<pilot::Id, String> = actions;
+        let physics: HashMap<pilot::Id, String> = physics;
+        let ships: HashMap<pilot::Id, String> = ships;
 
         let mut pilot_cache = HashMap::new();
         for pilot_id in pilots {
@@ -83,15 +80,15 @@ impl LocationStore {
                     pilot_id,
                     location,
                     action,
-                    physics,
                     ship,
+                    physics,
                 },
             );
         }
 
-        let mut system_pilots: HashMap<SolarSystemId, Vec<PilotId>> =
+        let mut system_pilots: HashMap<SolarSystemId, Vec<pilot::Id>> =
             HashMap::with_capacity(SolarSystemId::COUNT);
-        for (pilot_id, cache) in pilot_cache.iter() {
+        for (pilot_id, cache) in &pilot_cache {
             system_pilots
                 .entry(cache.location.system)
                 .and_modify(|pilots| pilots.push(*pilot_id))
@@ -104,7 +101,7 @@ impl LocationStore {
         })
     }
 
-    pub async fn lookup(pilot_id: PilotId) -> PilotCache {
+    pub async fn lookup(pilot_id: pilot::Id) -> PilotCache {
         let store = SHARED_STORE.get().expect("Uninitialized cache access");
         let cache = store.cache.read().await;
         cache
@@ -115,8 +112,8 @@ impl LocationStore {
     }
 
     pub async fn set_piloting_action(
-        pilot_id: PilotId,
-        action: &PilotingAction,
+        pilot_id: pilot::Id,
+        action: &navigation::Action,
     ) -> Result<(), redis::RedisError> {
         let store = SHARED_STORE.get().expect("Uninitialized cache access");
         let mut redis = store.redis.clone();
@@ -129,7 +126,7 @@ impl LocationStore {
             .await
     }
 
-    pub async fn pilots_in_system(system: SolarSystemId) -> Vec<PilotedShip> {
+    pub async fn pilots_in_system(system: SolarSystemId) -> Vec<navigation::Ship> {
         let store = SHARED_STORE.get().expect("Uninitialized cache access");
         let cache = store.cache.read().await;
         if let Some(pilots) = cache.system_pilots.get(&system) {
@@ -138,11 +135,11 @@ impl LocationStore {
                 .filter_map(|pilot_id| cache.pilot_cache[pilot_id].to_piloted_ship())
                 .collect()
         } else {
-            Vec::default()
+            Vec::new()
         }
     }
 
-    pub async fn pilots_by_system() -> HashMap<SolarSystemId, Vec<PilotedShip>> {
+    pub async fn pilots_by_system() -> HashMap<SolarSystemId, Vec<navigation::Ship>> {
         let store = SHARED_STORE.get().expect("Uninitialized cache access");
         let cache = store.cache.read().await;
         cache
@@ -163,45 +160,45 @@ impl LocationStore {
 
 #[derive(Clone)]
 pub struct PilotCache {
-    pub pilot_id: PilotId,
-    pub location: PilotLocation,
-    pub action: PilotingAction,
-    pub ship: ShipInformation,
-    pub physics: PilotPhysics,
+    pub pilot_id: pilot::Id,
+    pub location: navigation::Universe,
+    pub action: navigation::Action,
+    pub ship: navigation::ShipInformation,
+    pub physics: navigation::Physics,
 }
 
 impl PilotCache {
-    pub fn new_for(pilot_id: PilotId) -> Self {
+    pub fn new_for(pilot_id: pilot::Id) -> Self {
         Self {
             pilot_id,
-            location: Default::default(),
-            action: Default::default(),
-            ship: Default::default(),
-            physics: Default::default(),
+            location: navigation::Universe::default(),
+            action: navigation::Action::default(),
+            ship: navigation::ShipInformation::default(),
+            physics: navigation::Physics::default(),
         }
     }
-    fn to_piloted_ship(&self) -> Option<PilotedShip> {
+    fn to_piloted_ship(&self) -> Option<navigation::Ship> {
         match self.location.location {
-            SolarSystemLocation::InSpace(_) => Some(PilotedShip {
+            navigation::Location::InSpace(_) => Some(navigation::Ship {
                 pilot_id: self.pilot_id,
                 ship: self.ship.clone(),
                 action: self.action.clone(),
                 physics: self.physics.clone(),
             }),
-            SolarSystemLocation::Docked(_) => None,
+            navigation::Location::Docked(_) => None,
         }
     }
 }
 
 #[derive(Default)]
 struct LocationCache {
-    system_pilots: HashMap<SolarSystemId, Vec<PilotId>>,
-    pilot_cache: HashMap<PilotId, PilotCache>,
+    system_pilots: HashMap<SolarSystemId, Vec<pilot::Id>>,
+    pilot_cache: HashMap<pilot::Id, PilotCache>,
 }
 
 fn parse_value_from_pilot_json_map<'de, T: Deserialize<'de> + Default>(
-    pilot_id: PilotId,
-    json_map: &'de HashMap<PilotId, String>,
+    pilot_id: pilot::Id,
+    json_map: &'de HashMap<pilot::Id, String>,
 ) -> T {
     match json_map.get(&pilot_id) {
         Some(json) => serde_json::from_str(json).unwrap_or_default(),

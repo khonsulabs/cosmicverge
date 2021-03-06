@@ -1,12 +1,14 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, str::FromStr};
 
 use basws_server::prelude::Uuid;
 use chrono::{DateTime, Utc};
-use cosmicverge_shared::{permissions::{Permission, Service, }, protocol::AccountPermissions};
+use cosmicverge_shared::{
+    permissions::{Permission, Service},
+    protocol::Permissions,
+};
 use migrations::sqlx;
-use std::str::FromStr;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Account {
     pub id: i64,
     pub superuser: bool,
@@ -95,17 +97,22 @@ impl Account {
         &self,
         executor: E,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query!("UPDATE accounts SET superuser = $2 WHERE id = $1", self.id, self.superuser)
-            .execute(executor)
-            .await.map(|_| ())
+        sqlx::query!(
+            "UPDATE accounts SET superuser = $2 WHERE id = $1",
+            self.id,
+            self.superuser
+        )
+        .execute(executor)
+        .await
+        .map(|_| ())
     }
 
     pub async fn permissions<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
         &self,
         executor: E,
-    ) -> Result<AccountPermissions, sqlx::Error> {
+    ) -> Result<Permissions, sqlx::Error> {
         if self.superuser {
-            Ok(AccountPermissions::SuperUser)
+            Ok(Permissions::SuperUser)
         } else {
             let mut permissions = HashSet::new();
             for row in sqlx::query!(
@@ -125,7 +132,6 @@ impl Account {
                     if let Ok(permission)= Permission::from_str(permission) {
                         permissions.insert(permission);
                     }
-                    
                 } else if let Ok(service) = Service::from_str(&row.service) {
                     for permission in service.permissions() {
                         permissions.insert(permission);
@@ -133,7 +139,7 @@ impl Account {
                 }
             }
 
-            Ok(AccountPermissions::PermissionSet(permissions))
+            Ok(Permissions::PermissionSet(permissions))
         }
     }
 
@@ -141,7 +147,7 @@ impl Account {
         &self,
         permission_group_id: i32,
         executor: E,
-    ) -> Result<(), sqlx::Error>  {
+    ) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "INSERT INTO account_permission_groups (account_id, permission_group_id) VALUES ($1, $2)", 
             self.id, permission_group_id
@@ -152,28 +158,40 @@ impl Account {
 
 #[cfg(test)]
 mod tests {
-    use cosmicverge_shared::{permissions::{AccountPermission, GenericPermission}, protocol::AccountPermissions};
-    use crate::test_util::pool;
+    use cosmicverge_shared::{
+        permissions::{AccountPermission, GenericPermission},
+        protocol::Permissions,
+    };
+
     use super::*;
-    use crate::schema::PermissionGroup;
+    use crate::{schema::PermissionGroup, test_util::pool};
 
     #[tokio::test]
     async fn account_permissions_test() -> sqlx::Result<()> {
         let mut tx = pool().await.begin().await?;
         let account = Account::create(&mut tx).await?;
         let permissions = account.permissions(&mut tx).await?;
-        assert_eq!(permissions, AccountPermissions::PermissionSet(Default::default()));
+        assert_eq!(permissions, Permissions::PermissionSet(HashSet::new()));
 
-        let group = PermissionGroup::create(String::from("account-permissions-test-group"), &mut tx).await?;
+        let group =
+            PermissionGroup::create(String::from("account-permissions-test-group"), &mut tx)
+                .await?;
         account.assign_permission_group(group.id, &mut tx).await?;
 
-        group.add_permission(Permission::Account(AccountPermission::View), &mut tx).await?;
-        group.add_all_service_permissions(Service::Universe, &mut tx).await?;
+        group
+            .add_permission(Permission::Account(AccountPermission::View), &mut tx)
+            .await?;
+        group
+            .add_all_service_permissions(Service::Universe, &mut tx)
+            .await?;
 
         let permissions = dbg!(account.permissions(&mut tx).await?);
-        assert!(permissions.has_permissions(&[Permission::Universe(GenericPermission::View), Permission::Universe(GenericPermission::List)]));
-        assert!(permissions.has_permission(&Permission::Account(AccountPermission::View)));
-        assert!(!permissions.has_permission(&Permission::Account(AccountPermission::List)));
+        assert!(permissions.has_permissions(&[
+            Permission::Universe(GenericPermission::View),
+            Permission::Universe(GenericPermission::List)
+        ]));
+        assert!(permissions.has_permission(Permission::Account(AccountPermission::View)));
+        assert!(!permissions.has_permission(Permission::Account(AccountPermission::List)));
 
         Ok(())
     }

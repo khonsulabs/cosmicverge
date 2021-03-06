@@ -2,7 +2,7 @@ use std::{cmp::Ordering, collections::HashMap, time::Duration};
 
 use cosmicverge_shared::{
     euclid::Point2D,
-    protocol::CosmicVergeResponse,
+    protocol::Response,
     solar_systems::{universe, Pixels, SolarSystemId},
 };
 use crossbeam::channel::Sender;
@@ -37,7 +37,7 @@ struct MouseButtons {
 }
 
 impl MouseButtons {
-    fn is_down(&self, button: Button) -> bool {
+    const fn is_down(&self, button: Button) -> bool {
         match button {
             Button::Left => self.left,
             Button::Right => self.right,
@@ -101,6 +101,7 @@ pub struct Props {
 }
 
 #[derive(Debug)]
+#[allow(clippy::pub_enum_variant_names)]
 pub enum Message {
     WheelEvent(WheelEvent),
     TouchStart(TouchEvent),
@@ -179,9 +180,9 @@ impl Component for Game {
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let mut api = ApiAgent::bridge(link.callback(Message::ApiMessage));
         api.send(AgentMessage::RegisterBroadcastHandler);
-        let (view, space_sender) = controller::GameController::new();
+        let (view, space_sender) = controller::Game::new();
         let loop_sender =
-            redraw_loop::RedrawLoop::launch(view, redraw_loop::Configuration::default());
+            redraw_loop::RedrawLoop::launch(view, &redraw_loop::Configuration::default());
 
         let component = Self {
             _api: api,
@@ -190,8 +191,8 @@ impl Component for Game {
             loop_sender,
             space_sender,
             performance: web_sys::window().unwrap().performance().unwrap(),
-            mouse_buttons: Default::default(),
-            touches: Default::default(),
+            mouse_buttons: MouseButtons::default(),
+            touches: HashMap::new(),
             click_handler_timer: None,
             touch_handler_timer: None,
             mouse_location: None,
@@ -207,16 +208,18 @@ impl Component for Game {
         component
     }
 
+    // TODO: split into pieces
+    #[allow(clippy::clippy::cognitive_complexity, clippy::clippy::too_many_lines)]
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Message::CheckHandleClick => {
                 if let Some(state) = &self.mouse_buttons.sequential_click_state {
                     if !self.mouse_buttons.is_down(state.button) {
-                        let _ = self.space_sender.send(controller::Command::HandleClick {
+                        drop(self.space_sender.send(controller::Command::HandleClick {
                             button: state.button,
                             count: state.click_count,
                             location: state.location,
-                        });
+                        }));
                     }
                 }
 
@@ -225,11 +228,11 @@ impl Component for Game {
             Message::CheckHandleTap => {
                 if let Some(state) = &self.sequential_touch_state {
                     if self.touches.is_empty() {
-                        let _ = self.space_sender.send(controller::Command::HandleClick {
+                        drop(self.space_sender.send(controller::Command::HandleClick {
                             button: Button::OneFinger,
                             count: state.tap_count,
                             location: state.original_tap_location,
-                        });
+                        }));
                     }
                 }
 
@@ -249,9 +252,10 @@ impl Component for Game {
                 };
                 let amount = (amount / 1000.).min(1.).max(-1.);
                 let focus = Point2D::new(event.client_x(), event.client_y());
-                let _ = self
-                    .space_sender
-                    .send(controller::Command::Zoom(amount, focus.to_f32()));
+                drop(
+                    self.space_sender
+                        .send(controller::Command::Zoom(amount, focus.to_f32())),
+                );
             }
             Message::MouseDown(event) => {
                 self.foreground_if_needed();
@@ -279,9 +283,10 @@ impl Component for Game {
                     self.mouse_buttons.last_mouse_location = Some(location);
 
                     if self.mouse_buttons.left {
-                        let _ = self
-                            .space_sender
-                            .send(controller::Command::Pan(delta.to_f32()));
+                        drop(
+                            self.space_sender
+                                .send(controller::Command::Pan(delta.to_f32())),
+                        );
                     }
                 }
             }
@@ -379,9 +384,10 @@ impl Component for Game {
                         };
                         touch_state.last_location = Some(location);
 
-                        let _ = self
-                            .space_sender
-                            .send(controller::Command::Pan(delta.to_f32()));
+                        drop(
+                            self.space_sender
+                                .send(controller::Command::Pan(delta.to_f32())),
+                        );
 
                         if let Some(sequential_state) = &self.sequential_touch_state {
                             let distance = sequential_state
@@ -417,9 +423,11 @@ impl Component for Game {
                             .to_f32()
                                 / 2.;
 
-                            let _ = self
-                                .space_sender
-                                .send(controller::Command::Pan(current_midpoint - old_midpoint));
+                            drop(
+                                self.space_sender.send(controller::Command::Pan(
+                                    current_midpoint - old_midpoint,
+                                )),
+                            );
 
                             let current_distance = touch1_location
                                 .to_f32()
@@ -429,10 +437,10 @@ impl Component for Game {
                                 .distance_to(touch2_last_location.to_f32());
                             let ratio = current_distance / old_distance - 1.;
 
-                            let _ = self.space_sender.send(controller::Command::Zoom(
+                            drop(self.space_sender.send(controller::Command::Zoom(
                                 ratio,
                                 current_midpoint.to_point(),
-                            ));
+                            )));
                         }
                     }
                 } else {
@@ -450,17 +458,19 @@ impl Component for Game {
             }
             Message::ApiMessage(message) => match message {
                 AgentResponse::RoundtripUpdated(roundtrip) => {
-                    let _ = self
-                        .space_sender
-                        .send(controller::Command::UpdateServerRoundtripTime(roundtrip));
+                    drop(
+                        self.space_sender
+                            .send(controller::Command::UpdateServerRoundtripTime(roundtrip)),
+                    );
                 }
                 AgentResponse::Response(response) => match response {
-                    CosmicVergeResponse::PilotChanged(active_pilot) => {
-                        let _ = self
-                            .space_sender
-                            .send(controller::Command::SetPilot(active_pilot));
+                    Response::PilotChanged(active_pilot) => {
+                        drop(
+                            self.space_sender
+                                .send(controller::Command::SetPilot(active_pilot)),
+                        );
                     }
-                    CosmicVergeResponse::SpaceUpdate {
+                    Response::SpaceUpdate {
                         ships,
                         location,
                         timestamp,
@@ -468,13 +478,14 @@ impl Component for Game {
                     } => {
                         universe().update_orbits(timestamp);
 
-                        let _ = self
-                            .space_sender
-                            .send(controller::Command::UpdateSolarSystem {
-                                ships,
-                                solar_system: location.system,
-                                timestamp,
-                            });
+                        drop(
+                            self.space_sender
+                                .send(controller::Command::UpdateSolarSystem {
+                                    ships,
+                                    solar_system: location.system,
+                                    timestamp,
+                                }),
+                        );
                     }
                     _ => {}
                 },
@@ -555,21 +566,15 @@ impl Game {
 fn check_canvas_size(canvas: &HtmlCanvasElement) -> bool {
     let width_attr = canvas.attributes().get_with_name("width");
     let height_attr = canvas.attributes().get_with_name("height");
-    let actual_width: Option<i32> = width_attr
-        .as_ref()
-        .map(|w| w.value().parse().ok())
-        .flatten();
-    let actual_height: Option<i32> = height_attr
-        .as_ref()
-        .map(|h| h.value().parse().ok())
-        .flatten();
+    let actual_width: Option<i32> = width_attr.as_ref().and_then(|w| w.value().parse().ok());
+    let actual_height: Option<i32> = height_attr.as_ref().and_then(|h| h.value().parse().ok());
     let mut changed = false;
     if actual_width.is_none() || actual_width.unwrap() != canvas.client_width() {
         changed = true;
         if let Some(attr) = width_attr {
             attr.set_value(&canvas.client_width().to_string());
         } else {
-            let _ = canvas.set_attribute("width", &canvas.client_width().to_string());
+            drop(canvas.set_attribute("width", &canvas.client_width().to_string()));
         }
     }
 
@@ -578,7 +583,7 @@ fn check_canvas_size(canvas: &HtmlCanvasElement) -> bool {
         if let Some(attr) = height_attr {
             attr.set_value(&canvas.client_height().to_string());
         } else {
-            let _ = canvas.set_attribute("height", &canvas.client_height().to_string());
+            drop(canvas.set_attribute("height", &canvas.client_height().to_string()));
         }
     }
 

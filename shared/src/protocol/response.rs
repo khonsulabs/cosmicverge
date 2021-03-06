@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::protocol::{Account, ActivePilot, Pilot, PilotLocation, PilotedShip, PilotingAction};
+use crate::protocol::{account::Account, navigation, Pilot};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum CosmicVergeResponse {
+pub enum Response {
     ServerStatus {
         connected_pilots: usize,
     },
@@ -15,12 +15,12 @@ pub enum CosmicVergeResponse {
         pilots: Vec<Pilot>,
     },
     Unauthenticated,
-    PilotChanged(ActivePilot),
+    PilotChanged(navigation::ActivePilot),
     SpaceUpdate {
         timestamp: f64,
-        location: PilotLocation,
-        action: PilotingAction,
-        ships: Vec<PilotedShip>,
+        location: navigation::Universe,
+        action: navigation::Action,
+        ships: Vec<navigation::Ship>,
     },
     PilotInformation(Pilot),
 
@@ -29,7 +29,8 @@ pub enum CosmicVergeResponse {
     },
 }
 
-impl CosmicVergeResponse {
+impl Response {
+    #[must_use]
     pub fn error(key: &str) -> Self {
         Self::Error {
             message: Some(key.to_string()),

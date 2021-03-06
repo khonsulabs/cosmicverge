@@ -1,14 +1,36 @@
+#![forbid(unsafe_code)]
+#![warn(
+    clippy::cargo,
+    // clippy::missing_docs_in_private_items,
+    clippy::nursery,
+    clippy::pedantic,
+    future_incompatible,
+    rust_2018_idioms
+)]
+#![cfg_attr(doc, warn(rustdoc))]
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::items_after_statements,
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::multiple_crate_versions,
+    clippy::option_if_let_else,
+    // Clippy is bugged
+    clippy::use_self
+)]
+
 mod api;
 mod cache;
 mod cluster_admin;
 mod database;
 mod main_window;
 
-type CosmicVergeClient = basws_client::Client<api::ApiClient>;
+type CosmicVergeClient = basws_client::Client<api::Client>;
 
 use std::path::PathBuf;
 
-use structopt::StructOpt;
+use clap::Clap;
 use tracing_subscriber::prelude::*;
 
 #[macro_use]
@@ -31,13 +53,13 @@ fn main() -> anyhow::Result<()> {
         )
         .try_init()?;
 
-    let opt = CliOptions::from_args();
+    let opt = CliOptions::parse();
     match opt.command.unwrap_or_default() {
         Command::Play {
             server_url,
             database,
         } => {
-            database::ClientDatabase::initialize(
+            database::Database::initialize(
                 database.unwrap_or_else(|| PathBuf::from("cosmicverge.persy")),
             )?;
             main_window::run(server_url.as_deref().unwrap_or(SERVER_URL))
@@ -46,14 +68,14 @@ fn main() -> anyhow::Result<()> {
     }
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "cosmicverge", about = "The Cosmic Verge game client")]
+#[derive(Clap, Debug)]
+#[clap(name = "cosmicverge", about = "The Cosmic Verge game client")]
 struct CliOptions {
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     command: Option<Command>,
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Clap, Debug)]
 enum Command {
     /// Play Cosmic Verge
     Play {

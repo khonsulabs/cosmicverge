@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use cosmicverge_shared::{
-    protocol::{CosmicVergeRequest, CosmicVergeResponse, OAuthProvider, Pilot, PilotId},
+    protocol::{pilot, OAuthProvider, Pilot, Request, Response},
     MAX_PILOTS_PER_ACCOUNT,
 };
 use wasm_bindgen::__rt::std::borrow::Cow;
-use yew::prelude::*;
+use yew::{prelude::*, virtual_dom::VNode};
 use yew_bulma::prelude::*;
 
 use crate::{
@@ -40,11 +40,12 @@ pub struct Props {
     pub user: Option<Arc<LoggedInUser>>,
 }
 
+#[allow(clippy::pub_enum_variant_names)]
 pub enum Message {
     LogInWith(OAuthProvider),
     ApiMessage(AgentResponse),
     ToggleStatus,
-    SelectPilot(PilotId),
+    SelectPilot(pilot::Id),
     NewPilot,
     CreatePilot,
     ListPilots,
@@ -71,9 +72,8 @@ impl Component for HomePage {
     fn update(&mut self, msg: Self::Message) -> bool {
         match msg {
             Message::LogInWith(provider) => {
-                self.api.send(AgentMessage::Request(
-                    CosmicVergeRequest::AuthenticationUrl(provider),
-                ));
+                self.api
+                    .send(AgentMessage::Request(Request::AuthenticationUrl(provider)));
                 false
             }
             Message::ApiMessage(msg) => match msg {
@@ -81,7 +81,7 @@ impl Component for HomePage {
                     self.current_storage_status = status;
                     true
                 }
-                AgentResponse::Response(CosmicVergeResponse::Error { message }) => {
+                AgentResponse::Response(Response::Error { message }) => {
                     self.error_message = message;
                     match &self.pilot_state {
                         PilotLoginState::WaitingForServer => {
@@ -110,9 +110,7 @@ impl Component for HomePage {
             }
             Message::SelectPilot(pilot_id) => {
                 self.api
-                    .send(AgentMessage::Request(CosmicVergeRequest::SelectPilot(
-                        pilot_id,
-                    )));
+                    .send(AgentMessage::Request(Request::SelectPilot(pilot_id)));
                 self.pilot_state = PilotLoginState::WaitingForServer;
                 true
             }
@@ -138,9 +136,7 @@ impl Component for HomePage {
                 };
                 let name = name.unchecked_value().unwrap();
                 self.api
-                    .send(AgentMessage::Request(CosmicVergeRequest::CreatePilot {
-                        name,
-                    }));
+                    .send(AgentMessage::Request(Request::CreatePilot { name }));
 
                 true
             }
@@ -165,7 +161,7 @@ impl Component for HomePage {
                     PilotLoginState::Creating { sent_request, name } => {
                         self.create_pilot(*sent_request, name)
                     }
-                    PilotLoginState::WaitingForServer => self.waiting_for_server(),
+                    PilotLoginState::WaitingForServer => Self::waiting_for_server(),
                 },
                 PilotingState::Selected(active_pilot) => {
                     // TODO player dashboard? Not sure.
@@ -227,7 +223,7 @@ impl HomePage {
                 </div>
             }
         } else {
-            Default::default()
+            VNode::default()
         };
 
         html! {
@@ -251,16 +247,13 @@ impl HomePage {
                 </div>
             }
         } else {
-            Default::default()
+            VNode::default()
         }
     }
 
     fn create_pilot(&self, sent_request: bool, name: &FormStorage<Option<String>>) -> Html {
-        let errors = if let Some(errors) = self.validate_pilot_name(name) {
-            Some(errors.translate(translate_error))
-        } else {
-            None
-        };
+        let errors =
+            Self::validate_pilot_name(name).map(|errors| errors.translate(translate_error));
 
         let can_save = errors.is_none();
 
@@ -297,7 +290,7 @@ impl HomePage {
         }
     }
 
-    fn waiting_for_server(&self) -> Html {
+    fn waiting_for_server() -> Html {
         html! {
             <div class="container">
                 <h1 class="is-size-1 has-text-centered">{ localize!("connecting") }</h1>
@@ -318,7 +311,6 @@ impl HomePage {
     }
 
     fn validate_pilot_name(
-        &self,
         name: &FormStorage<Option<String>>,
     ) -> Option<Rc<ErrorSet<PilotFields>>> {
         ModelValidator::default()

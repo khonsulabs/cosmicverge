@@ -20,6 +20,7 @@ impl Named for SM0A9F4 {
     }
 }
 
+#[must_use]
 pub fn system() -> SolarSystem {
     SolarSystem::new(SolarSystemId::SM0A9F4, Point2D::new(0., 0.))
         .define_object(SM0A9F4::Sun, 128., |location| location)

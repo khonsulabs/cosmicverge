@@ -36,9 +36,7 @@ pub fn callback() -> impl warp::Filter<Extract = (impl warp::Reply,), Error = Re
 impl TwitchCallback {
     async fn respond(self) -> Result<impl warp::Reply, Infallible> {
         // TODO bad unwrap
-        login_twitch(self.state.parse().unwrap(), self.code)
-            .await
-            .unwrap();
+        login(self.state.parse().unwrap(), self.code).await.unwrap();
 
         Ok(warp::redirect::redirect(
             webserver_base_url().path_and_query("/").build().unwrap(),
@@ -107,7 +105,7 @@ pub struct JwtClaims {
     pub issuance_time: Option<u64>,
 }
 
-pub async fn login_twitch(installation_id: Uuid, code: String) -> Result<(), anyhow::Error> {
+pub async fn login(installation_id: Uuid, code: String) -> Result<(), anyhow::Error> {
     // Call twitch.tv API to get the user information
     let client = reqwest::Client::new();
     let tokens: TwitchTokenResponse = client

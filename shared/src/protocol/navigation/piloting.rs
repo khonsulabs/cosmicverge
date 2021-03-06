@@ -2,45 +2,45 @@ use euclid::{Angle, Point2D, Vector2D};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    protocol::{FlightPlan, Pilot, PilotId, PilotLocation},
-    ships::ShipId,
+    protocol::{navigation, pilot, Pilot},
+    ships,
     solar_systems::{Solar, SolarSystemId},
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum PilotingAction {
+pub enum Action {
     Idle,
-    NavigateTo(PilotLocation),
+    NavigateTo(navigation::Universe),
 }
 
-impl Default for PilotingAction {
+impl Default for Action {
     fn default() -> Self {
-        PilotingAction::Idle
+        Action::Idle
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PilotedShip {
-    pub pilot_id: PilotId,
+pub struct Ship {
+    pub pilot_id: pilot::Id,
     pub ship: ShipInformation,
-    pub physics: PilotPhysics,
-    pub action: PilotingAction,
+    pub physics: Physics,
+    pub action: Action,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ActivePilot {
     pub pilot: Pilot,
-    pub location: PilotLocation,
-    pub action: PilotingAction,
+    pub location: navigation::Universe,
+    pub action: Action,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub struct PilotPhysics {
+pub struct Physics {
     pub system: SolarSystemId,
     pub location: Point2D<f32, Solar>,
     pub rotation: Angle<f32>,
     pub linear_velocity: Vector2D<f32, Solar>,
-    pub flight_plan: Option<FlightPlan>,
+    pub flight_plan: Option<navigation::Plan>,
     pub effect: Option<ShipEffect>,
 }
 
@@ -50,29 +50,29 @@ pub enum ShipEffect {
     Jumping,
 }
 
-impl Default for PilotPhysics {
+impl Default for Physics {
     fn default() -> Self {
         Self {
             system: SolarSystemId::SM0A9F4,
-            location: Default::default(),
-            rotation: Default::default(),
-            linear_velocity: Default::default(),
-            flight_plan: Default::default(),
-            effect: Default::default(),
+            location: Point2D::default(),
+            rotation: Angle::default(),
+            linear_velocity: Vector2D::default(),
+            flight_plan: None,
+            effect: None,
         }
     }
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ShipInformation {
-    pub ship: ShipId,
+    pub ship: ships::Id,
     pub mass_of_cargo: f32,
 }
 
 impl Default for ShipInformation {
     fn default() -> Self {
         Self {
-            ship: ShipId::Shuttle,
+            ship: ships::Id::Shuttle,
             mass_of_cargo: 0.,
         }
     }

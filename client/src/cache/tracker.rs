@@ -4,19 +4,19 @@ use std::{
 };
 
 #[derive(Debug)]
-pub struct CacheTracker<T> {
+pub struct Tracker<T> {
     alive: HashMap<String, Weak<T>>,
 }
 
-impl<T> Default for CacheTracker<T> {
+impl<T> Default for Tracker<T> {
     fn default() -> Self {
         Self {
-            alive: Default::default(),
+            alive: HashMap::new(),
         }
     }
 }
 
-impl<T> CacheTracker<T> {
+impl<T> Tracker<T> {
     pub fn lookup(&self, key: &str) -> Option<Arc<T>> {
         if let Some(entry) = self.alive.get(key) {
             if let Some(entry) = entry.upgrade() {

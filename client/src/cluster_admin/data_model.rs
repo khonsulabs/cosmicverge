@@ -38,8 +38,8 @@ impl Cluster {
                 load_1m: 0.1,
                 load_5m: 0.2,
                 load_15m: 0.1,
-                ram_used: 768000,
-                ram_free: 128000,
+                ram_used: 768_000,
+                ram_free: 128_000,
             },
         );
         id
