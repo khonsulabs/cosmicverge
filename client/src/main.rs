@@ -58,7 +58,7 @@ fn main() -> anyhow::Result<()> {
             database,
         } => {
             database::Database::initialize(
-                database.unwrap_or_else(|| PathBuf::from("cosmicverge.persy")),
+                database.unwrap_or_else(|| PathBuf::from("cosmicverge.sled")),
             )?;
             main_window::run(server_url.as_deref().unwrap_or(SERVER_URL))
         }
