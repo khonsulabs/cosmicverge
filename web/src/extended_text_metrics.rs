@@ -1,3 +1,5 @@
+#![allow(clippy::needless_pass_by_value)] // False positive triggered by #[wasm_bindgen]
+
 use wasm_bindgen::{prelude::*, JsCast};
 
 #[wasm_bindgen]

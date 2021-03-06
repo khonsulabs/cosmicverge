@@ -2,8 +2,15 @@
 name = "database"
 version = "0.1.0"
 authors = ["Jonathan Johnson <jon@khonsulabs.com>"]
-edition = "2018"
+description = "Database access layer for cosmicverge-server"
+license = "MIT"
+repository = "https://github.com/khonsulabs/cosmicverge"
+
 publish = false
+edition = "2018"
+keywords = ["sandbox", "game"]
+categories = ["games"]
+readme = "../README.md"
 
 [dependencies]
 cosmicverge-shared = { path = "../shared" }

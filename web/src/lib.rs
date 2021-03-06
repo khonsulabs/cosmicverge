@@ -15,7 +15,7 @@
     clippy::implicit_hasher,
     clippy::items_after_statements,
     clippy::missing_errors_doc,
-    clippy::missing_panics_doc,
+    // clippy::missing_panics_doc, // not on stable yet
     clippy::multiple_crate_versions,
     clippy::option_if_let_else,
     // Clippy is bugged

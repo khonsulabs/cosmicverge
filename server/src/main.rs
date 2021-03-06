@@ -15,7 +15,7 @@
     clippy::cast_sign_loss,
     clippy::items_after_statements,
     clippy::missing_errors_doc,
-    clippy::missing_panics_doc,
+    // clippy::missing_panics_doc, // not on stable yet
     clippy::option_if_let_else,
     // Clippy is bugged
     clippy::use_self
