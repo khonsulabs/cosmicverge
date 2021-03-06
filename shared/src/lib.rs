@@ -24,8 +24,6 @@ pub use num_traits;
 pub use strum;
 pub use strum_macros;
 pub mod permissions;
-#[cfg(feature = "persy")]
-pub mod persy;
 pub mod protocol;
 pub mod ships;
 pub mod solar_system_simulation;

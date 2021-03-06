@@ -83,7 +83,7 @@ enum Command {
         server_url: Option<String>,
 
         /// where to store the client data
-        // default is `./cosmicverge.persy`
+        // default is `./cosmicverge.sled`
         // TODO in release mode, it should store it in the proper location in the user's home folder
         database: Option<PathBuf>,
     },

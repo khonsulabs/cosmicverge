@@ -1,6 +1,7 @@
+use std::path::Path;
+
 use basws_client::prelude::InstallationConfig;
 use once_cell::sync::OnceCell;
-use std::path::Path;
 use zerocopy::AsBytes;
 
 static CLIENTDB: OnceCell<sled::Db> = OnceCell::new();
