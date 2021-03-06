@@ -61,6 +61,7 @@ impl Universe {
         self.solar_systems.insert(system.id, system);
     }
 
+    #[must_use]
     pub fn get(&self, id: &SolarSystemId) -> &SolarSystem {
         &self.solar_systems[id]
     }
@@ -82,6 +83,7 @@ impl Universe {
         }
     }
 
+    #[must_use]
     pub fn orbits_for(&self, system: SolarSystemId) -> SolarSystemOrbits {
         let orbits = self.orbits.read().unwrap();
         orbits[&system].clone()
