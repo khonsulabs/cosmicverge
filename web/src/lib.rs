@@ -1,4 +1,3 @@
-#![forbid(unsafe_code)]
 #![warn(
     clippy::cargo,
     // clippy::missing_docs_in_private_items,
