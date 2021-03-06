@@ -68,13 +68,11 @@ jobs:
           cargo run --bin migrator
 
       - name: Clippy
-        run:
-          cargo clippy --all-targets -p cosmicverge -p database -p
+        run: cargo clippy --all-targets -p cosmicverge -p database -p
           cosmicverge-server -p cosmicverge-shared --verbose -- -D warnings
 
       - name: Clippy Web
-        run:
-          cargo clippy --all-targets --target wasm32-unknown-unknown -p web
+        run: cargo clippy --all-targets --target wasm32-unknown-unknown -p web
           --verbose -- -D warnings
 
       - name: Rustdoc
@@ -139,7 +137,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: Production
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/production'
     needs: test
 
     # Service containers to run with `runner-job`
@@ -209,7 +207,6 @@ jobs:
             libxcb-xfixes0-dev
 
       - uses: digitalocean/action-doctl@v2
-        if: github.ref == 'refs/heads/main'
         with:
           token: ${{ secrets.DO_WRITE_API_KEY }}
 
