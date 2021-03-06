@@ -2,8 +2,15 @@
 name = "migrations"
 version = "0.0.1"
 authors = ["Jonathan Johnson <jon@khonsulabs.com>"]
-edition = "2018"
+description = "PostgreSQL migrations for cosmicverge-server"
+license = "MIT"
+repository = "https://github.com/khonsulabs/cosmicverge"
+
 publish = false
+edition = "2018"
+keywords = ["sandbox", "game"]
+categories = ["games"]
+readme = "../README.md"
 
 [lib]
 path = "src/lib.rs"

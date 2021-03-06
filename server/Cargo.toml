@@ -1,10 +1,17 @@
 [package]
 name = "cosmicverge-server"
 version = "0.1.0"
-authors = ["Jonathan Johnson <jon@nilobject.com>"]
-edition = "2018"
-build = "../build.rs"
+authors = ["Jonathan Johnson <jon@khonsulabs.com>"]
+description = "The Cosmic Verge server"
+license = "MIT"
+repository = "https://github.com/khonsulabs/cosmicverge"
+
 publish = false
+edition = "2018"
+keywords = ["sandbox", "game"]
+categories = ["games"]
+readme = "../README.md"
+build = "../build.rs"
 
 [dependencies]
 cosmicverge-shared = { path = "../shared", features = ["redis"] }

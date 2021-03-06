@@ -1,9 +1,17 @@
 [package]
 name = "cosmicverge-shared"
 version = "0.0.1"
-authors = ["Jonathan Johnson <jon@nilobject.com>"]
-edition = "2018"
+authors = ["Jonathan Johnson <jon@khonsulabs.com>"]
+description = "Code that is shared between the client and server of Cosmic Verge"
+license = "MIT"
+repository = "https://github.com/khonsulabs/cosmicverge"
+
 publish = false
+edition = "2018"
+keywords = ["sandbox", "game"]
+categories = ["games"]
+readme = "../README.md"
+build = "../build.rs"
 
 [features]
 default = []
