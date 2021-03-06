@@ -7,17 +7,16 @@ use crate::permissions::Permission;
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Account {
     pub id: i64,
-    pub permissions: AccountPermissions,
+    pub permissions: Permissions,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[allow(clippy::module_name_repetitions)]
-pub enum AccountPermissions {
+pub enum Permissions {
     SuperUser,
     PermissionSet(HashSet<Permission>),
 }
 
-impl AccountPermissions {
+impl Permissions {
     #[must_use]
     pub fn has_permission(&self, permission: Permission) -> bool {
         match self {

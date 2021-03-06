@@ -3,7 +3,7 @@ use std::{collections::HashSet, str::FromStr};
 use basws_server::prelude::Uuid;
 use cosmicverge_shared::{
     permissions::{Permission, Service},
-    protocol::AccountPermissions,
+    protocol::Permissions,
 };
 use migrations::sqlx;
 
@@ -111,9 +111,9 @@ impl Account {
     pub async fn permissions<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
         &self,
         executor: E,
-    ) -> Result<AccountPermissions, sqlx::Error> {
+    ) -> Result<Permissions, sqlx::Error> {
         if self.superuser {
-            Ok(AccountPermissions::SuperUser)
+            Ok(Permissions::SuperUser)
         } else {
             let mut permissions = HashSet::new();
             for row in sqlx::query!(
@@ -140,7 +140,7 @@ impl Account {
                 }
             }
 
-            Ok(AccountPermissions::PermissionSet(permissions))
+            Ok(Permissions::PermissionSet(permissions))
         }
     }
 
@@ -161,7 +161,7 @@ impl Account {
 mod tests {
     use cosmicverge_shared::{
         permissions::{AccountPermission, GenericPermission},
-        protocol::AccountPermissions,
+        protocol::Permissions,
     };
 
     use super::*;
@@ -172,10 +172,7 @@ mod tests {
         let mut tx = pool().await.begin().await?;
         let account = Account::create(&mut tx).await?;
         let permissions = account.permissions(&mut tx).await?;
-        assert_eq!(
-            permissions,
-            AccountPermissions::PermissionSet(HashSet::new())
-        );
+        assert_eq!(permissions, Permissions::PermissionSet(HashSet::new()));
 
         let group =
             PermissionGroup::create(String::from("account-permissions-test-group"), &mut tx)

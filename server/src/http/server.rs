@@ -7,7 +7,7 @@ use database::{
     },
     schema::{convert_db_pilots, pilot, Account, Installation, Pilot},
 };
-use protocol::AccountPermissions;
+use protocol::Permissions;
 
 use crate::{
     http::twitch,
@@ -18,7 +18,7 @@ use crate::{
 #[derive(Debug)]
 pub struct ConnectedAccount {
     pub account: Account,
-    pub permissions: AccountPermissions,
+    pub permissions: Permissions,
 }
 
 impl ConnectedAccount {
