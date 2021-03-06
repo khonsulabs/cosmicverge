@@ -12,9 +12,6 @@ pub struct ClusterMap {
     hovered: Option<MapLayoutEntity>,
 }
 
-#[derive(Debug, Clone)]
-pub enum Command {}
-
 #[async_trait]
 impl Component for ClusterMap {
     async fn update(&mut self, context: &mut Context) -> KludgineResult<()> {
@@ -126,7 +123,7 @@ impl Component for ClusterMap {
 #[async_trait]
 impl InteractiveComponent for ClusterMap {
     type Message = ();
-    type Command = Command;
+    type Command = ();
     type Event = ();
 }
 
