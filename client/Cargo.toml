@@ -6,7 +6,7 @@ edition = "2018"
 publish = false
 
 [dependencies]
-kludgine = { git = "https://github.com/khonsulabs/kludgine.git", default-features = false, features = ["tokio-rt", "bundled-fonts"] }
+kludgine = { git = "https://github.com/khonsulabs/kludgine.git", branch = "main", default-features = false, features = ["tokio-rt", "bundled-fonts"] }
 tokio = { version = "1.0", features = ["full"] }
 futures-util = "0.3"
 cosmicverge-shared = { path = "../shared", features = ["persy"] }
