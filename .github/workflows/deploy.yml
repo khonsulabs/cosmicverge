@@ -39,7 +39,14 @@ jobs:
             libxcb-xfixes0-dev
 
       - name: Clippy
-        run: cargo clippy --all-targets --verbose -- -D warnings
+        run:
+          cargo clippy --all-targets -p cosmicverge -p database -p
+          cosmicverge-server -p cosmicverge-shared --verbose -- -D warnings
+
+      - name: Clippy Web
+        run:
+          cargo clippy --all-targets --target wasm32-unknown-unknown -p web
+          --verbose -- -D warnings
 
       - name: Rustdoc
         run: cargo doc --no-deps --document-private-items --workspace --verbose

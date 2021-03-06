@@ -1,3 +1,4 @@
+#![cfg_attr(target_arch = "wasm32", forbid(unsafe_code))]
 #![warn(
     clippy::cargo,
     // clippy::missing_docs_in_private_items,
