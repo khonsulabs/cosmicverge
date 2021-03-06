@@ -3,11 +3,10 @@ use cosmicverge_shared::protocol::{self, navigation::ActivePilot};
 use database::{
     basws_server::{self, prelude::*},
     cosmicverge_shared::protocol::{
-        cosmic_verge_protocol_version_requirements, OAuthProvider, Request, Response,
+        cosmic_verge_protocol_version_requirements, OAuthProvider, Permissions, Request, Response,
     },
     schema::{convert_db_pilots, pilot, Account, Installation, Pilot},
 };
-use protocol::Permissions;
 
 use crate::{
     http::twitch,

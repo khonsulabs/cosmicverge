@@ -94,8 +94,7 @@ pub struct SolarSystem {
     pub background: Option<&'static str>,
     pub galaxy_location: Point2D<f32, Galactic>,
     pub locations: HashMap<navigation::Id, Object>,
-    pub locations_by_owners:
-        HashMap<Option<navigation::Id>, Vec<navigation::Id>>,
+    pub locations_by_owners: HashMap<Option<navigation::Id>, Vec<navigation::Id>>,
 }
 
 impl SolarSystem {
