@@ -20,7 +20,7 @@ static SHARED_STORE: OnceCell<LocationStore> = OnceCell::new();
 impl LocationStore {
     pub async fn initialize(redis: MultiplexedConnection) {
         if SHARED_STORE.get().is_none() {
-            let store = LocationStore {
+            let store = Self {
                 redis,
                 cache: Arc::new(RwLock::new(LocationCache::default())),
             };

@@ -35,195 +35,57 @@ impl ObjectElevations {
     /// A basic elevation color palette that kinda resembles an earthlike planet
     pub fn earthlike() -> Vec<ElevationColor<Self>> {
         vec![
-            ElevationColor::from_u8(
-                ObjectElevations::DeepOcean,
-                19,
-                30,
-                180,
-                Kilometers::new(0.),
-            ),
-            ElevationColor::from_u8(
-                ObjectElevations::ShallowOcean,
-                98,
-                125,
-                223,
-                Kilometers::new(10.),
-            ),
-            ElevationColor::from_u8(ObjectElevations::Beach, 209, 207, 169, Kilometers::new(11.)),
-            ElevationColor::from_u8(ObjectElevations::Grass, 152, 214, 102, Kilometers::new(13.)),
-            ElevationColor::from_u8(ObjectElevations::Forest, 47, 106, 42, Kilometers::new(15.)),
-            ElevationColor::from_u8(
-                ObjectElevations::Mountain,
-                100,
-                73,
-                53,
-                Kilometers::new(18.),
-            ),
-            ElevationColor::from_u8(ObjectElevations::Snow, 238, 246, 245, Kilometers::new(20.)),
+            ElevationColor::from_u8(Self::DeepOcean, 19, 30, 180, Kilometers::new(0.)),
+            ElevationColor::from_u8(Self::ShallowOcean, 98, 125, 223, Kilometers::new(10.)),
+            ElevationColor::from_u8(Self::Beach, 209, 207, 169, Kilometers::new(11.)),
+            ElevationColor::from_u8(Self::Grass, 152, 214, 102, Kilometers::new(13.)),
+            ElevationColor::from_u8(Self::Forest, 47, 106, 42, Kilometers::new(15.)),
+            ElevationColor::from_u8(Self::Mountain, 100, 73, 53, Kilometers::new(18.)),
+            ElevationColor::from_u8(Self::Snow, 238, 246, 245, Kilometers::new(20.)),
         ]
     }
 
     pub fn redrock() -> Vec<ElevationColor<Self>> {
         vec![
-            ElevationColor::from_u8(
-                ObjectElevations::Canyon,
-                0x69,
-                0x1D,
-                0x1D,
-                Kilometers::new(0.),
-            ),
-            ElevationColor::from_u8(
-                ObjectElevations::Crater,
-                0x96,
-                0x48,
-                0x48,
-                Kilometers::new(1.),
-            ),
-            ElevationColor::from_u8(
-                ObjectElevations::Ground,
-                0xB8,
-                0x6F,
-                0x6F,
-                Kilometers::new(2.),
-            ),
-            ElevationColor::from_u8(
-                ObjectElevations::Mountain,
-                0x74,
-                0x20,
-                0x20,
-                Kilometers::new(3.),
-            ),
+            ElevationColor::from_u8(Self::Canyon, 0x69, 0x1D, 0x1D, Kilometers::new(0.)),
+            ElevationColor::from_u8(Self::Crater, 0x96, 0x48, 0x48, Kilometers::new(1.)),
+            ElevationColor::from_u8(Self::Ground, 0xB8, 0x6F, 0x6F, Kilometers::new(2.)),
+            ElevationColor::from_u8(Self::Mountain, 0x74, 0x20, 0x20, Kilometers::new(3.)),
         ]
     }
 
     pub fn whiterock() -> Vec<ElevationColor<Self>> {
         vec![
-            ElevationColor::from_u8(
-                ObjectElevations::Canyon,
-                0x9B,
-                0xA8,
-                0xA8,
-                Kilometers::new(0.),
-            ),
-            ElevationColor::from_u8(
-                ObjectElevations::Crater,
-                0xE9,
-                0xF6,
-                0xF6,
-                Kilometers::new(1.),
-            ),
-            ElevationColor::from_u8(
-                ObjectElevations::Ground,
-                0xCE,
-                0xDF,
-                0xDF,
-                Kilometers::new(2.),
-            ),
-            ElevationColor::from_u8(
-                ObjectElevations::Mountain,
-                0xAA,
-                0xB9,
-                0xB9,
-                Kilometers::new(3.),
-            ),
+            ElevationColor::from_u8(Self::Canyon, 0x9B, 0xA8, 0xA8, Kilometers::new(0.)),
+            ElevationColor::from_u8(Self::Crater, 0xE9, 0xF6, 0xF6, Kilometers::new(1.)),
+            ElevationColor::from_u8(Self::Ground, 0xCE, 0xDF, 0xDF, Kilometers::new(2.)),
+            ElevationColor::from_u8(Self::Mountain, 0xAA, 0xB9, 0xB9, Kilometers::new(3.)),
         ]
     }
 
     pub fn sunlike() -> Vec<ElevationColor<Self>> {
         vec![
             // Deep base glow
-            ElevationColor::from_u8(
-                ObjectElevations::SunlikeDeepBase,
-                189,
-                31,
-                10,
-                Kilometers::new(0.),
-            ),
-            ElevationColor::from_u8(
-                ObjectElevations::SunlikeBase,
-                220,
-                94,
-                33,
-                Kilometers::new(1.),
-            ),
-            ElevationColor::from_u8(
-                ObjectElevations::SunlikeMiddle,
-                235,
-                125,
-                45,
-                Kilometers::new(2.),
-            ),
-            ElevationColor::from_u8(
-                ObjectElevations::SunlikeBrightMiddle,
-                250,
-                156,
-                56,
-                Kilometers::new(3.),
-            ),
-            ElevationColor::from_u8(
-                ObjectElevations::SunlikeTop,
-                253,
-                187,
-                49,
-                Kilometers::new(4.),
-            ),
+            ElevationColor::from_u8(Self::SunlikeDeepBase, 189, 31, 10, Kilometers::new(0.)),
+            ElevationColor::from_u8(Self::SunlikeBase, 220, 94, 33, Kilometers::new(1.)),
+            ElevationColor::from_u8(Self::SunlikeMiddle, 235, 125, 45, Kilometers::new(2.)),
+            ElevationColor::from_u8(Self::SunlikeBrightMiddle, 250, 156, 56, Kilometers::new(3.)),
+            ElevationColor::from_u8(Self::SunlikeTop, 253, 187, 49, Kilometers::new(4.)),
             // Hot top
-            ElevationColor::from_u8(
-                ObjectElevations::SunlikeHotTop,
-                255,
-                218,
-                41,
-                Kilometers::new(5.),
-            ),
+            ElevationColor::from_u8(Self::SunlikeHotTop, 255, 218, 41, Kilometers::new(5.)),
         ]
     }
 
     pub fn blue_sunlike() -> Vec<ElevationColor<Self>> {
         vec![
             // Deep base glow
-            ElevationColor::from_u8(
-                ObjectElevations::SunlikeDeepBase,
-                10,
-                31,
-                189,
-                Kilometers::new(0.),
-            ),
-            ElevationColor::from_u8(
-                ObjectElevations::SunlikeBase,
-                39,
-                110,
-                228,
-                Kilometers::new(1.),
-            ),
-            ElevationColor::from_u8(
-                ObjectElevations::SunlikeMiddle,
-                45,
-                125,
-                235,
-                Kilometers::new(2.),
-            ),
-            ElevationColor::from_u8(
-                ObjectElevations::SunlikeBrightMiddle,
-                56,
-                156,
-                250,
-                Kilometers::new(1.),
-            ),
-            ElevationColor::from_u8(
-                ObjectElevations::SunlikeTop,
-                49,
-                187,
-                253,
-                Kilometers::new(4.),
-            ),
+            ElevationColor::from_u8(Self::SunlikeDeepBase, 10, 31, 189, Kilometers::new(0.)),
+            ElevationColor::from_u8(Self::SunlikeBase, 39, 110, 228, Kilometers::new(1.)),
+            ElevationColor::from_u8(Self::SunlikeMiddle, 45, 125, 235, Kilometers::new(2.)),
+            ElevationColor::from_u8(Self::SunlikeBrightMiddle, 56, 156, 250, Kilometers::new(1.)),
+            ElevationColor::from_u8(Self::SunlikeTop, 49, 187, 253, Kilometers::new(4.)),
             // Hot top
-            ElevationColor::from_u8(
-                ObjectElevations::SunlikeHotTop,
-                41,
-                218,
-                255,
-                Kilometers::new(2.),
-            ),
+            ElevationColor::from_u8(Self::SunlikeHotTop, 41, 218, 255, Kilometers::new(2.)),
         ]
     }
 }

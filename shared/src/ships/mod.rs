@@ -74,7 +74,7 @@ pub enum Id {
 impl Named for Id {
     fn name(&self) -> &'static str {
         match self {
-            Id::Shuttle => "Shuttle",
+            Self::Shuttle => "Shuttle",
         }
     }
 }
