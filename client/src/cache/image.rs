@@ -18,7 +18,7 @@ enum CacheContents {
 }
 
 impl Image {
-    pub async fn new<S: Into<String> + Send>(source_url: S) -> persy::PRes<Arc<Self>> {
+    pub async fn new<S: Into<String> + Send>(source_url: S) -> sled::Result<Arc<Self>> {
         let source_url = source_url.into();
         {
             let tracker = Self::cache().read().await;

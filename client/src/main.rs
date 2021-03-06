@@ -58,7 +58,7 @@ fn main() -> anyhow::Result<()> {
             database,
         } => {
             database::Database::initialize(
-                database.unwrap_or_else(|| PathBuf::from("cosmicverge.persy")),
+                database.unwrap_or_else(|| PathBuf::from("cosmicverge.sled")),
             )?;
             main_window::run(server_url.as_deref().unwrap_or(SERVER_URL))
         }
@@ -83,7 +83,7 @@ enum Command {
         server_url: Option<String>,
 
         /// where to store the client data
-        // default is `./cosmicverge.persy`
+        // default is `./cosmicverge.sled`
         // TODO in release mode, it should store it in the proper location in the user's home folder
         database: Option<PathBuf>,
     },
