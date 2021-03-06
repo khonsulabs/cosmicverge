@@ -25,7 +25,7 @@ pub struct SystemRenderer {
     look_at: Point2D<f32, Solar>,
     zoom: f32,
     backdrop: Option<HtmlImageElement>,
-    location_images: HashMap<navigation::SolarSystemId, HtmlImageElement>,
+    location_images: HashMap<navigation::Id, HtmlImageElement>,
     ship_images: HashMap<ships::Id, HtmlImageElement>,
     solar_system: &'static SolarSystem,
     api: ApiBridge,
@@ -149,8 +149,8 @@ impl View for SystemRenderer {
         if count == 2 && (button == Button::Left || button == Button::OneFinger) {
             let location = self.convert_canvas_to_world(location.to_f32(), &view.canvas);
             if view.active_pilot.is_some() {
-                let request = Request::Fly(navigation::Action::NavigateTo(navigation::Pilot {
-                    location: navigation::System::InSpace(location),
+                let request = Request::Fly(navigation::Action::NavigateTo(navigation::Universe {
+                    location: navigation::Location::InSpace(location),
                     system: self.solar_system.id,
                 }));
                 self.api.send(AgentMessage::Request(request));

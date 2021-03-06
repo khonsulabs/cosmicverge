@@ -18,7 +18,7 @@ pub enum Response {
     PilotChanged(navigation::ActivePilot),
     SpaceUpdate {
         timestamp: f64,
-        location: navigation::Pilot,
+        location: navigation::Universe,
         action: navigation::Action,
         ships: Vec<navigation::Ship>,
     },

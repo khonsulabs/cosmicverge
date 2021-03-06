@@ -7,9 +7,9 @@ use serde::{Deserialize, Serialize};
 use crate::solar_systems::{self, Solar};
 
 #[derive(Debug, Copy, Hash, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct SolarSystemId(pub i64);
+pub struct Id(pub i64);
 
-impl SolarSystemId {
+impl Id {
     #[must_use]
     pub fn into_location<T: FromPrimitive>(self) -> Option<T> {
         T::from_i64(self.0)
@@ -20,16 +20,16 @@ impl SolarSystemId {
 mod redis {
     use redis::{FromRedisValue, ToRedisArgs};
 
-    use super::SolarSystemId;
+    use super::Id;
 
-    impl FromRedisValue for SolarSystemId {
+    impl FromRedisValue for Id {
         fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {
             let value = i64::from_redis_value(v)?;
             Ok(Self(value))
         }
     }
 
-    impl ToRedisArgs for SolarSystemId {
+    impl ToRedisArgs for Id {
         fn write_redis_args<W>(&self, out: &mut W)
         where
             W: ?Sized + redis::RedisWrite,
@@ -39,34 +39,34 @@ mod redis {
     }
 }
 
-impl Display for SolarSystemId {
+impl Display for Id {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Pilot {
+pub struct Universe {
     pub system: solar_systems::SolarSystemId,
-    pub location: System,
+    pub location: Location,
 }
 
-impl Default for Pilot {
+impl Default for Universe {
     fn default() -> Self {
         Self {
             system: solar_systems::SolarSystemId::SM0A9F4,
-            location: System::InSpace(Point2D::default()),
+            location: Location::InSpace(Point2D::default()),
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum System {
+pub enum Location {
     InSpace(Point2D<f32, Solar>),
-    Docked(SolarSystemId),
+    Docked(Id),
 }
 
-impl PartialEq for System {
+impl PartialEq for Location {
     fn eq(&self, other: &Self) -> bool {
         match self {
             Self::InSpace(self_location) => match other {

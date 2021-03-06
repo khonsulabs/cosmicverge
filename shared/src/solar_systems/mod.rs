@@ -19,7 +19,7 @@ pub mod system2;
 
 const LONGEST_PLANET_ORBIT_DAYS: i64 = 3650;
 
-pub type SolarSystemOrbits = HashMap<navigation::SolarSystemId, Point2D<f32, Solar>>;
+pub type SolarSystemOrbits = HashMap<navigation::Id, Point2D<f32, Solar>>;
 
 #[derive(Debug)]
 pub struct Universe {
@@ -93,9 +93,9 @@ pub struct SolarSystem {
     pub id: SolarSystemId,
     pub background: Option<&'static str>,
     pub galaxy_location: Point2D<f32, Galactic>,
-    pub locations: HashMap<navigation::SolarSystemId, Object>,
+    pub locations: HashMap<navigation::Id, Object>,
     pub locations_by_owners:
-        HashMap<Option<navigation::SolarSystemId>, Vec<navigation::SolarSystemId>>,
+        HashMap<Option<navigation::Id>, Vec<navigation::Id>>,
 }
 
 impl SolarSystem {
@@ -234,7 +234,7 @@ pub struct Solar;
 pub struct Galactic;
 
 pub trait Identifiable {
-    fn id(&self) -> navigation::SolarSystemId;
+    fn id(&self) -> navigation::Id;
 }
 
 pub trait Named {
@@ -247,8 +247,8 @@ impl<T> Identifiable for T
 where
     T: ToPrimitive,
 {
-    fn id(&self) -> navigation::SolarSystemId {
-        navigation::SolarSystemId(self.to_i64().unwrap())
+    fn id(&self) -> navigation::Id {
+        navigation::Id(self.to_i64().unwrap())
     }
 }
 

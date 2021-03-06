@@ -10,7 +10,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Action {
     Idle,
-    NavigateTo(navigation::Pilot),
+    NavigateTo(navigation::Universe),
 }
 
 impl Default for Action {
@@ -30,7 +30,7 @@ pub struct Ship {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ActivePilot {
     pub pilot: Pilot,
-    pub location: navigation::Pilot,
+    pub location: navigation::Universe,
     pub action: Action,
 }
 

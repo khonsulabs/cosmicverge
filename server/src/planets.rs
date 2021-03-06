@@ -236,7 +236,7 @@ impl SurfaceDefinition for ObjectElevations {
 
 pub fn planet_for_location(
     system: SolarSystemId,
-    location: navigation::SolarSystemId,
+    location: navigation::Id,
 ) -> Planet<ObjectElevations> {
     match system {
         SolarSystemId::SM0A9F4 => {

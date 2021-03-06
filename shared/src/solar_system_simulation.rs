@@ -70,8 +70,8 @@ impl navigation::Ship {
             navigation::Action::NavigateTo(destination) => {
                 let system = destination.system;
                 let location = match destination.location {
-                    navigation::System::InSpace(location) => location,
-                    navigation::System::Docked(object_id) => {
+                    navigation::Location::InSpace(location) => location,
+                    navigation::Location::Docked(object_id) => {
                         let system = universe().orbits_for(destination.system);
 
                         system[&object_id]

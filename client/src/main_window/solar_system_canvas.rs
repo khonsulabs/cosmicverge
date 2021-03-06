@@ -27,7 +27,7 @@ pub struct SolarSystemCanvas {
 struct SolarSystemCache {
     solar_system: &'static SolarSystem,
     backdrop: Option<Arc<cache::Image>>,
-    object_images: HashMap<navigation::SolarSystemId, Arc<cache::Image>>,
+    object_images: HashMap<navigation::Id, Arc<cache::Image>>,
 }
 
 #[async_trait]
@@ -212,7 +212,7 @@ pub enum Command {
     ViewSolarSystem(SolarSystemId),
     SpaceUpdate {
         timestamp: f64,
-        location: navigation::Pilot,
+        location: navigation::Universe,
         action: navigation::Action,
         ships: Vec<navigation::Ship>,
     },

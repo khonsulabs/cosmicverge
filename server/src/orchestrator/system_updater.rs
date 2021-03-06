@@ -111,9 +111,9 @@ pub async fn wait_for_ready_to_process(
                     let mut pipe = &mut pipe;
 
                     for ship in simulation.all_ships() {
-                        let location = navigation::Pilot {
+                        let location = navigation::Universe {
                             system: ship.physics.system,
-                            location: navigation::System::InSpace(ship.physics.location),
+                            location: navigation::Location::InSpace(ship.physics.location),
                         };
                         pipe = pipe
                             .cmd("HSET")

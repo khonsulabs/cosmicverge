@@ -161,7 +161,7 @@ impl LocationStore {
 #[derive(Clone)]
 pub struct PilotCache {
     pub pilot_id: pilot::Id,
-    pub location: navigation::Pilot,
+    pub location: navigation::Universe,
     pub action: navigation::Action,
     pub ship: navigation::ShipInformation,
     pub physics: navigation::Physics,
@@ -171,7 +171,7 @@ impl PilotCache {
     pub fn new_for(pilot_id: pilot::Id) -> Self {
         Self {
             pilot_id,
-            location: navigation::Pilot::default(),
+            location: navigation::Universe::default(),
             action: navigation::Action::default(),
             ship: navigation::ShipInformation::default(),
             physics: navigation::Physics::default(),
@@ -179,13 +179,13 @@ impl PilotCache {
     }
     fn to_piloted_ship(&self) -> Option<navigation::Ship> {
         match self.location.location {
-            navigation::System::InSpace(_) => Some(navigation::Ship {
+            navigation::Location::InSpace(_) => Some(navigation::Ship {
                 pilot_id: self.pilot_id,
                 ship: self.ship.clone(),
                 action: self.action.clone(),
                 physics: self.physics.clone(),
             }),
-            navigation::System::Docked(_) => None,
+            navigation::Location::Docked(_) => None,
         }
     }
 }

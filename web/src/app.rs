@@ -88,7 +88,7 @@ pub enum Message {
     ToggleRendering,
     ForegroundGame,
     LogOut,
-    NavigateToLocation(SolarSystemId, navigation::SolarSystemId),
+    NavigateToLocation(SolarSystemId, navigation::Id),
 }
 
 fn set_document_title(title: &str) {
@@ -152,9 +152,9 @@ impl Component for App {
             }
             Message::NavigateToLocation(system, location_id) => {
                 self.api.send(AgentMessage::Request(Request::Fly(
-                    navigation::Action::NavigateTo(navigation::Pilot {
+                    navigation::Action::NavigateTo(navigation::Universe {
                         system,
-                        location: navigation::System::Docked(location_id),
+                        location: navigation::Location::Docked(location_id),
                     }),
                 )));
                 self.navbar_expanded = false;
