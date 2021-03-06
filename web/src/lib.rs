@@ -1,3 +1,4 @@
+#![cfg_attr(target_arch = "wasm32", forbid(unsafe_code))]
 #![warn(
     clippy::cargo,
     // clippy::missing_docs_in_private_items,
@@ -18,8 +19,6 @@
     // clippy::missing_panics_doc, // not on stable yet
     clippy::multiple_crate_versions,
     clippy::option_if_let_else,
-    // Clippy is bugged
-    clippy::use_self,
     // TODO: fix clippy
     clippy::default_trait_access
 )]

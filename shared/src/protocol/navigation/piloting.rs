@@ -15,7 +15,7 @@ pub enum Action {
 
 impl Default for Action {
     fn default() -> Self {
-        Action::Idle
+        Self::Idle
     }
 }
 

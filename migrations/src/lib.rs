@@ -16,8 +16,6 @@
     // clippy::missing_panics_doc, // not on stable yet
     clippy::multiple_crate_versions,
     clippy::option_if_let_else,
-    // Clippy is bugged
-    clippy::use_self
 )]
 
 mod connection;

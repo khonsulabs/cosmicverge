@@ -15,8 +15,6 @@
     clippy::missing_errors_doc,
     // clippy::missing_panics_doc, // not on stable yet
     clippy::option_if_let_else,
-    // Clippy is bugged
-    clippy::use_self
 )]
 
 //! Shared abstraction that will be re-used throughout the project.
@@ -26,8 +24,6 @@ pub use num_traits;
 pub use strum;
 pub use strum_macros;
 pub mod permissions;
-#[cfg(feature = "persy")]
-pub mod persy;
 pub mod protocol;
 pub mod ships;
 pub mod solar_system_simulation;

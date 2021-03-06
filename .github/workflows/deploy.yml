@@ -4,6 +4,29 @@ on:
   push:
 
 jobs:
+  audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install Rust
+        uses: hecrj/setup-rust-action@v1
+      - name: Cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+            ~/.cargo/bin/cargo-audit
+          key: cargo-audit
+      - name: Install cargo-audit
+        run: cargo -v install cargo-audit
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ matrix.branch }}
+      - name: Audit
+        run: cargo audit -D warnings
+
   format:
     runs-on: ubuntu-latest
 
@@ -49,6 +72,8 @@ jobs:
 
       - name: Install Rust
         uses: hecrj/setup-rust-action@v1
+        with:
+          targets: wasm32-unknown-unknown
 
       - name: Install x11 dependencies for Kludgine
         run: |
@@ -68,7 +93,12 @@ jobs:
           cargo run --bin migrator
 
       - name: Clippy
-        run: cargo clippy --all-targets --verbose -- -D warnings
+        run: cargo clippy --all-targets -p cosmicverge -p database -p
+          cosmicverge-server -p cosmicverge-shared --verbose -- -D warnings
+
+      - name: Clippy Web
+        run: cargo clippy --all-targets --target wasm32-unknown-unknown -p web
+          --verbose -- -D warnings
 
       - name: Rustdoc
         run: cargo doc --no-deps --document-private-items --workspace --verbose
@@ -132,7 +162,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: Production
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/production'
     needs: test
 
     # Service containers to run with `runner-job`
@@ -202,7 +232,6 @@ jobs:
             libxcb-xfixes0-dev
 
       - uses: digitalocean/action-doctl@v2
-        if: github.ref == 'refs/heads/main'
         with:
           token: ${{ secrets.DO_WRITE_API_KEY }}
 
