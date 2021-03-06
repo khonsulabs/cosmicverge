@@ -1,6 +1,6 @@
 use cli_table::{Cell as _, Style as _, Table as _};
 use cosmicverge_shared::permissions::{Permission, Service};
-use database::schema::{PermissionGroup, PermissionGroupStatement};
+use database::schema::{PermissionGroup, Statement};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -64,8 +64,7 @@ pub async fn handle_command(group_command: Command) -> anyhow::Result<()> {
         }
     };
 
-    let permissions =
-        PermissionGroupStatement::list_for_group_id(group.id, database::pool()).await?;
+    let permissions = Statement::list_for_group_id(group.id, database::pool()).await?;
 
     print_group(group)?;
     print_permissions(permissions)?;
@@ -85,7 +84,7 @@ fn print_group(group: PermissionGroup) -> std::io::Result<()> {
     )
 }
 
-fn print_permissions(permissions: Vec<PermissionGroupStatement>) -> std::io::Result<()> {
+fn print_permissions(permissions: Vec<Statement>) -> std::io::Result<()> {
     let permissions = permissions
         .into_iter()
         .map(|permission| {

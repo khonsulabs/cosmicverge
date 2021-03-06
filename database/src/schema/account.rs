@@ -88,9 +88,12 @@ impl Account {
     pub async fn create<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
         executor: E,
     ) -> Result<Self, sqlx::Error> {
-        sqlx::query_as!(Self, "INSERT INTO accounts DEFAULT VALUES RETURNING id, superuser, created_at")
-            .fetch_one(executor)
-            .await
+        sqlx::query_as!(
+            Self,
+            "INSERT INTO accounts DEFAULT VALUES RETURNING id, superuser, created_at"
+        )
+        .fetch_one(executor)
+        .await
     }
 
     pub async fn save<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(

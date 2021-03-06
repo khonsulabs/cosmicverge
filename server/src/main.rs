@@ -74,10 +74,10 @@ async fn main() -> anyhow::Result<()> {
 
     let cli = Cli::from_args();
     match cli {
-        CLI::Serve => http::run_webserver().await,
-        CLI::GenerateAssets { static_folder } => generate_assets(static_folder).await,
-        CLI::Account(command) => cli::accounts::handle_command(command).await,
-        CLI::PermissionGroup(command) => cli::permission_groups::handle_command(command).await,
+        Cli::Serve => http::run_webserver().await,
+        Cli::GenerateAssets { static_folder } => generate_assets(static_folder).await,
+        Cli::Account(command) => cli::accounts::handle_command(command).await,
+        Cli::PermissionGroup(command) => cli::permission_groups::handle_command(command).await,
     }
 }
 
