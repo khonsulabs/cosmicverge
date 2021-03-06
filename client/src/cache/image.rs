@@ -33,11 +33,11 @@ impl Image {
         } else {
             let resource = CachedResource::new(&source_url).await?;
 
-            Ok(tracker.track(source_url, move || Image::from(resource)))
+            Ok(tracker.track(source_url, move || Self::from(resource)))
         }
     }
 
-    fn cache() -> &'static Handle<Tracker<Image>> {
+    fn cache() -> &'static Handle<Tracker<Self>> {
         CACHE_WORKERS_INITIALIZED.get_or_init(|| Handle::new(Tracker::default()))
     }
 

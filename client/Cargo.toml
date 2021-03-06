@@ -2,8 +2,15 @@
 name = "cosmicverge"
 version = "0.1.0"
 authors = ["Jonathan Johnson <jon@khonsulabs.com>"]
-edition = "2018"
+description = "The game client for Cosmic Verge"
+license = "MIT"
+repository = "https://github.com/khonsulabs/cosmicverge"
+
 publish = false
+edition = "2018"
+keywords = ["sandbox", "game"]
+categories = ["games"]
+readme = "../README.md"
 
 [dependencies]
 kludgine = { git = "https://github.com/khonsulabs/kludgine.git", branch = "main", default-features = false, features = ["tokio-rt", "bundled-fonts"] }

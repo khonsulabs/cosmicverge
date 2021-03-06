@@ -35,8 +35,8 @@ pub enum AccountPermission {
 impl Display for Permission {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let (service, permission) = match self {
-            Permission::Account(perm) => (Service::Account, perm.to_string()),
-            Permission::Universe(perm) => (Service::Universe, perm.to_string()),
+            Self::Account(perm) => (Service::Account, perm.to_string()),
+            Self::Universe(perm) => (Service::Universe, perm.to_string()),
         };
         f.write_str(&service.to_string())?;
         f.write_char('(')?;
@@ -77,8 +77,8 @@ impl FromStr for Permission {
         let service = Service::from_str(&service)?;
 
         let permission = match service {
-            Service::Account => Permission::Account(AccountPermission::from_str(&permission)?),
-            Service::Universe => Permission::Universe(GenericPermission::from_str(&permission)?),
+            Service::Account => Self::Account(AccountPermission::from_str(&permission)?),
+            Service::Universe => Self::Universe(GenericPermission::from_str(&permission)?),
         };
 
         Ok(permission)
@@ -123,8 +123,8 @@ impl Service {
     #[must_use]
     pub fn permissions(&self) -> Vec<Permission> {
         match self {
-            Service::Account => AccountPermission::iter().map(Permission::Account).collect(),
-            Service::Universe => GenericPermission::iter()
+            Self::Account => AccountPermission::iter().map(Permission::Account).collect(),
+            Self::Universe => GenericPermission::iter()
                 .map(Permission::Universe)
                 .collect(),
         }
@@ -135,8 +135,8 @@ impl Permission {
     #[must_use]
     pub const fn service(self) -> Service {
         match self {
-            Permission::Account(_) => Service::Account,
-            Permission::Universe(_) => Service::Universe,
+            Self::Account(_) => Service::Account,
+            Self::Universe(_) => Service::Universe,
         }
     }
 }

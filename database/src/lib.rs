@@ -14,11 +14,11 @@
     clippy::cast_sign_loss,
     clippy::items_after_statements,
     clippy::missing_errors_doc,
-    clippy::missing_panics_doc,
+    // clippy::missing_panics_doc, // not on stable yet
     clippy::multiple_crate_versions,
     clippy::option_if_let_else,
     // Clippy is bugged
-    clippy::use_self,
+    clippy::similar_names, // This is not buggy on nightly, so it should be re-checked. affect sql::query!() false positives
     // Clippy is super bugged
     clippy::used_underscore_binding
 )]
@@ -49,11 +49,11 @@ impl From<sqlx::Error> for DatabaseError {
                 .map(|c| c == "23505")
                 .unwrap_or_default()
             {
-                return DatabaseError::Conflict;
+                return Self::Conflict;
             }
         }
 
-        DatabaseError::Other(error)
+        Self::Other(error)
     }
 }
 

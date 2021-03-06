@@ -15,8 +15,8 @@ pub struct Pilot {
 }
 
 impl From<Pilot> for protocol::Pilot {
-    fn from(pilot: Pilot) -> protocol::Pilot {
-        protocol::Pilot {
+    fn from(pilot: Pilot) -> Self {
+        Self {
             id: pilot.id(),
             created_at: pilot.created_at,
             name: pilot.name,

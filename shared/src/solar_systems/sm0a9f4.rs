@@ -13,9 +13,9 @@ pub enum SM0A9F4 {
 impl Named for SM0A9F4 {
     fn name(&self) -> &'static str {
         match self {
-            SM0A9F4::Sun => "Sun",
-            SM0A9F4::Earth => "Earth",
-            SM0A9F4::Mercury => "Mercury",
+            Self::Sun => "Sun",
+            Self::Earth => "Earth",
+            Self::Mercury => "Mercury",
         }
     }
 }
