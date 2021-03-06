@@ -25,11 +25,9 @@ jobs:
         with:
           ref: ${{ matrix.branch }}
       - name: Audit
-        # Related issue links for ignored alert:
-        #  -
         run: |
           cargo audit -D warnings --ignore RUSTSEC-2020-0016
-          echo '::warning::::Ignoring alert for issue https://github.com/khonsulabs/kludgine/issues/47'
+          echo '::warning::Ignoring alert for issue https://github.com/khonsulabs/kludgine/issues/47'
   format:
     runs-on: ubuntu-latest
 
