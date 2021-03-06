@@ -2,12 +2,12 @@ use std::borrow::Cow;
 
 use redis::{aio::MultiplexedConnection, RedisError};
 
-pub struct RedisLock {
+pub struct Lock {
     key: Cow<'static, str>,
     expire_after_msec: i32,
 }
 
-impl RedisLock {
+impl Lock {
     pub fn new(name: String) -> Self {
         Self {
             key: Cow::from(name),
@@ -22,12 +22,12 @@ impl RedisLock {
         }
     }
 
-    pub fn expire_after_secs(mut self, expire_after: i32) -> Self {
+    pub const fn expire_after_secs(mut self, expire_after: i32) -> Self {
         self.expire_after_msec = expire_after * 1000;
         self
     }
 
-    pub fn expire_after_msecs(mut self, expire_after: i32) -> Self {
+    pub const fn expire_after_msecs(mut self, expire_after: i32) -> Self {
         self.expire_after_msec = expire_after;
         self
     }

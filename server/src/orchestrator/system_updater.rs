@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use cosmicverge_shared::{
     num_traits::FromPrimitive,
-    protocol::{PilotLocation, SolarSystemLocation},
-    solar_system_simulation::SolarSystemSimulation,
+    protocol::navigation,
+    solar_system_simulation::Simulation,
     solar_systems::{universe, SolarSystemId},
 };
 use futures::StreamExt as _;
@@ -11,12 +11,12 @@ use redis::aio::{Connection, MultiplexedConnection};
 
 use crate::{
     orchestrator::location_store::LocationStore,
-    redis::{connect_to_redis, RedisLock},
+    redis::{connect, Lock},
 };
 
 pub async fn run(shared_connection: MultiplexedConnection) -> Result<(), anyhow::Error> {
     loop {
-        match connect_to_redis().await {
+        match connect().await {
             Ok(connection) => {
                 match wait_for_ready_to_process(connection, shared_connection.clone()).await {
                     Ok(_) => error!("Redis disconnected processing system updates"),
@@ -87,7 +87,7 @@ pub async fn wait_for_ready_to_process(
             };
 
             for system_id in system_ids {
-                if RedisLock::new(format!("system_update_{}", system_id))
+                if Lock::new(format!("system_update_{}", system_id))
                     .expire_after_msecs(20)
                     .acquire(&mut shared_connection)
                     .await?
@@ -98,7 +98,7 @@ pub async fn wait_for_ready_to_process(
                         .get(&SolarSystemId::from_i64(system_id).expect("invalid solar system id"));
                     debug!("updating {:?}", system.id);
 
-                    let mut simulation = SolarSystemSimulation::new(system.id, current_timestamp);
+                    let mut simulation = Simulation::new(system.id, current_timestamp);
                     // TODO limit to pilots *connected*
                     let pilots_in_system = LocationStore::pilots_in_system(system.id).await;
 
@@ -111,9 +111,9 @@ pub async fn wait_for_ready_to_process(
                     let mut pipe = &mut pipe;
 
                     for ship in simulation.all_ships() {
-                        let location = PilotLocation {
+                        let location = navigation::Universe {
                             system: ship.physics.system,
-                            location: SolarSystemLocation::InSpace(ship.physics.location),
+                            location: navigation::Location::InSpace(ship.physics.location),
                         };
                         pipe = pipe
                             .cmd("HSET")
@@ -137,7 +137,7 @@ pub async fn wait_for_ready_to_process(
 
         LocationStore::refresh().await?;
 
-        if RedisLock::named("system_update_completed")
+        if Lock::named("system_update_completed")
             .expire_after_msecs(900)
             .acquire(&mut shared_connection)
             .await?

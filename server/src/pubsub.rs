@@ -2,8 +2,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use cosmicverge_shared::protocol;
 use database::{
-    basws_server::{prelude::Uuid, Handle, Server},
-    cosmicverge_shared::protocol::CosmicVergeResponse,
+    basws_server::{self, prelude::Uuid, Handle},
+    cosmicverge_shared::protocol::Response,
     schema::{convert_db_pilots, Pilot},
 };
 use futures::StreamExt as _;
@@ -11,14 +11,14 @@ use redis::{aio::Connection, AsyncCommands};
 use tokio::time::Duration;
 
 use crate::{
-    http::server::{ConnectedAccount, CosmicVergeServer},
+    http::server::{ConnectedAccount, Server},
     orchestrator::location_store::LocationStore,
-    redis::connect_to_redis,
+    redis::connect,
 };
 
-pub async fn pg_notify_loop(websockets: Server<CosmicVergeServer>) -> Result<(), anyhow::Error> {
+pub async fn pg_notify_loop(websockets: basws_server::Server<Server>) -> Result<(), anyhow::Error> {
     loop {
-        match connect_to_redis().await {
+        match connect().await {
             Ok(connection) => match wait_for_messages(connection, &websockets).await {
                 Ok(_) => error!("Redis disconnected processing pubsub"),
                 Err(err) => {
@@ -37,7 +37,7 @@ static CONNECTED_CLIENTS: AtomicUsize = AtomicUsize::new(0);
 
 async fn wait_for_messages(
     connection: Connection,
-    websockets: &Server<CosmicVergeServer>,
+    websockets: &basws_server::Server<Server>,
 ) -> Result<(), anyhow::Error> {
     let mut pubsub = connection.into_pubsub();
     pubsub.subscribe("installation_login").await?;
@@ -71,7 +71,7 @@ async fn wait_for_messages(
                     websockets
                         .send_to_installation_id(
                             installation_id,
-                            CosmicVergeResponse::Authenticated {
+                            Response::Authenticated {
                                 account: response_account,
                                 pilots,
                             },
@@ -83,7 +83,7 @@ async fn wait_for_messages(
                 let connected_pilots: usize = payload.parse()?;
                 CONNECTED_CLIENTS.store(connected_pilots, Ordering::Relaxed);
                 websockets
-                    .broadcast(CosmicVergeResponse::ServerStatus { connected_pilots })
+                    .broadcast(Response::ServerStatus { connected_pilots })
                     .await;
             }
             "system_update_complete" => {
@@ -97,20 +97,22 @@ async fn wait_for_messages(
                     |client| async move {
                         // Only send updates to connected pilots
                         if let Some(pilot_id) =
-                            client.map_client(|c| c.pilot.as_ref().map(|p| p.id())).await
+                            client.map_client(|c| c.pilot.as_ref().map(Pilot::id)).await
                         {
                             let cache = LocationStore::lookup(pilot_id).await;
-                            let _ = client
-                                .send_response(CosmicVergeResponse::SpaceUpdate {
-                                    ships: system_updates
-                                        .get(&cache.location.system)
-                                        .cloned()
-                                        .unwrap_or_default(),
-                                    location: cache.location,
-                                    action: cache.action,
-                                    timestamp,
-                                })
-                                .await;
+                            drop(
+                                client
+                                    .send_response(Response::SpaceUpdate {
+                                        ships: system_updates
+                                            .get(&cache.location.system)
+                                            .cloned()
+                                            .unwrap_or_default(),
+                                        location: cache.location,
+                                        action: cache.action,
+                                        timestamp,
+                                    })
+                                    .await,
+                            );
                         }
                     },
                 ))
@@ -127,10 +129,10 @@ pub fn connected_pilots_count() -> usize {
     CONNECTED_CLIENTS.load(Ordering::Relaxed)
 }
 
-pub async fn notify<S: ToString>(
+pub async fn notify<S: Into<String> + Send>(
     channel: &'static str,
     payload: S,
 ) -> Result<(), redis::RedisError> {
     let mut redis = crate::redis::redis().await.clone();
-    redis.publish(channel, payload.to_string()).await
+    redis.publish(channel, payload.into()).await
 }

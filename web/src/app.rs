@@ -1,15 +1,12 @@
 use std::sync::Arc;
 
 use cosmicverge_shared::{
-    protocol::{
-        Account, ActivePilot, CosmicVergeRequest, CosmicVergeResponse, Pilot, PilotLocation,
-        PilotingAction, SolarSystemLocation, SolarSystemLocationId,
-    },
+    protocol::{navigation, Account, Pilot, Request, Response},
     solar_systems::{universe, Named, SolarSystemId},
 };
-use yew::prelude::*;
+use yew::{prelude::*, virtual_dom::VNode};
 use yew_bulma::static_page::StaticPage;
-use yew_router::{agent::RouteRequest, prelude::*};
+use yew_router::{agent::RouteRequest, prelude::*, route};
 
 use crate::{
     app::game::Game,
@@ -20,8 +17,8 @@ use crate::{
 mod game;
 mod home_page;
 
-#[derive(Switch, Clone, Debug, Eq, PartialEq)]
-pub enum AppRoute {
+#[derive(Switch, Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Route {
     // #[to = "/login!"]
     // LogIn,
     // #[to = "/backoffice/users"]
@@ -67,7 +64,7 @@ pub struct LoggedInUser {
 }
 
 impl LoggedInUser {
-    fn with_pilot(&self, pilot: ActivePilot) -> Arc<Self> {
+    fn with_pilot(&self, pilot: navigation::ActivePilot) -> Arc<Self> {
         Arc::new(Self {
             account: self.account.clone(),
             pilot: PilotingState::Selected(pilot),
@@ -79,18 +76,19 @@ impl LoggedInUser {
 pub enum PilotingState {
     Unselected { available: Vec<Pilot> },
     Reconnecting,
-    Selected(ActivePilot),
+    Selected(navigation::ActivePilot),
 }
 
+#[allow(clippy::pub_enum_variant_names)]
 pub enum Message {
     WsMessage(AgentResponse),
-    RouterMessage(Route),
+    RouterMessage(route::Route),
     SetTitle(String),
     ToggleNavbar,
     ToggleRendering,
     ForegroundGame,
     LogOut,
-    NavigateToLocation(SolarSystemId, SolarSystemLocationId),
+    NavigateToLocation(SolarSystemId, navigation::Id),
 }
 
 fn set_document_title(title: &str) {
@@ -144,7 +142,7 @@ impl Component for App {
             }
             Message::ForegroundGame => {
                 self.router
-                    .send(RouteRequest::ChangeRoute(Route::from(AppRoute::Game)));
+                    .send(RouteRequest::ChangeRoute(Route::Game.into()));
                 if self.navbar_expanded {
                     self.navbar_expanded = false;
                     true
@@ -153,10 +151,10 @@ impl Component for App {
                 }
             }
             Message::NavigateToLocation(system, location_id) => {
-                self.api.send(AgentMessage::Request(CosmicVergeRequest::Fly(
-                    PilotingAction::NavigateTo(PilotLocation {
+                self.api.send(AgentMessage::Request(Request::Fly(
+                    navigation::Action::NavigateTo(navigation::Universe {
                         system,
-                        location: SolarSystemLocation::Docked(location_id),
+                        location: navigation::Location::Docked(location_id),
                     }),
                 )));
                 self.navbar_expanded = false;
@@ -182,11 +180,11 @@ impl Component for App {
                     }
                 }
                 AgentResponse::Response(response) => match response {
-                    CosmicVergeResponse::ServerStatus { connected_pilots } => {
+                    Response::ServerStatus { connected_pilots } => {
                         self.connected_pilots = Some(connected_pilots);
                         true
                     }
-                    CosmicVergeResponse::Authenticated { account, pilots } => {
+                    Response::Authenticated { account, pilots } => {
                         let account = Arc::new(account);
                         if let Some(last_pilot) = &self.last_pilot {
                             self.user = Some(Arc::new(LoggedInUser {
@@ -194,9 +192,7 @@ impl Component for App {
                                 pilot: PilotingState::Reconnecting,
                             }));
                             self.api
-                                .send(AgentMessage::Request(CosmicVergeRequest::SelectPilot(
-                                    last_pilot.id,
-                                )));
+                                .send(AgentMessage::Request(Request::SelectPilot(last_pilot.id)));
                         } else {
                             self.user = Some(Arc::new(LoggedInUser {
                                 account,
@@ -205,7 +201,7 @@ impl Component for App {
                         }
                         true
                     }
-                    CosmicVergeResponse::PilotChanged(active_pilot) => {
+                    Response::PilotChanged(active_pilot) => {
                         self.last_pilot = Some(active_pilot.pilot.clone());
                         let user = self.user.as_ref().expect("The server should never send this without us being Authenticated first");
 
@@ -234,10 +230,10 @@ impl Component for App {
         let navbar_expanded = self.navbar_expanded;
         let connected = self.connected;
         let connected_pilots = self.connected_pilots;
-        let redirect = Router::redirect(|_| AppRoute::Index);
+        let redirect = Router::redirect(|_| Route::Index);
         html! {
-            <Router<AppRoute>
-                render = Router::render(move |route: AppRoute| {
+            <Router<Route>
+                render = Router::render(move |route: Route| {
                     let app = AppRouteRenderer {
                         link: link.clone(),
                         route,
@@ -265,7 +261,7 @@ impl Component for App {
 struct AppRouteRenderer {
     user: Option<Arc<LoggedInUser>>,
     connected: Option<bool>,
-    route: AppRoute,
+    route: Route,
     link: ComponentLink<App>,
     rendering: bool,
     navbar_expanded: bool,
@@ -278,7 +274,7 @@ impl AppRouteRenderer {
 
         if self.connected.unwrap_or_default() {
             let (game_foregrounded, contents) = match &self.route {
-                AppRoute::Game => {
+                Route::Game => {
                     // Reveal the canvas
                     (true, Html::default())
                 }
@@ -294,7 +290,7 @@ impl AppRouteRenderer {
                                 </div>
                             </div>
 
-                            { self.render_content(other) }
+                            { self.render_content(*other) }
                         </section>
                     },
                 ),
@@ -325,14 +321,14 @@ impl AppRouteRenderer {
         }
     }
 
-    fn render_content(&self, route: &AppRoute) -> Html {
+    fn render_content(&self, route: Route) -> Html {
         let set_title = self.link.callback(Message::SetTitle);
         match route {
-            AppRoute::Game => unreachable!(),
-            AppRoute::Index => {
+            Route::Game => unreachable!(),
+            Route::Index => {
                 html! {<home_page::HomePage set_title=set_title.clone() user=self.user.clone() />}
             }
-            AppRoute::NotFound => {
+            Route::NotFound => {
                 html! {<StaticPage title="Not Found" content=localize_html!("not-found") set_title=set_title.clone() />}
             }
         }
@@ -349,15 +345,15 @@ impl AppRouteRenderer {
                 </div>
             }
         } else {
-            Default::default()
+            VNode::default()
         };
 
         html! {
             <nav class=format!("navbar is-fixed-top {}", self.navbar_menu_expanded_class()) role="navigation" aria-label=localize!("navbar-label")>
                 <div class="navbar-brand">
-                    <RouterAnchor<AppRoute> classes="navbar-item" route=AppRoute::Game>
+                    <RouterAnchor<Route> classes="navbar-item" route=Route::Game>
                         { localize!("cosmic-verge") }
-                    </RouterAnchor<AppRoute>>
+                    </RouterAnchor<Route>>
 
                     <a role="button" class="navbar-burger" aria-label=localize!("navbar-menu-label") aria-expanded=self.navbar_expanded data-target="navbar-contents" onclick=self.link.callback(|_| Message::ToggleNavbar)>
                         <span aria-hidden="true"></span>
@@ -368,12 +364,12 @@ impl AppRouteRenderer {
 
                 <div id="navbar-contents" class=format!("navbar-menu {}", self.navbar_menu_expanded_class())>
                     <div class="navbar-start">
-                        <RouterAnchor<AppRoute> classes=self.navbar_item_class(AppRoute::Game) route=AppRoute::Game>
+                        <RouterAnchor<Route> classes=self.navbar_item_class(Route::Game) route=Route::Game>
                             { localize!("space") }
-                        </RouterAnchor<AppRoute>>
-                        <RouterAnchor<AppRoute> classes=self.navbar_item_class(AppRoute::Index) route=AppRoute::Index>
+                        </RouterAnchor<Route>>
+                        <RouterAnchor<Route> classes=self.navbar_item_class(Route::Index) route=Route::Index>
                             { localize!("home") }
-                        </RouterAnchor<AppRoute>>
+                        </RouterAnchor<Route>>
                         { navigate_menu }
                     </div>
                     <div class="navbar-end">
@@ -394,9 +390,9 @@ impl AppRouteRenderer {
             if matches!(user.pilot, PilotingState::Selected(_)) {
                 let mut systems = universe().systems().collect::<Vec<_>>();
                 systems.sort_by_key(|s| s.id.name());
-                let navigate_menu = systems.into_iter().enumerate().map(|(index, system)| {
+                let navigate_menu = systems.into_iter().enumerate().flat_map(|(index, system)| {
                     let separator = if index == 0 {
-                        Default::default()
+                        VNode::default()
                     } else {
                         html!{ <hr class="navbar-divider" /> }
                     };
@@ -407,7 +403,7 @@ impl AppRouteRenderer {
                             <a class="navbar-item" onclick=self.link.callback(move |e: MouseEvent| { e.prevent_default(); Message::NavigateToLocation(system.id, location.id.id()) })>{ location.id.name() }</a>
                         }).collect::<Html>();
                     vec![separator, locations]
-                }).flatten().collect::<Html>();
+                }).collect::<Html>();
 
                 return html! {
                     <div class="navbar-item has-dropdown is-hoverable">
@@ -421,7 +417,7 @@ impl AppRouteRenderer {
             }
         }
 
-        Default::default()
+        VNode::default()
     }
 
     fn pilot_menu(&self) -> Html {
@@ -436,9 +432,9 @@ impl AppRouteRenderer {
                 }
             } else {
                 html! {
-                    <RouterAnchor<AppRoute> classes="navbar-link" route=AppRoute::Index>
+                    <RouterAnchor<Route> classes="navbar-link" route=Route::Index>
                         { localize!("no-pilot") }
-                    </RouterAnchor<AppRoute>>
+                    </RouterAnchor<Route>>
                 }
             };
 
@@ -451,11 +447,11 @@ impl AppRouteRenderer {
                 </div>
             }
         } else {
-            Default::default()
+            VNode::default()
         }
     }
 
-    fn navbar_menu_expanded_class(&self) -> &'static str {
+    const fn navbar_menu_expanded_class(&self) -> &'static str {
         if self.navbar_expanded {
             "is-active"
         } else {
@@ -471,7 +467,7 @@ impl AppRouteRenderer {
         }
     }
 
-    fn navbar_item_class(&self, check_route: AppRoute) -> &'static str {
+    fn navbar_item_class(&self, check_route: Route) -> &'static str {
         if self.route == check_route {
             "navbar-item is-active"
         } else {

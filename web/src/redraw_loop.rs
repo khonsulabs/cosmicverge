@@ -48,7 +48,7 @@ impl<D> RedrawLoop<D>
 where
     D: Drawable,
 {
-    pub fn launch(drawable: D, config: Configuration) -> Sender<Command> {
+    pub fn launch(drawable: D, config: &Configuration) -> Sender<Command> {
         let (sender, receiver) = channel::unbounded();
 
         let render_loop = Self {
@@ -77,14 +77,14 @@ where
 
     fn receive_commands(&mut self) {
         while let Ok(command) = self.config.receiver.try_recv() {
-            self.handle_command(command);
+            self.handle_command(&command);
         }
     }
 
-    fn handle_command(&mut self, command: Command) {
+    fn handle_command(&mut self, command: &Command) {
         match command {
             Command::SetFramerateTarget(target) => {
-                self.config.framerate_target = target;
+                self.config.framerate_target = *target;
             }
             Command::Resume => {
                 self.config.should_render = true;

@@ -1,14 +1,14 @@
 use cosmicverge_shared::{
     euclid::{Angle, Point2D},
-    protocol::PilotedShip,
-    solar_system_simulation::SolarSystemSimulation,
+    protocol::navigation,
+    solar_system_simulation::Simulation,
     solar_systems::{Solar, SolarSystemId},
 };
 
 #[derive(Default)]
 pub struct Simulator {
     pub simulation_system: Option<SolarSystemId>,
-    pub simulation: Option<SolarSystemSimulation>,
+    pub simulation: Option<Simulation>,
     pub server_round_trip_avg: Option<f64>,
     last_physics_update: Option<f64>,
 }
@@ -16,19 +16,16 @@ pub struct Simulator {
 impl Simulator {
     pub fn update(
         &mut self,
-        ships: Vec<PilotedShip>,
+        ships: Vec<navigation::Ship>,
         solar_system: SolarSystemId,
         timestamp: f64,
         now: f64,
     ) {
         self.simulation_system = Some(solar_system);
 
-        let current_simulation_timestamp = self
-            .simulation
-            .as_ref()
-            .map(|s| s.timestamp)
-            .unwrap_or(timestamp);
-        let mut simulation = SolarSystemSimulation::new(solar_system, timestamp);
+        let current_simulation_timestamp =
+            self.simulation.as_ref().map_or(timestamp, |s| s.timestamp);
+        let mut simulation = Simulation::new(solar_system, timestamp);
         simulation.add_ships(ships);
 
         // Since the simulation keeps track of how much time it thinks has elapsed, we know how much time
@@ -58,7 +55,7 @@ impl Simulator {
         self.last_physics_update = Some(now);
     }
 
-    pub fn pilot_locations(&self) -> Vec<(PilotedShip, Point2D<f32, Solar>, Angle<f32>)> {
+    pub fn pilot_locations(&self) -> Vec<(navigation::Ship, Point2D<f32, Solar>, Angle<f32>)> {
         if let Some(simulation) = &self.simulation {
             simulation
                 .all_ships()
@@ -71,7 +68,7 @@ impl Simulator {
                 })
                 .collect()
         } else {
-            Default::default()
+            Vec::new()
         }
     }
 }

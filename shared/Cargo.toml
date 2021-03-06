@@ -3,11 +3,10 @@ name = "cosmicverge-shared"
 version = "0.0.1"
 authors = ["Jonathan Johnson <jon@nilobject.com>"]
 edition = "2018"
+publish = false
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 default = []
-persyutil = ["persy"]
 
 [dependencies]
 anyhow = "1"

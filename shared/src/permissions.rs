@@ -120,6 +120,7 @@ pub enum Service {
 }
 
 impl Service {
+    #[must_use]
     pub fn permissions(&self) -> Vec<Permission> {
         match self {
             Service::Account => AccountPermission::iter().map(Permission::Account).collect(),
@@ -131,7 +132,8 @@ impl Service {
 }
 
 impl Permission {
-    pub fn service(&self) -> Service {
+    #[must_use]
+    pub const fn service(self) -> Service {
         match self {
             Permission::Account(_) => Service::Account,
             Permission::Universe(_) => Service::Universe,
@@ -143,14 +145,13 @@ impl Permission {
 mod tests {
     use std::str::FromStr;
 
-    use super::{Permission, Service};
     use strum::IntoEnumIterator;
+
+    use super::{Permission, Service};
 
     #[test]
     fn test_serialization() -> anyhow::Result<()> {
-        let all_permissions = Service::iter()
-            .map(|service| service.permissions())
-            .flatten();
+        let all_permissions = Service::iter().flat_map(|service| service.permissions());
         for permission in all_permissions {
             let serialized = permission.to_string();
             let deserialized = Permission::from_str(&serialized)?;

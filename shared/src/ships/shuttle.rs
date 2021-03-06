@@ -1,10 +1,10 @@
 use std::f32::consts::PI;
 
-use super::{ShipId, ShipSpecification};
+use super::{Id, ShipSpecification};
 
 pub fn ship() -> ShipSpecification {
     ShipSpecification {
-        id: ShipId::Shuttle,
+        id: Id::Shuttle,
         image: "/assets/programmerart/pinkship.png",
         mass: 10.,
         thruster_force: 50.,

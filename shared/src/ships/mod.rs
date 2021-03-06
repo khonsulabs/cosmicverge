@@ -9,7 +9,7 @@ use crate::solar_systems::Named;
 mod shuttle;
 
 pub struct Hangar {
-    ships: HashMap<ShipId, ShipSpecification>,
+    ships: HashMap<Id, ShipSpecification>,
 }
 
 pub fn hangar() -> &'static Hangar {
@@ -20,7 +20,7 @@ pub fn hangar() -> &'static Hangar {
 impl Hangar {
     fn new() -> Self {
         let mut hangar = Self {
-            ships: Default::default(),
+            ships: HashMap::new(),
         };
 
         hangar.insert(shuttle::ship());
@@ -32,13 +32,14 @@ impl Hangar {
         self.ships.insert(ship.id, ship);
     }
 
-    pub fn load(&self, ship: &ShipId) -> &ShipSpecification {
-        self.ships.get(&ship).unwrap()
+    #[must_use]
+    pub fn load(&self, ship: &Id) -> &ShipSpecification {
+        self.ships.get(ship).unwrap()
     }
 }
 
 pub struct ShipSpecification {
-    pub id: ShipId,
+    pub id: Id,
     pub image: &'static str,
     pub mass: f32,
     pub rotation: f32,
@@ -46,6 +47,7 @@ pub struct ShipSpecification {
 }
 
 impl ShipSpecification {
+    #[must_use]
     pub fn acceleration(&self) -> f32 {
         self.thruster_force / self.mass
     }
@@ -65,14 +67,14 @@ impl ShipSpecification {
     FromPrimitive,
     ToPrimitive,
 )]
-pub enum ShipId {
+pub enum Id {
     Shuttle,
 }
 
-impl Named for ShipId {
+impl Named for Id {
     fn name(&self) -> &'static str {
         match self {
-            ShipId::Shuttle => "Shuttle",
+            Id::Shuttle => "Shuttle",
         }
     }
 }

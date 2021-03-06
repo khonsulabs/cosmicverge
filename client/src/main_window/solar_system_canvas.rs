@@ -1,16 +1,16 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use cosmicverge_shared::{
-    euclid::Vector2D,
-    protocol::{PilotLocation, PilotedShip, PilotingAction, SolarSystemLocationId},
-    ships::{hangar, ShipId},
+    euclid::{Point2D, Vector2D},
+    protocol::navigation,
+    ships::{self, hangar},
     solar_systems::{universe, Solar, SolarSystem, SolarSystemId},
 };
+use futures_util::future::OptionFuture;
 use kludgine::prelude::*;
 
-use crate::{cache::CachedImage, CosmicVergeClient};
-
 use self::simulator::Simulator;
+use crate::{cache, CosmicVergeClient};
 
 mod simulator;
 use chrono::Utc;
@@ -21,13 +21,13 @@ pub struct SolarSystemCanvas {
     look_at: Point<f32, Solar>,
     zoom: f32,
     simulator: Simulator,
-    ship_images: HashMap<ShipId, Arc<CachedImage>>,
+    ship_images: HashMap<ships::Id, Arc<cache::Image>>,
 }
 
 struct SolarSystemCache {
     solar_system: &'static SolarSystem,
-    backdrop: Option<Arc<CachedImage>>,
-    object_images: HashMap<SolarSystemLocationId, Arc<CachedImage>>,
+    backdrop: Option<Arc<cache::Image>>,
+    object_images: HashMap<navigation::Id, Arc<cache::Image>>,
 }
 
 #[async_trait]
@@ -50,6 +50,8 @@ impl Component for SolarSystemCanvas {
         Ok(())
     }
 
+    // TODO: split this up
+    #[allow(clippy::too_many_lines)]
     async fn render(&mut self, context: &mut StyledContext, layout: &Layout) -> KludgineResult<()> {
         if let Some(cache) = &self.solar_system {
             let scene_size = context.scene().size().await;
@@ -89,12 +91,12 @@ impl Component for SolarSystemCanvas {
             } else {
                 Shape::rect(layout.inner_bounds())
                     .fill(Fill::new(Color::BLACK))
-                    .render_at(Default::default(), context.scene())
+                    .render_at(Point2D::default(), context.scene())
                     .await;
             }
 
-            let orbits = universe().orbits_for(&cache.solar_system.id);
-            for (id, location) in cache.solar_system.locations.iter() {
+            let orbits = universe().orbits_for(cache.solar_system.id);
+            for (id, location) in &cache.solar_system.locations {
                 if let Some(image) = cache.object_images.get(id) {
                     if let Some(texture) = image.texture().await? {
                         let render_radius = (location.size * self.zoom) as f32;
@@ -121,15 +123,14 @@ impl Component for SolarSystemCanvas {
                 if simulation_system == cache.solar_system.id {
                     for (ship, location, orientation) in self.simulator.pilot_locations() {
                         let ship_spec = hangar().load(&ship.ship.ship);
-                        let texture = match self.ship_images.get(&ship_spec.id) {
-                            Some(image) => image.texture().await?,
-                            None => {
-                                let image = CachedImage::new(ship_spec.image)
-                                    .await
-                                    .map_err(anyhow::Error::from)?;
-                                self.ship_images.insert(ship_spec.id, image.clone());
-                                image.texture().await?
-                            }
+                        let texture = if let Some(image) = self.ship_images.get(&ship_spec.id) {
+                            image.texture().await?
+                        } else {
+                            let image = cache::Image::new(ship_spec.image)
+                                .await
+                                .map_err(anyhow::Error::from)?;
+                            self.ship_images.insert(ship_spec.id, image.clone());
+                            image.texture().await?
                         };
                         if let Some(texture) = texture {
                             let sprite = SpriteSource::entire_texture(texture);
@@ -146,7 +147,7 @@ impl Component for SolarSystemCanvas {
 
                             if let Some(pilot) = self
                                 .api_client
-                                .pilot_information(&ship.pilot_id, &self.api_client)
+                                .pilot_information(ship.pilot_id, &self.api_client)
                                 .await
                             {
                                 let text = Text::span(
@@ -170,14 +171,16 @@ impl Component for SolarSystemCanvas {
                                     .width
                                     .max(sprite.texture.size().height)
                                     as f32;
-                                let max_ship_size = ((ship_longest_side / 2.).powf(2.) * 2.).sqrt();
+                                let max_ship_size =
+                                    ((ship_longest_side / 2.) * (ship_longest_side / 2.) * 2.)
+                                        .sqrt();
                                 let nameplate_top = (render_center.y + max_ship_size).ceil();
                                 const NAMEPLATE_PADDING: f32 = 5.;
                                 Shape::rect(Rect::new(
                                     Point::new(text_left - NAMEPLATE_PADDING, nameplate_top),
                                     Size::new(
-                                        text_size.width + NAMEPLATE_PADDING * 2.,
-                                        text_size.height + NAMEPLATE_PADDING * 2.,
+                                        NAMEPLATE_PADDING.mul_add(2., text_size.width),
+                                        NAMEPLATE_PADDING.mul_add(2., text_size.height),
                                     ),
                                 ))
                                 .fill(Fill::new(Color::new(0.87, 0.03, 0.45, 1.)))
@@ -196,7 +199,7 @@ impl Component for SolarSystemCanvas {
         } else {
             Shape::rect(layout.inner_bounds())
                 .fill(Fill::new(Color::BLACK))
-                .render_at(Default::default(), context.scene())
+                .render_at(Point2D::default(), context.scene())
                 .await;
         }
 
@@ -209,9 +212,9 @@ pub enum Command {
     ViewSolarSystem(SolarSystemId),
     SpaceUpdate {
         timestamp: f64,
-        location: PilotLocation,
-        action: PilotingAction,
-        ships: Vec<PilotedShip>,
+        location: navigation::Universe,
+        action: navigation::Action,
+        ships: Vec<navigation::Ship>,
     },
 }
 
@@ -249,10 +252,10 @@ impl SolarSystemCanvas {
         Self {
             api_client,
             solar_system: None,
-            look_at: Default::default(),
+            look_at: Point2D::default(),
             zoom: 1.,
-            simulator: Default::default(),
-            ship_images: Default::default(),
+            simulator: Simulator::default(),
+            ship_images: HashMap::new(),
         }
     }
 
@@ -271,17 +274,17 @@ impl SolarSystemCanvas {
         self.zoom = 1.;
         self.look_at = Point::default();
         let solar_system = universe().get(&id);
-        let backdrop = match solar_system.background {
-            Some(url) => Some(CachedImage::new(url).await.map_err(anyhow::Error::from)?),
-            None => None,
-        };
+        let backdrop = OptionFuture::from(solar_system.background.map(cache::Image::new))
+            .await
+            .transpose()
+            .map_err(anyhow::Error::from)?;
         let mut cache = SolarSystemCache {
             backdrop,
             solar_system,
-            object_images: Default::default(),
+            object_images: HashMap::new(),
         };
         for object in solar_system.locations.values() {
-            let image = CachedImage::new(object.image_url())
+            let image = cache::Image::new(object.image_url())
                 .await
                 // TODO this is ugly, Kludgine should offer this conversion automatically if possible
                 .map_err(anyhow::Error::from)?;
@@ -348,7 +351,7 @@ pub trait CanvasScalable {
         size: Size<f32, Scaled>,
     ) -> (f32, Point<f32, Unit>) {
         let scale = self.scale();
-        let new_zoom = scale.get() + scale.get() * fraction;
+        let new_zoom = scale.get().mul_add(fraction, scale.get());
         let new_zoom = new_zoom.min(10.).max(0.1);
         let new_scale = Scale::<f32, Unit, Scaled>::new(new_zoom);
 
@@ -367,5 +370,5 @@ pub trait CanvasScalable {
 
 fn current_timestamp() -> f64 {
     let now = Utc::now();
-    now.timestamp() as f64 + now.timestamp_subsec_millis() as f64 / 1000.
+    now.timestamp() as f64 + f64::from(now.timestamp_subsec_millis()) / 1000.
 }

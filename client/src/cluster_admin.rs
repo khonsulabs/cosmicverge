@@ -70,7 +70,7 @@ impl ClusterAdmin {
     fn fake_cluster() -> Self {
         Self {
             cluster: Handle::new(Cluster::fake_cluster()),
-            map: Default::default(),
+            map: Entity::default(),
         }
     }
 }

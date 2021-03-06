@@ -1,3 +1,26 @@
+#![forbid(unsafe_code)]
+#![warn(
+    clippy::cargo,
+    // clippy::missing_docs_in_private_items,
+    clippy::nursery,
+    clippy::pedantic,
+    future_incompatible,
+    rust_2018_idioms
+)]
+#![cfg_attr(doc, warn(rustdoc))]
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::items_after_statements,
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::option_if_let_else,
+    // Clippy is bugged
+    clippy::use_self
+)]
+
 #[macro_use]
 extern crate tracing;
 
@@ -26,7 +49,7 @@ mod cli;
     about = "Cosmic Verge web server and associated tools"
 )]
 /// the command line interface for the executable
-struct CLI {
+struct Cli {
     /// The command to execute
     #[structopt(subcommand)]
     command: Command,
@@ -63,7 +86,7 @@ async fn main() -> anyhow::Result<()> {
     dotenv::dotenv().expect("Error initializing environment");
     initialize_logging();
 
-    let cli = CLI::from_args();
+    let cli = Cli::from_args();
     match cli.command {
         Command::Serve => http::run_webserver().await,
         Command::GenerateAssets { static_folder } => generate_assets(static_folder).await,
@@ -83,6 +106,6 @@ pub fn initialize_logging() {
 }
 
 async fn generate_assets(static_folder: PathBuf) -> anyhow::Result<()> {
-    planets::generate_assets(static_folder);
+    planets::generate_assets(&static_folder);
     Ok(())
 }

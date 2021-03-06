@@ -1,13 +1,13 @@
 use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Utc};
-use cosmicverge_shared::protocol::PilotId;
+use cosmicverge_shared::protocol::pilot;
 use once_cell::sync::OnceCell;
 use redis::{aio::MultiplexedConnection, AsyncCommands};
 use serde::{Deserialize, Serialize};
 use tokio::time::Duration;
 
-use crate::redis::RedisLock;
+use crate::redis::Lock;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ConnectedPilotInfo {
@@ -25,7 +25,7 @@ impl Default for ConnectedPilotInfo {
     }
 }
 
-pub(crate) async fn run(mut connection: MultiplexedConnection) -> Result<(), anyhow::Error> {
+pub async fn run(mut connection: MultiplexedConnection) -> Result<(), anyhow::Error> {
     let pilot_reader = connection_channel().1.clone();
     loop {
         let mut new_pilots = HashSet::new();
@@ -50,14 +50,14 @@ pub(crate) async fn run(mut connection: MultiplexedConnection) -> Result<(), any
                 .await?;
         }
 
-        if RedisLock::named("connected_pilots_cleaner")
+        if Lock::named("connected_pilots_cleaner")
             .expire_after_secs(30)
             .acquire(&mut connection)
             .await?
         {
             let mut disconnected = HashSet::new();
             let cutoff = Utc::now() - chrono::Duration::minutes(1);
-            let connected_pilots: HashMap<PilotId, String> =
+            let connected_pilots: HashMap<pilot::Id, String> =
                 connection.hgetall("connected_pilots").await?;
             for (pilot_id, payload) in connected_pilots {
                 if let Ok(info) = serde_json::from_str::<ConnectedPilotInfo>(&payload) {
@@ -82,7 +82,7 @@ pub(crate) async fn run(mut connection: MultiplexedConnection) -> Result<(), any
             }
         }
 
-        if RedisLock::named("connected_pilots_counter")
+        if Lock::named("connected_pilots_counter")
             .expire_after_secs(5)
             .acquire(&mut connection)
             .await?
@@ -98,16 +98,16 @@ pub(crate) async fn run(mut connection: MultiplexedConnection) -> Result<(), any
 }
 
 fn connection_channel() -> &'static (
-    async_channel::Sender<PilotId>,
-    async_channel::Receiver<PilotId>,
+    async_channel::Sender<pilot::Id>,
+    async_channel::Receiver<pilot::Id>,
 ) {
     static REUSED_CHANNEL: OnceCell<(
-        async_channel::Sender<PilotId>,
-        async_channel::Receiver<PilotId>,
+        async_channel::Sender<pilot::Id>,
+        async_channel::Receiver<pilot::Id>,
     )> = OnceCell::new();
     REUSED_CHANNEL.get_or_init(async_channel::unbounded)
 }
 
-pub async fn note(pilot_id: PilotId) {
+pub async fn note(pilot_id: pilot::Id) {
     let _ = connection_channel().0.send(pilot_id).await;
 }
