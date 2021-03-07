@@ -172,6 +172,12 @@ jobs:
             libxcb-shape0-dev \
             libxcb-xfixes0-dev
 
+      - name: Configure environment for CI postgres
+        run: |
+          echo "DATABASE_URL=postgres://postgres:postgres@localhost:$POSTGRES_PORT/postgres" >> .env
+        env:
+          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+
       - name: Install code coverage requirements
         run: |
           rustup component add llvm-tools-preview
@@ -180,6 +186,7 @@ jobs:
 
       - name: Run code coverage
         run: |
+          cargo +nightly run --bin migrator
           cargo +nightly test
 
           zip -0 ccov.zip `find . \( -name "cosmicverge_shared-*.gc*" \) -print`
