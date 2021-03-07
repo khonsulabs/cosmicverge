@@ -25,8 +25,9 @@ jobs:
         with:
           ref: ${{ matrix.branch }}
       - name: Audit
-        run: cargo audit -D warnings
-
+        run: |
+          cargo audit -D warnings --ignore RUSTSEC-2020-0016
+          echo '::warning::Ignoring alert for issue https://github.com/khonsulabs/kludgine/issues/47'
   format:
     runs-on: ubuntu-latest
 
@@ -158,6 +159,75 @@ jobs:
           cargo test --release --verbose
         env:
           BASWS_CLIENT_ENCRYPTION_KEY: abcdefghijklmnopqrstuvwxzy123456
+
+  coverage:
+    runs-on: ubuntu-latest
+
+    # Service containers to run with `runner-job`
+    services:
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: postgres
+        # Provide the password for postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install x11 dependencies for Kludgine
+        run: |
+          sudo apt-get install -yqq \
+            libxcb-render-util0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev
+
+      - name: Configure environment for CI postgres
+        run: |
+          echo "DATABASE_URL=postgres://postgres:postgres@localhost:$POSTGRES_PORT/postgres" >> .env
+        env:
+          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+
+      - name: Install code coverage requirements
+        run: |
+          rustup component add llvm-tools-preview
+          rustup install nightly
+          curl -L https://github.com/mozilla/grcov/releases/latest/download/grcov-linux-x86_64.tar.bz2 | tar jxf -
+
+      - name: Run code coverage
+        run: |
+          cargo +nightly run --bin migrator
+          cargo +nightly test
+
+          zip -0 ccov.zip `find . \( -name "cosmicverge_shared-*.gc*" \) -print`
+          zip -0 ccov.zip `find . \( -name "cosmicverge_server-*.gc*" \) -print`
+          zip -0 ccov.zip `find . \( -name "cosmicverge-*.gc*" \) -print`
+          zip -0 ccov.zip `find . \( -name "database-*.gc*" \) -print`
+          zip -0 ccov.zip `find . \( -name "migrations-*.gc*" \) -print`
+          zip -0 ccov.zip `find . \( -name "web-*.gc*" \) -print`
+
+          rm -rf target
+          ./grcov ccov.zip -s . -t lcov --llvm --branch --ignore-not-existing --ignore "/*" --ignore "/target" -o lcov.info
+        env:
+          CARGO_INCREMENTAL: 0
+          RUSTFLAGS: "-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests" # TODO: https://github.com/alexcrichton/proc-macro2/issues/218
+          RUSTDOCFLAGS: "-Cpanic=abort"
+
+      - name: Upload coverage
+        run: |
+          bash <(curl -s https://codecov.io/bash) -f lcov.info;
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   deploy:
     runs-on: ubuntu-latest
