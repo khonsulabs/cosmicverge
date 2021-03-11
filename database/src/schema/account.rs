@@ -167,10 +167,13 @@ mod tests {
     };
 
     use super::*;
-    use crate::{schema::PermissionGroup, test_util::pool};
+    use crate::{
+        schema::{PermissionGroup, TwitchProfile},
+        test_util::pool,
+    };
 
     #[tokio::test]
-    async fn account_permissions_test() -> sqlx::Result<()> {
+    async fn account_permissions() -> sqlx::Result<()> {
         let mut tx = pool().await.begin().await?;
         let account = Account::create(&mut tx).await?;
         let permissions = account.permissions(&mut tx).await?;
@@ -195,6 +198,42 @@ mod tests {
         ]));
         assert!(permissions.has_permission(Permission::Account(AccountPermission::View)));
         assert!(!permissions.has_permission(Permission::Account(AccountPermission::List)));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn account_lookup() -> sqlx::Result<()> {
+        let mut tx = pool().await.begin().await?;
+        let account = Account::create(&mut tx).await?;
+        assert_eq!(
+            account.id,
+            Account::load(account.id, &mut tx).await?.unwrap().id
+        );
+
+        TwitchProfile::associate(
+            "account_lookup_twitch_id",
+            account.id,
+            "account_lookup_twitch_username",
+            &mut tx,
+        )
+        .await?;
+
+        assert_eq!(
+            account.id,
+            Account::find_by_twitch_id("account_lookup_twitch_id", &mut tx)
+                .await?
+                .unwrap()
+                .id
+        );
+
+        assert_eq!(
+            account.id,
+            Account::find_by_twitch_username("account_lookup_twitch_username", &mut tx)
+                .await?
+                .unwrap()
+                .id
+        );
 
         Ok(())
     }

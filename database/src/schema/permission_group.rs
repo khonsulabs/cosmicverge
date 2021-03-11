@@ -9,14 +9,18 @@ pub struct PermissionGroup {
 }
 
 impl PermissionGroup {
-    pub async fn create<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
-        name: String,
+    pub async fn create<
+        'e,
+        E: sqlx::Executor<'e, Database = sqlx::Postgres>,
+        S: Into<String> + Send,
+    >(
+        name: S,
         executor: E,
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             Self,
             "INSERT INTO permission_groups (name) VALUES ($1) RETURNING id, name, created_at",
-            name
+            name.into()
         )
         .fetch_one(executor)
         .await
@@ -135,5 +139,26 @@ impl Statement {
         .execute(executor)
         .await
         .map(|_| ())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_util::pool;
+
+    #[tokio::test]
+    async fn create_and_lookup() -> sqlx::Result<()> {
+        let mut tx = pool().await.begin().await?;
+        let group = PermissionGroup::create("create_and_lookup_test", &mut tx).await?;
+
+        assert_eq!(
+            group.id,
+            PermissionGroup::find_by_name("create_and_lookup_test", &mut tx)
+                .await?
+                .id
+        );
+
+        Ok(())
     }
 }
