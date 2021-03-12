@@ -1,16 +1,19 @@
 use std::{collections::HashSet, str::FromStr};
 
 use basws_server::prelude::Uuid;
+use chrono::{DateTime, Utc};
+use cli_table::Table;
 use cosmicverge_shared::{
     permissions::{Permission, Service},
     protocol::Permissions,
 };
 use migrations::sqlx;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Table)]
 pub struct Account {
     pub id: i64,
     pub superuser: bool,
+    pub created_at: DateTime<Utc>,
 }
 
 impl Account {
@@ -20,7 +23,7 @@ impl Account {
     ) -> Result<Option<Self>, sqlx::Error> {
         match sqlx::query_as!(
             Self,
-            "SELECT accounts.id, accounts.superuser FROM accounts INNER JOIN installations ON installations.account_id = accounts.id WHERE installations.id = $1",
+            "SELECT accounts.id, accounts.superuser, accounts.created_at FROM accounts INNER JOIN installations ON installations.account_id = accounts.id WHERE installations.id = $1",
             installation_id,
         )
             .fetch_one(executor)
@@ -37,7 +40,7 @@ impl Account {
     ) -> Result<Option<Self>, sqlx::Error> {
         match sqlx::query_as!(
                 Self,
-                "SELECT accounts.id, accounts.superuser FROM accounts INNER JOIN twitch_profiles ON twitch_profiles.account_id = accounts.id WHERE twitch_profiles.id = $1",
+                "SELECT accounts.id, accounts.superuser, accounts.created_at FROM accounts INNER JOIN twitch_profiles ON twitch_profiles.account_id = accounts.id WHERE twitch_profiles.id = $1",
                 twitch_id
             )
             .fetch_one(executor)
@@ -54,7 +57,7 @@ impl Account {
     ) -> Result<Option<Self>, sqlx::Error> {
         match sqlx::query_as!(
                 Self,
-                "SELECT accounts.id, accounts.superuser FROM accounts INNER JOIN twitch_profiles ON twitch_profiles.account_id = accounts.id WHERE LOWER(twitch_profiles.username) = LOWER($1)",
+                "SELECT accounts.id, accounts.superuser, accounts.created_at FROM accounts INNER JOIN twitch_profiles ON twitch_profiles.account_id = accounts.id WHERE LOWER(twitch_profiles.username) = LOWER($1)",
                 username
             )
             .fetch_one(executor)
@@ -71,7 +74,7 @@ impl Account {
     ) -> Result<Option<Self>, sqlx::Error> {
         match sqlx::query_as!(
             Self,
-            "SELECT accounts.id, accounts.superuser FROM accounts WHERE accounts.id = $1",
+            "SELECT accounts.id, accounts.superuser, accounts.created_at FROM accounts WHERE accounts.id = $1",
             account_id,
         )
         .fetch_one(executor)
@@ -88,7 +91,7 @@ impl Account {
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             Self,
-            "INSERT INTO accounts DEFAULT VALUES RETURNING id, superuser"
+            "INSERT INTO accounts DEFAULT VALUES RETURNING id, superuser, created_at"
         )
         .fetch_one(executor)
         .await
@@ -165,10 +168,13 @@ mod tests {
     };
 
     use super::*;
-    use crate::{schema::PermissionGroup, test_util::pool};
+    use crate::{
+        schema::{PermissionGroup, TwitchProfile},
+        test_util::pool,
+    };
 
     #[tokio::test]
-    async fn account_permissions_test() -> sqlx::Result<()> {
+    async fn account_permissions() -> sqlx::Result<()> {
         let mut tx = pool().await.begin().await?;
         let account = Account::create(&mut tx).await?;
         let permissions = account.permissions(&mut tx).await?;
@@ -193,6 +199,42 @@ mod tests {
         ]));
         assert!(permissions.has_permission(Permission::Account(AccountPermission::View)));
         assert!(!permissions.has_permission(Permission::Account(AccountPermission::List)));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn account_lookup() -> sqlx::Result<()> {
+        let mut tx = pool().await.begin().await?;
+        let account = Account::create(&mut tx).await?;
+        assert_eq!(
+            account.id,
+            Account::load(account.id, &mut tx).await?.unwrap().id
+        );
+
+        TwitchProfile::associate(
+            "account_lookup_twitch_id",
+            account.id,
+            "account_lookup_twitch_username",
+            &mut tx,
+        )
+        .await?;
+
+        assert_eq!(
+            account.id,
+            Account::find_by_twitch_id("account_lookup_twitch_id", &mut tx)
+                .await?
+                .unwrap()
+                .id
+        );
+
+        assert_eq!(
+            account.id,
+            Account::find_by_twitch_username("account_lookup_twitch_username", &mut tx)
+                .await?
+                .unwrap()
+                .id
+        );
 
         Ok(())
     }
