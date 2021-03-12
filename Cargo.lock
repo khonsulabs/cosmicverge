@@ -870,7 +870,6 @@ dependencies = [
  "jsonwebtoken",
  "magrathea",
  "once_cell",
- "predicates",
  "redis",
  "reqwest",
  "serde",
@@ -2880,12 +2879,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "normalize-line-endings"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61807f77802ff30975e01f4f071c8ba10c022052f98b3294119f3e615d13e5be"
-
-[[package]]
 name = "ntapi"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3277,10 +3270,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eeb433456c1a57cc93554dea3ce40b4c19c4057e41c55d4a0f3d84ea71c325aa"
 dependencies = [
  "difference",
- "float-cmp",
- "normalize-line-endings",
  "predicates-core",
- "regex",
 ]
 
 [[package]]
