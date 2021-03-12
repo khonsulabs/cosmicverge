@@ -180,6 +180,12 @@ async fn create_lookup_delete_test() -> anyhow::Result<()> {
 
     group.delete(&mut tx).await?;
 
+    assert!(
+        PermissionGroup::find_by_name("create_and_lookup_test", &mut tx)
+            .await
+            .is_err()
+    );
+
     Ok(())
 }
 

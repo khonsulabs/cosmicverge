@@ -256,6 +256,12 @@ mod tests {
 
         TwitchProfile::delete("account_lookup_twitch_id", &mut tx).await?;
 
+        assert!(
+            Account::find_by_twitch_id("account_lookup_twitch_id", &mut tx)
+                .await?
+                .is_none()
+        );
+
         Ok(())
     }
 }
