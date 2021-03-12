@@ -122,7 +122,7 @@ pub struct Statement {
 /// The signature of &Option<String> is required due to how the `cli_table::Table`
 /// macro works
 fn display_permission(value: &Option<String>) -> String {
-    value.clone().unwrap_or_else(|| String::from("*"))
+    value.as_deref().unwrap_or("*").to_owned()
 }
 
 impl Statement {
