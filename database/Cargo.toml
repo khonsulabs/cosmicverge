@@ -12,6 +12,10 @@ keywords = ["sandbox", "game"]
 categories = ["games"]
 readme = "../README.md"
 
+[features]
+default = []
+test-util = []
+
 [dependencies]
 cosmicverge-shared = { path = "../shared" }
 basws-server = "0.1"

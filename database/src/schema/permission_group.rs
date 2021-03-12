@@ -171,7 +171,7 @@ mod tests {
     use migrations::pool;
 
     #[tokio::test]
-    async fn create_and_lookup() -> anyhow::Result<()> {
+    async fn create_lookup_delete() -> anyhow::Result<()> {
         initialize_safe_test().await;
 
         let mut tx = pool().begin().await?;
@@ -183,6 +183,9 @@ mod tests {
                 .await?
                 .id
         );
+
+        group.delete(&mut tx).await?;
+
         Ok(())
     }
 

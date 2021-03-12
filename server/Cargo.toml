@@ -48,3 +48,4 @@ cli-table = "0.4"
 
 [dev-dependencies]
 assert_cmd = "1"
+database = { path = "../database", features = ["test-util"] }

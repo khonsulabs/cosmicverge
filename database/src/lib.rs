@@ -71,6 +71,7 @@ impl<T> SqlxResultExt<T> for Result<T, sqlx::Error> {
     }
 }
 
+#[cfg(feature = "test-util")]
 pub mod test_util {
     use std::env;
 
