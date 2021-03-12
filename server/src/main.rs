@@ -74,8 +74,8 @@ async fn main() -> anyhow::Result<()> {
     match cli {
         Cli::Serve => http::run_webserver().await,
         Cli::GenerateAssets { static_folder } => generate_assets(static_folder).await,
-        Cli::Account(command) => cli::accounts::handle_command(command).await,
-        Cli::PermissionGroup(command) => cli::permission_groups::handle_command(command).await,
+        Cli::Account(command) => command.execute().await,
+        Cli::PermissionGroup(command) => command.execute().await,
     }
 }
 

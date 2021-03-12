@@ -2,13 +2,14 @@ use std::{collections::HashSet, str::FromStr};
 
 use basws_server::prelude::Uuid;
 use chrono::{DateTime, Utc};
+use cli_table::Table;
 use cosmicverge_shared::{
     permissions::{Permission, Service},
     protocol::Permissions,
 };
 use migrations::sqlx;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Table)]
 pub struct Account {
     pub id: i64,
     pub superuser: bool,

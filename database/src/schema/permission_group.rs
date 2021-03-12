@@ -1,7 +1,8 @@
 use chrono::{DateTime, Utc};
+use cli_table::Table;
 use cosmicverge_shared::permissions::{Permission, Service};
 
-#[derive(Debug)]
+#[derive(Debug, Table)]
 pub struct PermissionGroup {
     pub id: i32,
     pub name: String,
@@ -106,12 +107,22 @@ impl PermissionGroup {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Table)]
 pub struct Statement {
     pub id: i32,
     pub service: String,
+    #[table(display_fn = "display_permission")]
     pub permission: Option<String>,
     pub created_at: DateTime<Utc>,
+}
+
+/// Helper used when formatting a Permission for viewing on the command line
+///
+/// Returns "*" if None is passed, otherwise a clone of the contained string.
+/// The signature of &Option<String> is required due to how the `cli_table::Table`
+/// macro works
+fn display_permission(value: &Option<String>) -> String {
+    value.clone().unwrap_or_else(|| String::from("*"))
 }
 
 impl Statement {
@@ -160,5 +171,11 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn test_display_permission() {
+        assert_eq!("*", &display_permission(&None));
+        assert_eq!("value", &display_permission(&Some(String::from("value"))));
     }
 }

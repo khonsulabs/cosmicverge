@@ -1,4 +1,4 @@
-use cli_table::{Cell as _, Style as _, Table as _};
+use cli_table::WithTitle as _;
 use database::schema::Account;
 use structopt::StructOpt;
 
@@ -29,46 +29,37 @@ enum Operation {
     SetNormalUser,
 }
 
-pub async fn handle_command(command: Command) -> anyhow::Result<()> {
-    database::initialize().await;
-    let account = if let Some(id) = command.id {
-        Account::load(id, database::pool()).await?
-    } else if let Some(twitch) = &command.twitch {
-        Account::find_by_twitch_username(twitch, database::pool()).await?
-    } else {
-        anyhow::bail!("Either id or twitch parameters must be specified for account commands")
-    };
+impl Command {
+    pub async fn execute(self) -> anyhow::Result<()> {
+        database::initialize().await;
+        let account = if let Some(id) = self.id {
+            Account::load(id, database::pool()).await?
+        } else if let Some(twitch) = &self.twitch {
+            Account::find_by_twitch_username(twitch, database::pool()).await?
+        } else {
+            anyhow::bail!("Either id or twitch parameters must be specified for account commands")
+        };
 
-    match account {
-        Some(mut account) => {
-            match command.operation {
-                Operation::SetSuperUser => {
-                    account.superuser = true;
-                    account.save(database::pool()).await?;
+        match account {
+            Some(mut account) => {
+                match self.operation {
+                    Operation::SetSuperUser => {
+                        account.superuser = true;
+                        account.save(database::pool()).await?;
+                    }
+                    Operation::SetNormalUser => {
+                        account.superuser = false;
+                        account.save(database::pool()).await?;
+                    }
+                    Operation::View => {}
                 }
-                Operation::SetNormalUser => {
-                    account.superuser = false;
-                    account.save(database::pool()).await?;
-                }
-                Operation::View => {}
+
+                println!("Account:");
+                cli_table::print_stdout(vec![account].with_title())?;
+
+                Ok(())
             }
-
-            print_account(account)?;
-
-            Ok(())
+            None => anyhow::bail!("Account not found"),
         }
-        None => anyhow::bail!("Account not found"),
     }
-}
-
-fn print_account(account: Account) -> std::io::Result<()> {
-    println!("Account:");
-    cli_table::print_stdout(
-        vec![
-            vec!["ID".cell().bold(true), account.id.cell()],
-            vec!["Superuser".cell().bold(true), account.superuser.cell()],
-            vec!["Created At".cell().bold(true), account.created_at.cell()],
-        ]
-        .table(),
-    )
 }
