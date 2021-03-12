@@ -32,9 +32,9 @@ enum Operation {
 impl Command {
     pub async fn execute(self, database_url: Option<String>) -> anyhow::Result<()> {
         database::initialize(database_url).await;
-        let account = if let Some(id) = command.id {
+        let account = if let Some(id) = self.id {
             Account::load(id, database::pool()).await?
-        } else if let Some(twitch) = &command.twitch {
+        } else if let Some(twitch) = &self.twitch {
             Account::find_by_twitch_username(twitch, database::pool()).await?
         } else {
             anyhow::bail!("Either id or twitch parameters must be specified for account commands")
