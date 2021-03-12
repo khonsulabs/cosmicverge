@@ -24,7 +24,7 @@
 )]
 
 pub use ::migrations::{
-    initialize, migrations, pool,
+    self, initialize, pool,
     sqlx::{self, database::HasStatement, Database, Execute, Executor},
 };
 pub use basws_server;
@@ -71,20 +71,64 @@ impl<T> SqlxResultExt<T> for Result<T, sqlx::Error> {
     }
 }
 
-#[cfg(test)]
-mod test_util {
-    use once_cell::sync::Lazy;
-    use sqlx::PgPool;
-    use tokio::sync::Mutex;
+pub mod test_util {
+    use std::env;
 
-    pub async fn pool() -> &'static PgPool {
-        static INITIALIZED: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
-        let mut initialized = INITIALIZED.lock().await;
-        if !*initialized {
-            dotenv::dotenv().unwrap();
-            migrations::initialize().await;
-            *initialized = true;
+    use once_cell::sync::Lazy;
+    use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+
+    #[derive(Default)]
+    pub struct DatabaseStatus {
+        initialized: bool,
+    }
+    static DATABASE_STATUS: Lazy<RwLock<DatabaseStatus>> =
+        Lazy::new(|| RwLock::new(DatabaseStatus::default()));
+
+    fn database_status() -> &'static RwLock<DatabaseStatus> {
+        &*DATABASE_STATUS
+    }
+
+    async fn initialize() {
+        {
+            if database_status().read().await.initialized {
+                return;
+            }
         }
-        migrations::pool()
+
+        let mut status = database_status().write().await;
+        if !status.initialized {
+            dotenv::dotenv().unwrap();
+            migrations::initialize(Some(
+                env::var("TEST_DATABASE_URL").expect("TEST_DATABASE_URL not set"),
+            ))
+            .await;
+            status.initialized = true;
+
+            // Make sure the database is clean to begin with.
+            wipe_database().await;
+        }
+    }
+
+    async fn wipe_database() {
+        migrations::undo_all().await.unwrap();
+        migrations::run_all().await.unwrap();
+    }
+
+    // Execute a database test that is considered "safe", which means that it uses transactions to ensure it can't leak or conflict with any other ongoing test
+    pub async fn initialize_safe_test() -> RwLockReadGuard<'static, DatabaseStatus> {
+        initialize().await;
+        database_status().read().await
+    }
+
+    // Execute a database test that is considered "unsafe", which means that it
+    // may leak data if a test fails. The guard returned is exclusive, which
+    // prevents any other database test from running while this is executing
+    pub async fn initialize_exclusive_test() -> RwLockWriteGuard<'static, DatabaseStatus> {
+        initialize().await;
+        let guard = database_status().write().await;
+
+        wipe_database().await;
+
+        guard
     }
 }

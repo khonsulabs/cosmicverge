@@ -34,6 +34,7 @@ Once Redis is running, it needs no extra configuration. For Postgres, you need a
 ```sql
 CREATE ROLE cosmicuser LOGIN PASSWORD '***';
 CREATE DATABASE cosmicverge OWNER cosmicuser;
+CREATE DATABASE cosmicverge_test OWNER cosmicuser;
 ```
 
 ### Twitch OAuth
@@ -50,6 +51,7 @@ To configure your environment, place a file named `.env` in the root of the repo
 
 ```ini
 DATABASE_URL="postgres://cosmicuser:***@localhost/cosmicverge"
+TEST_DATABASE_URL="postgres://cosmicuser:***@localhost/cosmicverge_test"
 TWITCH_CLIENT_ID="***"
 TWITCH_CLIENT_SECRET="***"
 REDIS_URL="redis://localhost:6379"

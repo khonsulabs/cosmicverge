@@ -31,8 +31,8 @@ enum Operation {
 }
 
 impl Command {
-    pub async fn execute(self) -> anyhow::Result<()> {
-        database::initialize().await;
+    pub async fn execute(self, database_url: Option<String>) -> anyhow::Result<()> {
+        database::initialize(database_url).await;
 
         let group = match self.operation {
             Operation::Create => PermissionGroup::create(self.group_name, database::pool()).await?,

@@ -26,6 +26,7 @@ impl PermissionGroup {
         .fetch_one(executor)
         .await
     }
+
     pub async fn find_by_name<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
         name: &str,
         executor: E,
@@ -105,6 +106,16 @@ impl PermissionGroup {
             .execute(executor)
             .await.map(|_| ())
     }
+
+    pub async fn delete<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
+        &self,
+        executor: E,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!("DELETE FROM permission_groups WHERE id = $1", self.id)
+            .execute(executor)
+            .await
+            .map(|_| ())
+    }
 }
 
 #[derive(Debug, Table)]
@@ -156,11 +167,14 @@ impl Statement {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_util::pool;
+    use crate::test_util::initialize_safe_test;
+    use migrations::pool;
 
     #[tokio::test]
-    async fn create_and_lookup() -> sqlx::Result<()> {
-        let mut tx = pool().await.begin().await?;
+    async fn create_and_lookup() -> anyhow::Result<()> {
+        initialize_safe_test().await;
+
+        let mut tx = pool().begin().await?;
         let group = PermissionGroup::create("create_and_lookup_test", &mut tx).await?;
 
         assert_eq!(
@@ -169,7 +183,6 @@ mod tests {
                 .await?
                 .id
         );
-
         Ok(())
     }
 

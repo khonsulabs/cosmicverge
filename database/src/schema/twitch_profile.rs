@@ -15,4 +15,13 @@ impl TwitchProfile {
             username,
         ).execute(executor).await.map(|_| ())
     }
+    pub async fn delete<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
+        twitch_id: &str,
+        executor: E,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!("DELETE FROM twitch_profiles WHERE id = $1", twitch_id,)
+            .execute(executor)
+            .await
+            .map(|_| ())
+    }
 }

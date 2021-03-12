@@ -45,3 +45,7 @@ uuid = { version = "0.8", features = ["v4", "serde"] }
 structopt = "0.3"
 magrathea = { version = "0.0.3" }
 cli-table = "0.4"
+
+[dev-dependencies]
+assert_cmd = "1"
+predicates = "1"
