@@ -45,7 +45,7 @@ pub async fn handle_command(group_command: Command) -> anyhow::Result<()> {
                     group.add_permission(permission, database::pool()).await?;
                 }
                 Operation::Remove { permission } => {
-                    group.add_permission(permission, database::pool()).await?;
+                    group.remove_permission(permission, database::pool()).await?;
                 }
                 Operation::AddService { service } => {
                     group
