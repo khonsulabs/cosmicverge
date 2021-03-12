@@ -12,6 +12,6 @@ opt-level = "s"
 # For tokio 1.0 compatibility
 # basws-server = { path = "../basws/basws-server" }
 # basws-shared = { path = "../basws/basws-shared" }
-sqlx-simple-migrator = { path = "../sqlx-simple-migrator" }
+# sqlx-simple-migrator = { path = "../sqlx-simple-migrator" }
 # magrathea = { path = "../magrathea" }
 # kludgine = { path = "../kludgine" }
