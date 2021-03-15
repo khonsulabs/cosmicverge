@@ -22,6 +22,11 @@ pub fn migration() -> Migration {
             )
         "#,
         )
+        .with_down(
+            r#"
+            DROP TABLE IF EXISTS installations
+        "#,
+        )
         .with_up(
             r#"
             CREATE TABLE oauth_tokens (

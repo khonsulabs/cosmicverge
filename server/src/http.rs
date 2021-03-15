@@ -45,11 +45,11 @@ pub fn webserver_base_url() -> warp::http::uri::Builder {
         .authority("cosmicverge.com")
 }
 
-pub async fn run_webserver() -> anyhow::Result<()> {
+pub async fn run_webserver(database_url: Option<String>) -> anyhow::Result<()> {
     info!("server starting up - rev {}", current_git_revision!());
 
     info!("connecting to database");
-    database::initialize().await;
+    database::initialize(database_url).await;
     database::migrations::run_all()
         .await
         .expect("Error running migrations");

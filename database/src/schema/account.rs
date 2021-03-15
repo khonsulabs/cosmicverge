@@ -111,6 +111,22 @@ impl Account {
         .map(|_| ())
     }
 
+    // Delete an account
+    //
+    // Don't expose this to be used outside of testing. When we support account
+    // deletion, there will be a process involved to ensure we're complying with
+    // international privacy laws.
+    #[cfg(feature = "test-util")]
+    pub async fn delete<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
+        &self,
+        executor: E,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!("DELETE FROM accounts WHERE id = $1", self.id,)
+            .execute(executor)
+            .await
+            .map(|_| ())
+    }
+
     pub async fn permissions<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
         &self,
         executor: E,
@@ -170,12 +186,14 @@ mod tests {
     use super::*;
     use crate::{
         schema::{PermissionGroup, TwitchProfile},
-        test_util::pool,
+        test_util::initialize_safe_test,
     };
+    use migrations::pool;
 
     #[tokio::test]
-    async fn account_permissions() -> sqlx::Result<()> {
-        let mut tx = pool().await.begin().await?;
+    async fn account_permissions() -> anyhow::Result<()> {
+        initialize_safe_test().await;
+        let mut tx = pool().begin().await?;
         let account = Account::create(&mut tx).await?;
         let permissions = account.permissions(&mut tx).await?;
         assert_eq!(permissions, Permissions::PermissionSet(HashSet::new()));
@@ -199,13 +217,13 @@ mod tests {
         ]));
         assert!(permissions.has_permission(Permission::Account(AccountPermission::View)));
         assert!(!permissions.has_permission(Permission::Account(AccountPermission::List)));
-
         Ok(())
     }
 
     #[tokio::test]
-    async fn account_lookup() -> sqlx::Result<()> {
-        let mut tx = pool().await.begin().await?;
+    async fn account_lookup() -> anyhow::Result<()> {
+        initialize_safe_test().await;
+        let mut tx = pool().begin().await?;
         let account = Account::create(&mut tx).await?;
         assert_eq!(
             account.id,
@@ -234,6 +252,14 @@ mod tests {
                 .await?
                 .unwrap()
                 .id
+        );
+
+        TwitchProfile::delete("account_lookup_twitch_id", &mut tx).await?;
+
+        assert!(
+            Account::find_by_twitch_id("account_lookup_twitch_id", &mut tx)
+                .await?
+                .is_none()
         );
 
         Ok(())

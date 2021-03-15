@@ -10,11 +10,13 @@ pub fn pool() -> &'static PgPool {
     POOL.get().expect("uninitialized pool access")
 }
 
-pub async fn initialize() {
+pub async fn initialize(url: Option<String>) {
     if POOL.get().is_none() {
-        let pool = PgPool::connect(&env::var("DATABASE_URL").expect("DATABASE_URL not set"))
-            .await
-            .expect("Error initializing postgres pool");
+        let pool = PgPool::connect(
+            &url.unwrap_or_else(|| env::var("DATABASE_URL").expect("DATABASE_URL not set")),
+        )
+        .await
+        .expect("Error initializing postgres pool");
         POOL.set(pool).unwrap();
     }
 }

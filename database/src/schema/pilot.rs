@@ -48,14 +48,7 @@ impl Pilot {
         pilot::Id(self.id)
     }
 
-    pub async fn create<
-        'e,
-        E: sqlx::Acquire<
-                'e,
-                Database = sqlx::Postgres,
-                Connection = sqlx::pool::PoolConnection<sqlx::Postgres>,
-            > + Send,
-    >(
+    pub async fn create<'e, E: sqlx::Acquire<'e, Database = sqlx::Postgres> + Send>(
         account_id: i64,
         name: &str,
         executor: E,
@@ -65,7 +58,7 @@ impl Pilot {
             "SELECT count(*) as pilot_count FROM pilots WHERE account_id = $1 GROUP BY account_id",
             account_id
         )
-        .fetch_one(&mut e)
+        .fetch_one(&mut *e)
         .await
         .map(|r| r.pilot_count)
         .ok()
@@ -75,14 +68,14 @@ impl Pilot {
             return Err(Error::TooManyPilots);
         }
 
-        let name = Self::validate_and_clean_name(name, &mut e).await?;
+        let name = Self::validate_and_clean_name(name, &mut *e).await?;
         sqlx::query_as!(
         Self,
             "INSERT INTO pilots (account_id, name) VALUES ($1, $2) RETURNING id, account_id, name, created_at",
             account_id,
             name
         )
-            .fetch_one(&mut e)
+            .fetch_one(&mut *e)
             .await.map_err(|e|e.into())
     }
 

@@ -21,6 +21,11 @@
 mod connection;
 
 pub use connection::{initialize, pool};
-pub mod migrations;
+mod migrations;
+pub use self::migrations::run_all;
+
+#[cfg(feature = "test-util")]
+pub use self::migrations::undo_all;
 
 pub use sqlx;
+pub use sqlx_simple_migrator::Migration;

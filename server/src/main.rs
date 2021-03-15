@@ -53,7 +53,16 @@ mod cli;
 /// - `cosmicverge-server generate-assets <static-folder-path>`: Generates the procedurally generated assets into folder specified.
 /// - `cosmicverge-server serve`: Starts the game server
 /// - `cosmicverge-server account --id 1 set-super-user`: Sets Account ID 1 to a Superuser.
-enum Cli {
+struct Cli {
+    #[structopt(long)]
+    database_url: Option<String>,
+
+    #[structopt(subcommand)]
+    command: Command,
+}
+
+#[derive(StructOpt, Debug)]
+enum Command {
     /// Run the Server
     Serve,
     /// Generate static assets, currently just includes procedurally generated planets
@@ -70,12 +79,15 @@ async fn main() -> anyhow::Result<()> {
     dotenv::dotenv().expect("Error initializing environment");
     initialize_logging();
 
-    let cli = Cli::from_args();
-    match cli {
-        Cli::Serve => http::run_webserver().await,
-        Cli::GenerateAssets { static_folder } => generate_assets(static_folder).await,
-        Cli::Account(command) => command.execute().await,
-        Cli::PermissionGroup(command) => command.execute().await,
+    let Cli {
+        database_url,
+        command,
+    } = Cli::from_args();
+    match command {
+        Command::Serve => http::run_webserver(database_url).await,
+        Command::GenerateAssets { static_folder } => generate_assets(static_folder).await,
+        Command::Account(command) => command.execute(database_url).await,
+        Command::PermissionGroup(command) => command.execute(database_url).await,
     }
 }
 

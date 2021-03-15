@@ -26,6 +26,7 @@ impl PermissionGroup {
         .fetch_one(executor)
         .await
     }
+
     pub async fn find_by_name<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
         name: &str,
         executor: E,
@@ -105,6 +106,16 @@ impl PermissionGroup {
             .execute(executor)
             .await.map(|_| ())
     }
+
+    pub async fn delete<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
+        &self,
+        executor: E,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!("DELETE FROM permission_groups WHERE id = $1", self.id)
+            .execute(executor)
+            .await
+            .map(|_| ())
+    }
 }
 
 #[derive(Debug, Table)]
@@ -153,29 +164,33 @@ impl Statement {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::test_util::pool;
+#[tokio::test]
+async fn create_lookup_delete_test() -> anyhow::Result<()> {
+    crate::test_util::initialize_safe_test().await;
 
-    #[tokio::test]
-    async fn create_and_lookup() -> sqlx::Result<()> {
-        let mut tx = pool().await.begin().await?;
-        let group = PermissionGroup::create("create_and_lookup_test", &mut tx).await?;
+    let mut tx = migrations::pool().begin().await?;
+    let group = PermissionGroup::create("create_and_lookup_test", &mut tx).await?;
 
-        assert_eq!(
-            group.id,
-            PermissionGroup::find_by_name("create_and_lookup_test", &mut tx)
-                .await?
-                .id
-        );
+    assert_eq!(
+        group.id,
+        PermissionGroup::find_by_name("create_and_lookup_test", &mut tx)
+            .await?
+            .id
+    );
 
-        Ok(())
-    }
+    group.delete(&mut tx).await?;
 
-    #[test]
-    fn test_display_permission() {
-        assert_eq!("*", &display_permission(&None));
-        assert_eq!("value", &display_permission(&Some(String::from("value"))));
-    }
+    assert!(
+        PermissionGroup::find_by_name("create_and_lookup_test", &mut tx)
+            .await
+            .is_err()
+    );
+
+    Ok(())
+}
+
+#[test]
+fn display_permission_test() {
+    assert_eq!("*", &display_permission(&None));
+    assert_eq!("value", &display_permission(&Some(String::from("value"))));
 }

@@ -26,8 +26,9 @@ jobs:
           ref: ${{ matrix.branch }}
       - name: Audit
         run: |
-          cargo audit -D warnings --ignore RUSTSEC-2020-0016
+          cargo audit -D warnings --ignore RUSTSEC-2020-0016 --ignore RUSTSEC-2020-0095
           echo '::warning::Ignoring alert for issue https://github.com/khonsulabs/kludgine/issues/47'
+          echo '::warning::Ignoring alert for unmaintained underlying dependency of assert_cmd, used only during testing https://github.com/johannhof/difference.rs/issues/45'
   format:
     runs-on: ubuntu-latest
 
@@ -147,6 +148,7 @@ jobs:
       - name: Configure environment for CI postgres
         run: |
           echo "DATABASE_URL=postgres://postgres:postgres@localhost:$POSTGRES_PORT/postgres" >> .env
+          echo "TEST_DATABASE_URL=postgres://postgres:postgres@localhost:$POSTGRES_PORT/postgres" >> .env
         env:
           POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
 
@@ -195,6 +197,7 @@ jobs:
       - name: Configure environment for CI postgres
         run: |
           echo "DATABASE_URL=postgres://postgres:postgres@localhost:$POSTGRES_PORT/postgres" >> .env
+          echo "TEST_DATABASE_URL=postgres://postgres:postgres@localhost:$POSTGRES_PORT/postgres" >> .env
         env:
           POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
 
