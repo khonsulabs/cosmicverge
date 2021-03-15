@@ -113,8 +113,8 @@ impl Account {
 
     // Delete an account
     //
-    // Do expose this to be used outside of testing. When we support account deletion,
-    // there will be a process involved to ensure we're complying with
+    // Don't expose this to be used outside of testing. When we support account
+    // deletion, there will be a process involved to ensure we're complying with
     // international privacy laws.
     #[cfg(feature = "test-util")]
     pub async fn delete<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
