@@ -12,6 +12,10 @@ keywords = ["sandbox", "game"]
 categories = ["games"]
 readme = "../README.md"
 
+[features]
+default = []
+test-util = []
+
 [lib]
 path = "src/lib.rs"
 
