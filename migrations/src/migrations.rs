@@ -19,6 +19,7 @@ pub async fn run_all() -> Result<(), MigrationError> {
     Migration::run_all(pool(), migrations()).await
 }
 
+#[cfg(feature = "test-util")]
 pub async fn undo_all() -> Result<(), MigrationError> {
     Migration::undo_all(pool(), migrations()).await
 }

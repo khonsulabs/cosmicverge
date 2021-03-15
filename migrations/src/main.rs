@@ -1,5 +1,4 @@
 mod connection;
-#[allow(dead_code)] // this mod exposes functions in lib.rs, but appears unused in the exe
 mod migrations;
 
 #[tokio::main]

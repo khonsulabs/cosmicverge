@@ -14,7 +14,7 @@ readme = "../README.md"
 
 [features]
 default = []
-test-util = []
+test-util = ["migrations/test-util"]
 
 [dependencies]
 cosmicverge-shared = { path = "../shared" }
