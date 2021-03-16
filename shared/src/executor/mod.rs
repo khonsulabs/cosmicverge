@@ -1,5 +1,10 @@
 mod worker;
 
+use async_task::Runnable;
+use core_affinity::CoreId;
+use flume::{r#async::RecvStream, Sender};
+use futures_util::{stream::Stream, FutureExt, StreamExt};
+use once_cell::sync::Lazy;
 use std::{
     future::Future,
     iter::{self},
@@ -7,12 +12,6 @@ use std::{
     task::{Context, Poll},
     thread::Builder,
 };
-
-use async_task::Runnable;
-use core_affinity::CoreId;
-use flume::{r#async::RecvStream, Sender};
-use futures_util::{stream::Stream, FutureExt, StreamExt};
-use once_cell::sync::Lazy;
 use worker::Worker;
 
 static EXECUTOR: Lazy<Executor> = Lazy::new(Executor::init);
@@ -78,6 +77,8 @@ impl Executor {
         }
     }
 
+    /// # Panics
+    /// Panics if called inside a `futures_executor::block_on` context.
     pub fn start<M, R>(main: M) -> R
     where
         M: Future<Output = R> + 'static,
@@ -130,7 +131,6 @@ impl<R> Task<R> {
     {
         #[cfg(feature = "tokio-support")]
         let task = tokio_util::context::TokioContext::new(task, EXECUTOR.tokio.handle().clone());
-
         let (runnable, task) = async_task::spawn(task, |task| {
             task.run();
         });
@@ -139,6 +139,7 @@ impl<R> Task<R> {
             .name(String::from("blocking"))
             .spawn(move || runnable.run())
             .expect("failed to spawn thread");
+
         Self(Some(task))
     }
 }

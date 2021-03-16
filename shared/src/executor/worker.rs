@@ -1,4 +1,11 @@
+use super::Channel;
 use super::{Message, Task, EXECUTOR};
+use async_task::Runnable;
+use futures_util::{
+    stream::{Fuse, SelectAll},
+    StreamExt,
+};
+use once_cell::unsync::Lazy;
 use std::{
     cell::{Ref, RefCell, RefMut},
     future::Future,
@@ -6,14 +13,6 @@ use std::{
     iter::FromIterator,
     thread,
 };
-
-use super::Channel;
-use async_task::Runnable;
-use futures_util::{
-    stream::{Fuse, SelectAll},
-    StreamExt,
-};
-use once_cell::unsync::Lazy;
 
 pub struct Worker {
     shutdown: Fuse<Channel>,
