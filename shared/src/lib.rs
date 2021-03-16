@@ -19,16 +19,18 @@
 
 //! Shared abstraction that will be re-used throughout the project.
 
-pub use euclid;
-pub use num_traits;
-pub use strum;
-pub use strum_macros;
+pub mod executor;
 pub mod permissions;
 pub mod protocol;
 pub mod ships;
 pub mod solar_system_simulation;
 pub mod solar_systems;
 mod version;
+
+pub use euclid;
+pub use num_traits;
+pub use strum;
+pub use strum_macros;
 
 /// Maximum amount of pilots that can be created per account.
 pub const MAX_PILOTS_PER_ACCOUNT: usize = 2;
