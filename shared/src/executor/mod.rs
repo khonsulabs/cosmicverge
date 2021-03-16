@@ -122,6 +122,27 @@ enum Management {}
 
 pub struct Task<R: 'static>(Option<async_task::Task<R>>);
 
+impl<R> Task<R> {
+    pub fn spawn_blocking<F, S>(task: F) -> Self
+    where
+        F: Future<Output = R> + Send + 'static,
+        R: Send,
+    {
+        #[cfg(feature = "tokio-support")]
+        let task = tokio_util::context::TokioContext::new(task, EXECUTOR.tokio.handle().clone());
+
+        let (runnable, task) = async_task::spawn(task, |task| {
+            task.run();
+        });
+
+        Builder::new()
+            .name(String::from("blocking"))
+            .spawn(move || runnable.run())
+            .expect("failed to spawn thread");
+        Self(Some(task))
+    }
+}
+
 impl<R> Future for Task<R> {
     type Output = R;
 

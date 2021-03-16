@@ -159,7 +159,7 @@ impl Worker {
     }
 }
 
-impl<R: 'static> Task<R> {
+impl<R> Task<R> {
     fn spawn_internal<F, S>(task: F, schedule: S) -> Self
     where
         F: Future<Output = R> + Send + 'static,
