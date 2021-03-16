@@ -18,13 +18,18 @@ pub struct Worker {
     shutdown: Fuse<Channel>,
     management: Fuse<Channel>,
     local_prio_queue: Fuse<Channel>,
-    global_prio_queue: Fuse<Channel>,
-    global_prio_steal: Fuse<SelectAll<Channel>>,
     local_normal_queue: Fuse<Channel>,
-    global_normal_queue: Fuse<Channel>,
-    global_normal_steal: Fuse<SelectAll<Channel>>,
+    global_queues: Option<Queues>,
     #[cfg(feature = "tokio-support")]
     tokio: tokio::runtime::Handle,
+}
+
+struct Queues {
+    prio: Fuse<Channel>,
+    prio_steal: Fuse<SelectAll<Channel>>,
+    normal: Fuse<Channel>,
+    normal_steal: Fuse<SelectAll<Channel>>,
+    injector: Fuse<Channel>,
 }
 
 // TODO: fix Clippy
@@ -41,10 +46,11 @@ impl Worker {
     /// Panics if thread wasn't given a name.
     fn init() -> RefCell<Self> {
         let index = match thread::current().name().expect("no thread name set") {
-            "main" => 0,
+            "main" => Some(0),
+            "blocking" => None,
             index => {
                 if let Ok(index) = index.parse() {
-                    index
+                    Some(index)
                 } else {
                     panic!("thread name couldn't be parsed")
                 }
@@ -52,8 +58,10 @@ impl Worker {
         };
 
         // pin thread to a physical CPU core
-        if let Some(core_id) = EXECUTOR.cores.get(index).expect("no core found") {
-            core_affinity::set_for_current(*core_id);
+        if let Some(index) = index {
+            if let Some(core_id) = EXECUTOR.cores.get(index).expect("no core found") {
+                core_affinity::set_for_current(*core_id);
+            }
         }
 
         // shutdown queue
@@ -62,37 +70,31 @@ impl Worker {
         // management queue
         let management = EXECUTOR.management.clone().fuse();
 
+        // build task queues
+        let local_prio_queue;
+        let local_normal_queue;
+
         // build local queues
-        let local_prio_queue = EXECUTOR
-            .local_prio_queues
-            .get(index)
-            .expect("no local priority queue found")
-            .clone()
-            .fuse();
-        let local_normal_queue = EXECUTOR
-            .local_normal_queues
-            .get(index)
-            .expect("no local normal queue found")
-            .clone()
-            .fuse();
+        let global_queues = if let Some(index) = index {
+            local_prio_queue = EXECUTOR
+                .local_prio_queues
+                .get(index)
+                .expect("no local priority queue found")
+                .clone()
+                .fuse();
+            local_normal_queue = EXECUTOR
+                .local_normal_queues
+                .get(index)
+                .expect("no local normal queue found")
+                .clone()
+                .fuse();
 
-        // split of own priority queue from others
-        let mut global_prio_steal = EXECUTOR.global_prio_queues.clone();
-        let global_prio_queue = global_prio_steal
-            .splice(index..=index, iter::empty())
-            .next()
-            .expect("no priority queue found")
-            .fuse();
-        let global_prio_steal = SelectAll::from_iter(global_prio_steal).fuse();
-
-        // split of own normal queue from others
-        let mut global_normal_steal = EXECUTOR.global_normal_queues.clone();
-        let global_normal_queue = global_normal_steal
-            .splice(index..=index, iter::empty())
-            .next()
-            .expect("no normal queue found")
-            .fuse();
-        let global_normal_steal = SelectAll::from_iter(global_normal_steal).fuse();
+            Some(Self::init_global_queues(index))
+        } else {
+            local_prio_queue = Channel::new().fuse();
+            local_normal_queue = Channel::new().fuse();
+            None
+        };
 
         #[cfg(feature = "tokio-support")]
         let tokio = EXECUTOR.tokio.handle().clone();
@@ -102,14 +104,43 @@ impl Worker {
             shutdown,
             management,
             local_prio_queue,
-            global_prio_queue,
-            global_prio_steal,
             local_normal_queue,
-            global_normal_queue,
-            global_normal_steal,
+            global_queues,
             #[cfg(feature = "tokio-support")]
             tokio,
         })
+    }
+
+    fn init_global_queues(index: usize) -> Queues {
+        // split of own priority queue from others
+        let mut prios = EXECUTOR.global_prio_queues.clone();
+        let prio = prios
+            .splice(index..=index, iter::empty())
+            .next()
+            .expect("no priority queue found")
+            .fuse();
+        let prio_steal = SelectAll::from_iter(prios).fuse();
+
+        // split of own normal queue from others
+        let mut normals = EXECUTOR.global_normal_queues.clone();
+        let normal = normals
+            .splice(index..=index, iter::empty())
+            .next()
+            .expect("no normal queue found")
+            .fuse();
+        let normal_steal = SelectAll::from_iter(normals).fuse();
+
+        // injector queue
+        let injector = EXECUTOR.global_injector_queue.clone().fuse();
+
+        // build `Queues`
+        Queues {
+            prio,
+            prio_steal,
+            normal,
+            normal_steal,
+            injector,
+        }
     }
 
     /// # Notes
@@ -145,16 +176,26 @@ impl Worker {
             // TODO: fix in Clippy
             #[allow(clippy::mut_mut)]
             futures_executor::block_on(async move {
-                futures_util::select_biased![
-                    message = worker.shutdown.select_next_some() => message,
-                    message = worker.management.select_next_some() => message,
-                    message = worker.local_prio_queue.select_next_some() => message,
-                    message = worker.global_prio_queue.select_next_some() => message,
-                    message = worker.global_prio_steal.select_next_some() => message,
-                    message = worker.local_normal_queue.select_next_some() => message,
-                    message = worker.global_normal_queue.select_next_some() => message,
-                    message = worker.global_normal_steal.select_next_some() => message,
-                ]
+                if let Some(global_queues) = &mut worker.global_queues {
+                    futures_util::select_biased![
+                        message = worker.shutdown.select_next_some() => message,
+                        message = worker.management.select_next_some() => message,
+                        message = worker.local_prio_queue.select_next_some() => message,
+                        message = global_queues.prio.select_next_some() => message,
+                        message = global_queues.prio_steal.select_next_some() => message,
+                        message = worker.local_normal_queue.select_next_some() => message,
+                        message = global_queues.normal.select_next_some() => message,
+                        message = global_queues.normal_steal.select_next_some() => message,
+                        message = global_queues.injector.select_next_some() => message,
+                    ]
+                } else {
+                    futures_util::select_biased![
+                        message = worker.shutdown.select_next_some() => message,
+                        message = worker.management.select_next_some() => message,
+                        message = worker.local_prio_queue.select_next_some() => message,
+                        message = worker.local_normal_queue.select_next_some() => message,
+                    ]
+                }
             })
         })
     }
@@ -198,7 +239,13 @@ impl<R> Task<R> {
         R: Send,
     {
         Self::spawn_internal(task, |task| {
-            Worker::with(move |worker| worker.global_prio_queue.get_ref().send(Message::Task(task)))
+            Worker::with(move |worker| {
+                if let Some(global_queues) = &worker.global_queues {
+                    global_queues.prio.get_ref().send(Message::Task(task))
+                } else {
+                    EXECUTOR.global_injector_queue.send(Message::Task(task))
+                }
+            })
         })
     }
 
@@ -218,10 +265,11 @@ impl<R> Task<R> {
     {
         Self::spawn_internal(task, |task| {
             Worker::with(move |worker| {
-                worker
-                    .global_normal_queue
-                    .get_ref()
-                    .send(Message::Task(task))
+                if let Some(global_queues) = &worker.global_queues {
+                    global_queues.normal.get_ref().send(Message::Task(task))
+                } else {
+                    EXECUTOR.global_injector_queue.send(Message::Task(task))
+                }
             })
         })
     }

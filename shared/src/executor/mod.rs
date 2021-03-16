@@ -24,6 +24,7 @@ pub struct Executor {
     local_normal_queues: Vec<Channel>,
     global_prio_queues: Vec<Channel>,
     global_normal_queues: Vec<Channel>,
+    global_injector_queue: Channel,
     #[cfg(feature = "tokio-support")]
     tokio: tokio::runtime::Runtime,
 }
@@ -56,6 +57,7 @@ impl Executor {
         let local_normal_queues = iter::repeat_with(Channel::new).take(cores.len()).collect();
         let global_prio_queues = iter::repeat_with(Channel::new).take(cores.len()).collect();
         let global_normal_queues = iter::repeat_with(Channel::new).take(cores.len()).collect();
+        let global_injector_queue = Channel::new();
 
         #[cfg(feature = "tokio-support")]
         let tokio = tokio::runtime::Builder::new_multi_thread()
@@ -72,6 +74,7 @@ impl Executor {
             local_normal_queues,
             global_prio_queues,
             global_normal_queues,
+            global_injector_queue,
             #[cfg(feature = "tokio-support")]
             tokio,
         }
