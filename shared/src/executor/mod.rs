@@ -5,6 +5,7 @@ use std::{
     iter::{self},
     pin::Pin,
     task::{Context, Poll},
+    thread::Builder,
 };
 
 use async_task::Runnable;
@@ -12,7 +13,6 @@ use core_affinity::CoreId;
 use flume::{r#async::RecvStream, Sender};
 use futures_util::{stream::Stream, FutureExt, StreamExt};
 use once_cell::sync::Lazy;
-use std::thread;
 use worker::Worker;
 
 static EXECUTOR: Lazy<Executor> = Lazy::new(Executor::init);
@@ -75,29 +75,24 @@ impl Executor {
     {
         // spawn a thread for each physical CPU core except the first one
         for index in 1..EXECUTOR.cores.len() {
-            thread::spawn(move || {
-                // spin up `Worker`
-                let handle = Worker::init(index);
-                handle.start();
-            });
+            Builder::new()
+                .name(index.to_string())
+                .spawn(Worker::start)
+                .expect("failed to spawn thread");
         }
 
-        // spin up `Worker` in the first core
-        let handle = Worker::init(0);
-        // start `main`
+        // build `main`
         let main = Task::spawn_local_prio(async move {
             let result = main.await;
             // if main is done, force-shutdown everything else
             Self::shutdown().await;
             result
         });
-        handle.start();
+        Worker::start();
         // return the result of main
         futures_executor::block_on(main)
     }
 
-    /// Notes:
-    /// This will do nothing if `Executor` isn't initialized.
     pub async fn shutdown() {
         // TODO: log useful data on shutdown:
         // - how many tasks were still unfinished

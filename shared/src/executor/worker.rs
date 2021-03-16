@@ -3,6 +3,8 @@ use std::{
     cell::{Ref, RefCell, RefMut},
     future::Future,
     iter,
+    iter::FromIterator,
+    thread,
 };
 
 use super::Channel;
@@ -10,7 +12,7 @@ use futures_util::{
     stream::{Fuse, SelectAll},
     StreamExt,
 };
-use std::iter::FromIterator;
+use once_cell::unsync::Lazy;
 
 pub struct Worker {
     shutdown: Fuse<Channel>,
@@ -23,40 +25,29 @@ pub struct Worker {
     global_normal_steal: Fuse<SelectAll<Channel>>,
 }
 
-/// This only exists to prevent calling `start` without having called `Worker::init` first.
-pub(super) struct Handle;
-
-impl Handle {
-    #[allow(clippy::unused_self)]
-    pub(super) fn start(self) {
-        loop {
-            match Worker::select_task() {
-                Message::Task(task) => {
-                    task.run();
-                }
-                // TODO: log management commands
-                Message::Management(_management) => todo!(),
-                // TODO: log that worker has successfully shutdown
-                Message::Shutdown => break,
-            }
-        }
-    }
-}
-
 // TODO: fix Clippy
 #[allow(clippy::use_self)]
 impl Worker {
-    thread_local!(static WORKER: RefCell<Option<Worker>> = RefCell::new(None));
+    thread_local!(static WORKER: Lazy<RefCell<Worker>> = Lazy::new(Worker::init));
 }
 
 impl Worker {
+    /// # Notes
+    /// This is used by the thread-local `WORKER` and not intended to be used otherwise.
+    ///
     /// # Panics
-    /// If `Worker` is already initialized in this thread, this will panic.
-    pub(super) fn init(index: usize) -> Handle {
-        // panic if `Worker` was already initialized
-        if Self::WORKER.with(|worker| worker.borrow().is_some()) {
-            panic!("`Worker` already initialized in this thread")
-        }
+    /// Panics if thread wasn't given a name.
+    fn init() -> RefCell<Self> {
+        let index = match thread::current().name().expect("no thread name set") {
+            "main" => 0,
+            index => {
+                if let Ok(index) = index.parse() {
+                    index
+                } else {
+                    panic!("thread name couldn't be parsed")
+                }
+            }
+        };
 
         // pin thread to a physical CPU core
         if let Some(core_id) = EXECUTOR.cores.get(index).expect("no core found") {
@@ -102,39 +93,40 @@ impl Worker {
         let global_normal_steal = SelectAll::from_iter(global_normal_steal).fuse();
 
         // build `Worker`
-        Self::WORKER.with(|worker| {
-            worker.replace(Some(Self {
-                shutdown,
-                management,
-                local_prio_queue,
-                global_prio_queue,
-                global_prio_steal,
-                local_normal_queue,
-                global_normal_queue,
-                global_normal_steal,
-            }));
-        });
-        Handle
+        RefCell::new(Self {
+            shutdown,
+            management,
+            local_prio_queue,
+            global_prio_queue,
+            global_prio_steal,
+            local_normal_queue,
+            global_normal_queue,
+            global_normal_steal,
+        })
+    }
+
+    /// # Notes
+    /// This will block the thread until shutdown, you can still `Task::spawn` before calling this.
+    pub(super) fn start() {
+        loop {
+            match Self::select_task() {
+                Message::Task(task) => {
+                    task.run();
+                }
+                // TODO: log management commands
+                Message::Management(_management) => todo!(),
+                // TODO: log that worker has successfully shutdown
+                Message::Shutdown => break,
+            }
+        }
     }
 
     fn with<R>(fun: impl FnOnce(Ref<'_, Self>) -> R) -> R {
-        Self::WORKER.with(|worker| {
-            let worker = Ref::map(worker.borrow(), |worker| {
-                worker.as_ref().expect("`WORKER` is not initialized")
-            });
-
-            fun(worker)
-        })
+        Self::WORKER.with(|worker| fun(worker.borrow()))
     }
 
     fn with_mut<R>(fun: impl Fn(RefMut<'_, Self>) -> R) -> R {
-        Self::WORKER.with(|worker| {
-            let worker = RefMut::map(worker.borrow_mut(), |worker| {
-                worker.as_mut().expect("`WORKER` is not initialized")
-            });
-
-            fun(worker)
-        })
+        Self::WORKER.with(|worker| fun(worker.borrow_mut()))
     }
 
     fn select_task() -> Message {
