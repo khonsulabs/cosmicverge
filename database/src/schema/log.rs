@@ -27,8 +27,8 @@ impl Log {
             sqlx::query!(
                 "INSERT INTO logs (level, process, message, timestamp, payload) VALUES ($1, $2, $3, $4, $5)", 
                 entry.level as Level,
-                entry.process, 
-                entry.message, 
+                entry.process,
+                entry.message,
                 entry.timestamp,
                 entry.payload
             ).execute(&mut tx).await?;
