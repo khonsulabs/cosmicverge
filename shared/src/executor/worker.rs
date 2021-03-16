@@ -1,4 +1,4 @@
-use super::{Executor, Message, Task};
+use super::{Message, Task, EXECUTOR};
 use std::{
     cell::{Ref, RefCell, RefMut},
     future::Future,
@@ -58,26 +58,25 @@ impl Worker {
             panic!("`Worker` already initialized in this thread")
         }
 
-    pub(super) fn init(executor: &'static Executor, index: usize) {
         // pin thread to a physical CPU core
-        if let Some(core_id) = executor.cores.get(index).expect("no core found") {
+        if let Some(core_id) = EXECUTOR.cores.get(index).expect("no core found") {
             core_affinity::set_for_current(*core_id);
         }
 
         // shutdown queue
-        let shutdown = executor.shutdown.clone().fuse();
+        let shutdown = EXECUTOR.shutdown.clone().fuse();
 
         // management queue
-        let management = executor.management.clone().fuse();
+        let management = EXECUTOR.management.clone().fuse();
 
         // build local queues
-        let local_prio_queue = executor
+        let local_prio_queue = EXECUTOR
             .local_prio_queues
             .get(index)
             .expect("no local priority queue found")
             .clone()
             .fuse();
-        let local_normal_queue = executor
+        let local_normal_queue = EXECUTOR
             .local_normal_queues
             .get(index)
             .expect("no local normal queue found")
@@ -85,7 +84,7 @@ impl Worker {
             .fuse();
 
         // split of own priority queue from others
-        let mut global_prio_steal = executor.global_prio_queues.clone();
+        let mut global_prio_steal = EXECUTOR.global_prio_queues.clone();
         let global_prio_queue = global_prio_steal
             .splice(index..=index, iter::empty())
             .next()
@@ -94,7 +93,7 @@ impl Worker {
         let global_prio_steal = SelectAll::from_iter(global_prio_steal).fuse();
 
         // split of own normal queue from others
-        let mut global_normal_steal = executor.global_normal_queues.clone();
+        let mut global_normal_steal = EXECUTOR.global_normal_queues.clone();
         let global_normal_queue = global_normal_steal
             .splice(index..=index, iter::empty())
             .next()

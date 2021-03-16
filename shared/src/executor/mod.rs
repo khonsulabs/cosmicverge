@@ -11,11 +11,11 @@ use async_task::Runnable;
 use core_affinity::CoreId;
 use flume::{r#async::RecvStream, Sender};
 use futures_util::{stream::Stream, FutureExt, StreamExt};
-use once_cell::sync::OnceCell;
+use once_cell::sync::Lazy;
 use std::thread;
 use worker::Worker;
 
-static EXECUTOR: OnceCell<Executor> = OnceCell::new();
+static EXECUTOR: Lazy<Executor> = Lazy::new(Executor::init);
 
 pub struct Executor {
     cores: Vec<Option<CoreId>>,
@@ -28,9 +28,9 @@ pub struct Executor {
 }
 
 impl Executor {
-    /// # Panics
-    /// If `Executor` is already initialized, this will panic.
-    fn init() -> &'static Self {
+    /// # Notes
+    /// This is used by the global `EXECUTOR` and not intended to be used otherwise.
+    fn init() -> Self {
         // collect `CoreId`s to pin threads
         let cores = match core_affinity::get_core_ids() {
             Some(cores) if !cores.is_empty() => cores.into_iter().map(Some).collect(),
@@ -38,6 +38,7 @@ impl Executor {
                 // TODO: log that we couldn't pin threads
                 let cores = match num_cpus::get_physical() {
                     0 => {
+                        // TODO: see https://github.com/seanmonstar/num_cpus/issues/105
                         // TODO: log that we couldn't find any cores
                         1
                     }
@@ -55,38 +56,29 @@ impl Executor {
         let global_prio_queues = iter::repeat_with(Channel::new).take(cores.len()).collect();
         let global_normal_queues = iter::repeat_with(Channel::new).take(cores.len()).collect();
 
-        // TODO: improve with https://github.com/matklad/once_cell/pull/148
         // build `Executor`
-        EXECUTOR
-            .set(Self {
-                cores,
-                shutdown,
-                management,
-                local_prio_queues,
-                local_normal_queues,
-                global_prio_queues,
-                global_normal_queues,
-            })
-            .map_err(|_| ())
-            .expect("`EXECUTOR` already set");
-        EXECUTOR.get().expect("`EXECUTOR` not set")
+        Self {
+            cores,
+            shutdown,
+            management,
+            local_prio_queues,
+            local_normal_queues,
+            global_prio_queues,
+            global_normal_queues,
+        }
     }
 
-    /// # Panics
-    /// If `Executor` is already started, this will panic.
     pub fn start<M, R>(main: M) -> R
     where
         M: Future<Output = R> + 'static,
         R: 'static,
     {
-        let executor = Self::init();
-
         // spawn a thread for each physical CPU core except the first one
-        for index in 1..executor.cores.len() {
+        for index in 1..EXECUTOR.cores.len() {
             thread::spawn(move || {
                 // spin up `Worker`
-                Worker::init(executor, index);
-                Worker::start();
+                let handle = Worker::init(index);
+                handle.start();
             });
         }
 
@@ -107,12 +99,11 @@ impl Executor {
     /// Notes:
     /// This will do nothing if `Executor` isn't initialized.
     pub async fn shutdown() {
-        // TODO: log useful data on shhutdown:
+        // TODO: log useful data on shutdown:
         // - how many tasks were still unfinished
         // - panics or errors in `Worker`s
-        if let Some(executor) = EXECUTOR.get() {
-            executor.shutdown.send(Message::Shutdown)
-        }
+        // TODO: empty queues
+        EXECUTOR.shutdown.send(Message::Shutdown)
     }
 }
 
