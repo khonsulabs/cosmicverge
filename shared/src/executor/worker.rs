@@ -23,16 +23,14 @@ pub struct Worker {
     global_normal_steal: Fuse<SelectAll<Channel>>,
 }
 
-// TODO: fix Clippy
-#[allow(clippy::use_self)]
-impl Worker {
-    thread_local!(static WORKER: RefCell<Option<Worker>> = RefCell::new(None));
-}
+/// This only exists to prevent calling `start` without having called `Worker::init` first.
+pub(super) struct Handle;
 
-impl Worker {
-    pub(super) fn start() {
+impl Handle {
+    #[allow(clippy::unused_self)]
+    pub(super) fn start(self) {
         loop {
-            match Self::select_task() {
+            match Worker::select_task() {
                 Message::Task(task) => {
                     task.run();
                 }
@@ -43,6 +41,22 @@ impl Worker {
             }
         }
     }
+}
+
+// TODO: fix Clippy
+#[allow(clippy::use_self)]
+impl Worker {
+    thread_local!(static WORKER: RefCell<Option<Worker>> = RefCell::new(None));
+}
+
+impl Worker {
+    /// # Panics
+    /// If `Worker` is already initialized in this thread, this will panic.
+    pub(super) fn init(index: usize) -> Handle {
+        // panic if `Worker` was already initialized
+        if Self::WORKER.with(|worker| worker.borrow().is_some()) {
+            panic!("`Worker` already initialized in this thread")
+        }
 
     pub(super) fn init(executor: &'static Executor, index: usize) {
         // pin thread to a physical CPU core
@@ -88,8 +102,9 @@ impl Worker {
             .fuse();
         let global_normal_steal = SelectAll::from_iter(global_normal_steal).fuse();
 
+        // build `Worker`
         Self::WORKER.with(|worker| {
-            *worker.borrow_mut() = Some(Self {
+            worker.replace(Some(Self {
                 shutdown,
                 management,
                 local_prio_queue,
@@ -98,8 +113,9 @@ impl Worker {
                 local_normal_queue,
                 global_normal_queue,
                 global_normal_steal,
-            });
+            }));
         });
+        Handle
     }
 
     fn with<R>(fun: impl FnOnce(Ref<'_, Self>) -> R) -> R {

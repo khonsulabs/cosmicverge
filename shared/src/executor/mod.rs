@@ -91,7 +91,7 @@ impl Executor {
         }
 
         // spin up `Worker` in the first core
-        Worker::init(executor, 0);
+        let handle = Worker::init(0);
         // start `main`
         let main = Task::spawn_local_prio(async move {
             let result = main.await;
@@ -99,7 +99,7 @@ impl Executor {
             Self::shutdown().await;
             result
         });
-        Worker::start();
+        handle.start();
         // return the result of main
         futures_executor::block_on(main)
     }
