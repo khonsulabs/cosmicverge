@@ -19,5 +19,4 @@ pub fn migration() -> Migration {
         .with_up("CREATE INDEX logs_by_timestamp ON logs(timestamp, message)")
         .with_up("CLUSTER logs USING logs_by_timestamp")
         .with_down("DROP TABLE IF EXISTS logs")
-        .debug()
 }
