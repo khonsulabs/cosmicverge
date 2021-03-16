@@ -8,6 +8,7 @@ use std::{
 };
 
 use super::Channel;
+use async_task::Runnable;
 use futures_util::{
     stream::{Fuse, SelectAll},
     StreamExt,
@@ -23,6 +24,8 @@ pub struct Worker {
     local_normal_queue: Fuse<Channel>,
     global_normal_queue: Fuse<Channel>,
     global_normal_steal: Fuse<SelectAll<Channel>>,
+    #[cfg(feature = "tokio-support")]
+    tokio: tokio::runtime::Handle,
 }
 
 // TODO: fix Clippy
@@ -92,6 +95,9 @@ impl Worker {
             .fuse();
         let global_normal_steal = SelectAll::from_iter(global_normal_steal).fuse();
 
+        #[cfg(feature = "tokio-support")]
+        let tokio = EXECUTOR.tokio.handle().clone();
+
         // build `Worker`
         RefCell::new(Self {
             shutdown,
@@ -102,6 +108,8 @@ impl Worker {
             local_normal_queue,
             global_normal_queue,
             global_normal_steal,
+            #[cfg(feature = "tokio-support")]
+            tokio,
         })
     }
 
@@ -152,59 +160,82 @@ impl Worker {
 }
 
 impl<R: 'static> Task<R> {
-    pub fn spawn_prio<F>(future: F) -> Self
+    fn spawn_internal<F, S>(task: F, schedule: S) -> Self
     where
         F: Future<Output = R> + Send + 'static,
         R: Send,
+        S: Fn(Runnable) + Send + Sync + 'static,
     {
-        let (runnable, task) = async_task::spawn(future, |task| {
-            Worker::with(move |worker| worker.global_prio_queue.get_ref().send(Message::Task(task)))
-        });
+        #[cfg(feature = "tokio-support")]
+        let task = tokio_util::context::TokioContext::new(
+            task,
+            Worker::with(|worker| worker.tokio.clone()),
+        );
+        let (runnable, task) = async_task::spawn(task, schedule);
         runnable.schedule();
         Self(Some(task))
     }
 
-    pub fn spawn_local_prio<F>(future: F) -> Self
+    fn spawn_internal_local<F, S>(task: F, schedule: S) -> Self
+    where
+        F: Future<Output = R> + 'static,
+        S: Fn(Runnable) + Send + Sync + 'static,
+    {
+        #[cfg(feature = "tokio-support")]
+        let task = tokio_util::context::TokioContext::new(
+            task,
+            Worker::with(|worker| worker.tokio.clone()),
+        );
+        let (runnable, task) = async_task::spawn_local(task, schedule);
+        runnable.schedule();
+        Self(Some(task))
+    }
+
+    pub fn spawn_prio<F>(task: F) -> Self
+    where
+        F: Future<Output = R> + Send + 'static,
+        R: Send,
+    {
+        Self::spawn_internal(task, |task| {
+            Worker::with(move |worker| worker.global_prio_queue.get_ref().send(Message::Task(task)))
+        })
+    }
+
+    pub fn spawn_local_prio<F>(task: F) -> Self
     where
         F: Future<Output = R> + 'static,
     {
-        let (runnable, task) = async_task::spawn_local(future, |task| {
+        Self::spawn_internal_local(task, |task| {
             Worker::with(move |worker| worker.local_prio_queue.get_ref().send(Message::Task(task)))
-        });
-        runnable.schedule();
-        Self(Some(task))
+        })
     }
 
-    pub fn spawn<F>(future: F) -> Self
+    pub fn spawn<F>(task: F) -> Self
     where
         F: Future<Output = R> + Send + 'static,
         R: Send,
     {
-        let (runnable, task) = async_task::spawn(future, |task| {
+        Self::spawn_internal(task, |task| {
             Worker::with(move |worker| {
                 worker
                     .global_normal_queue
                     .get_ref()
                     .send(Message::Task(task))
             })
-        });
-        runnable.schedule();
-        Self(Some(task))
+        })
     }
 
-    pub fn spawn_local<F>(future: F) -> Self
+    pub fn spawn_local<F>(task: F) -> Self
     where
         F: Future<Output = R> + 'static,
     {
-        let (runnable, task) = async_task::spawn_local(future, |task| {
+        Self::spawn_internal_local(task, |task| {
             Worker::with(move |worker| {
                 worker
                     .local_normal_queue
                     .get_ref()
                     .send(Message::Task(task))
             })
-        });
-        runnable.schedule();
-        Self(Some(task))
+        })
     }
 }

@@ -888,6 +888,7 @@ dependencies = [
  "strum_macros",
  "thiserror",
  "tokio",
+ "tokio-util",
  "uuid",
 ]
 

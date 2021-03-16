@@ -15,6 +15,7 @@ build = "../build.rs"
 
 [features]
 default = []
+tokio-support = ["tokio", "tokio-util"]
 
 [dependencies]
 anyhow = "1"
@@ -40,3 +41,5 @@ flume = "0.10"
 futures-executor = "0.3"
 futures-util = "0.3"
 num_cpus = "1"
+tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
+tokio-util = { version = "0.6", features = ["rt"], optional = true }
