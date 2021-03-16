@@ -2354,6 +2354,7 @@ dependencies = [
 [[package]]
 name = "kludgine"
 version = "0.0.2"
+source = "git+https://github.com/khonsulabs/kludgine.git?branch=main#fa7c98f656bc9d4549261ae9c65735e7aedec2bd"
 dependencies = [
  "anyhow",
  "anymap",

@@ -14,4 +14,4 @@ opt-level = "s"
 # basws-shared = { path = "../basws/basws-shared" }
 # sqlx-simple-migrator = { path = "../sqlx-simple-migrator" }
 # magrathea = { path = "../magrathea" }
-kludgine = { path = "../kludgine" }
+# kludgine = { path = "../kludgine" }
