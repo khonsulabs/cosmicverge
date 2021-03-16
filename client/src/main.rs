@@ -29,6 +29,8 @@ type CosmicVergeClient = basws_client::Client<api::Client>;
 use std::path::PathBuf;
 
 use clap::Clap;
+use kludgine::runtime::Runtime;
+use logger::Pod;
 use tracing_subscriber::prelude::*;
 
 #[macro_use]
@@ -40,15 +42,18 @@ const SERVER_URL: &str = "ws://localhost:7879/v1/ws";
 const SERVER_URL: &str = "wss://cosmicverge.com/v1/ws";
 
 fn main() -> anyhow::Result<()> {
+    Runtime::initialize();
+
+    let logger = logger::Manager::default()
+        .with_backend(logger::backend::Os::std())
+        .launch(|task| {
+            Runtime::spawn(task);
+        });
     tracing_subscriber::registry()
         .with(tracing_subscriber::filter::EnvFilter::new(
             "wgpu_core=warn,cosmicverge=trace,kludgine=warn",
         ))
-        .with(
-            tracing_subscriber::fmt::layer()
-                .with_target(false)
-                .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE),
-        )
+        .with(logger::tracing::Adapter::new(Pod::Client, logger))
         .try_init()?;
 
     let opt = CliOptions::parse();

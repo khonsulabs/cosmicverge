@@ -1,5 +1,5 @@
 [workspace]
-members = ["server", "database", "migrations", "client", "web", "shared"]
+members = ["server", "database", "migrations", "client", "web", "shared", "logger"]
 
 [profile.release]
 lto = true
@@ -14,4 +14,4 @@ opt-level = "s"
 # basws-shared = { path = "../basws/basws-shared" }
 # sqlx-simple-migrator = { path = "../sqlx-simple-migrator" }
 # magrathea = { path = "../magrathea" }
-# kludgine = { path = "../kludgine" }
+kludgine = { path = "../kludgine" }

@@ -14,6 +14,7 @@ pub struct Simulator {
 }
 
 impl Simulator {
+    #[tracing::instrument(skip(self, ships))]
     pub fn update(
         &mut self,
         ships: Vec<navigation::Ship>,

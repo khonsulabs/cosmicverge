@@ -43,6 +43,9 @@ tokio = "1"
 dotenv = "0.15"
 once_cell = "1"
 cli-table = "0.4"
+approx = "0.4"
 
 [dev-dependencies]
 tokio = { version = "1.0", features = ["sync"] }
+migrations = { path = "../migrations", features = ["test-util"] }
+database = { path = "./", features = ["test-util"] }
