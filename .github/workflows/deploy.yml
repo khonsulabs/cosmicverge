@@ -215,6 +215,7 @@ jobs:
           zip -0 ccov.zip `find . \( -name "cosmicverge_shared-*.gc*" \) -print`
           zip -0 ccov.zip `find . \( -name "cosmicverge_server-*.gc*" \) -print`
           zip -0 ccov.zip `find . \( -name "cosmicverge-*.gc*" \) -print`
+          zip -0 ccov.zip `find . \( -name "logger-*.gc*" \) -print`
           zip -0 ccov.zip `find . \( -name "database-*.gc*" \) -print`
           zip -0 ccov.zip `find . \( -name "migrations-*.gc*" \) -print`
           zip -0 ccov.zip `find . \( -name "web-*.gc*" \) -print`

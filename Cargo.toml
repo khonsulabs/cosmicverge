@@ -1,5 +1,5 @@
 [workspace]
-members = ["server", "database", "migrations", "client", "web", "shared"]
+members = ["server", "database", "migrations", "client", "web", "shared", "logger"]
 
 [profile.release]
 lto = true
