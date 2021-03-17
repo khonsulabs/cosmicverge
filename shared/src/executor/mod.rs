@@ -83,16 +83,13 @@ impl Executor {
 
     /// # Notes
     /// Will shut down the current `Executor` before starting a new one.
-    ///
-    /// # Panics
-    /// Panics if called inside a `futures_executor::block_on` context.
     pub fn start<M, R>(main: M) -> R
     where
         M: Future<Output = R> + 'static,
         R: 'static,
     {
         // shutdown before start
-        // futures_executor::block_on(Self::shutdown());
+        // futures_lite::future::block_on(Self::shutdown());
         // spawn a thread for each physical CPU core except the first one
         for index in 1..EXECUTOR.cores.len() {
             Builder::new()
@@ -111,7 +108,7 @@ impl Executor {
         // start worker on the main thread
         Worker::start();
         // return the result of main
-        futures_executor::block_on(main)
+        futures_lite::future::block_on(main)
     }
 
     pub async fn shutdown() {

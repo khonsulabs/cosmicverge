@@ -874,6 +874,7 @@ dependencies = [
  "euclid",
  "flume 0.10.2",
  "futures-executor",
+ "futures-lite",
  "futures-util",
  "log",
  "num-derive",

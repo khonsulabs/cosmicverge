@@ -191,15 +191,13 @@ impl Worker {
         Self::WORKER.with(|worker| fun(worker.borrow_mut()))
     }
 
-    /// # Panics
-    /// Panics if called inside a `futures_executor::block_on` context.
     fn select_task() -> Message {
         Self::with_mut(|mut worker| {
             let worker = &mut *worker;
 
             // TODO: fix in Clippy
             #[allow(clippy::mut_mut)]
-            futures_executor::block_on(async move {
+            futures_lite::future::block_on(async move {
                 match &mut worker.schedule {
                     Schedule::Async {
                         management,
@@ -264,6 +262,13 @@ impl<R> Task<R> {
         let (runnable, task) = async_task::spawn_local(task, schedule);
         runnable.schedule();
         Self(Some(task))
+    }
+
+    pub fn block_on<F>(task: F) -> R
+    where
+        F: Future<Output = R>,
+    {
+        futures_lite::future::block_on(task)
     }
 
     pub fn spawn_prio<F>(task: F) -> Self
