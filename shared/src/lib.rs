@@ -15,6 +15,7 @@
     clippy::missing_errors_doc,
     // clippy::missing_panics_doc, // not on stable yet
     clippy::option_if_let_else,
+    clippy::shadow_unrelated,
 )]
 
 //! Shared abstraction that will be re-used throughout the project.

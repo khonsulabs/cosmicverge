@@ -5,9 +5,10 @@ use core_affinity::CoreId;
 use flume::{r#async::RecvStream, Sender};
 use futures_util::{stream::Stream, FutureExt, StreamExt};
 use once_cell::sync::Lazy;
+use parking_lot::RwLock;
 use std::{
     future::Future,
-    iter::{self},
+    iter,
     pin::Pin,
     task::{Context, Poll},
     thread::Builder,
@@ -18,13 +19,14 @@ static EXECUTOR: Lazy<Executor> = Lazy::new(Executor::init);
 
 pub struct Executor {
     cores: Vec<Option<CoreId>>,
-    shutdown: Channel,
-    management: Channel,
+    shutdown: Broadcaster<Shutdown>,
+    management: Vec<Channel>,
     local_prio_queues: Vec<Channel>,
     local_normal_queues: Vec<Channel>,
     global_prio_queues: Vec<Channel>,
     global_normal_queues: Vec<Channel>,
-    global_injector_queue: Channel,
+    global_prio_injector: Channel,
+    global_normal_injector: Channel,
     #[cfg(feature = "tokio-support")]
     tokio: tokio::runtime::Runtime,
 }
@@ -39,11 +41,7 @@ impl Executor {
             _ => {
                 // TODO: log that we couldn't pin threads
                 let cores = match num_cpus::get_physical() {
-                    0 => {
-                        // TODO: see https://github.com/seanmonstar/num_cpus/issues/105
-                        // TODO: log that we couldn't find any cores
-                        1
-                    }
+                    0 => unreachable!("no cores found"),
                     cores => cores,
                 };
                 vec![None; cores]
@@ -51,14 +49,16 @@ impl Executor {
         };
 
         // create queues
-        let shutdown = Channel::new();
-        let management = Channel::new();
+        let shutdown = Broadcaster::new();
+        let management = iter::repeat_with(Channel::new).take(cores.len()).collect();
         let local_prio_queues = iter::repeat_with(Channel::new).take(cores.len()).collect();
         let local_normal_queues = iter::repeat_with(Channel::new).take(cores.len()).collect();
         let global_prio_queues = iter::repeat_with(Channel::new).take(cores.len()).collect();
         let global_normal_queues = iter::repeat_with(Channel::new).take(cores.len()).collect();
-        let global_injector_queue = Channel::new();
+        let global_prio_injector = Channel::new();
+        let global_normal_injector = Channel::new();
 
+        // add tokio support
         #[cfg(feature = "tokio-support")]
         let tokio = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
@@ -74,12 +74,16 @@ impl Executor {
             local_normal_queues,
             global_prio_queues,
             global_normal_queues,
-            global_injector_queue,
+            global_prio_injector,
+            global_normal_injector,
             #[cfg(feature = "tokio-support")]
             tokio,
         }
     }
 
+    /// # Notes
+    /// Will shut down the current `Executor` before starting a new one.
+    ///
     /// # Panics
     /// Panics if called inside a `futures_executor::block_on` context.
     pub fn start<M, R>(main: M) -> R
@@ -87,6 +91,8 @@ impl Executor {
         M: Future<Output = R> + 'static,
         R: 'static,
     {
+        // shutdown before start
+        // futures_executor::block_on(Self::shutdown());
         // spawn a thread for each physical CPU core except the first one
         for index in 1..EXECUTOR.cores.len() {
             Builder::new()
@@ -102,6 +108,7 @@ impl Executor {
             Self::shutdown().await;
             result
         });
+        // start worker on the main thread
         Worker::start();
         // return the result of main
         futures_executor::block_on(main)
@@ -112,40 +119,32 @@ impl Executor {
         // - how many tasks were still unfinished
         // - panics or errors in `Worker`s
         // TODO: empty queues
-        EXECUTOR.shutdown.send(Message::Shutdown)
+        EXECUTOR.shutdown.send(Shutdown);
     }
 }
 
 enum Message {
     Task(Runnable),
     Management(Management),
-    Shutdown,
 }
 
-enum Management {}
-
-pub struct Task<R: 'static>(Option<async_task::Task<R>>);
-
-impl<R> Task<R> {
-    pub fn spawn_blocking<F, S>(task: F) -> Self
-    where
-        F: Future<Output = R> + Send + 'static,
-        R: Send,
-    {
-        #[cfg(feature = "tokio-support")]
-        let task = tokio_util::context::TokioContext::new(task, EXECUTOR.tokio.handle().clone());
-        let (runnable, task) = async_task::spawn(task, |task| {
-            task.run();
-        });
-
-        Builder::new()
-            .name(String::from("blocking"))
-            .spawn(move || runnable.run())
-            .expect("failed to spawn thread");
-
-        Self(Some(task))
+impl From<Shutdown> for Message {
+    fn from(shutdown: Shutdown) -> Self {
+        Self::Management(Management::Shutdown(shutdown))
     }
 }
+
+enum Management {
+    /// Shutdown `Executor`
+    Shutdown(Shutdown),
+    /// Blocking thread finished processing all tasks
+    FinishedBlocking,
+}
+
+#[derive(Clone, Copy)]
+struct Shutdown;
+
+pub struct Task<R: 'static>(Option<async_task::Task<R>>);
 
 impl<R> Future for Task<R> {
     type Output = R;
@@ -161,6 +160,7 @@ impl<R> Future for Task<R> {
 
 impl<R> Drop for Task<R> {
     fn drop(&mut self) {
+        // by default `async_task::Task` cancels on drop, we wan't to detach on drop
         self.0.take().expect("task alrady dropped").detach()
     }
 }
@@ -177,10 +177,9 @@ struct Channel {
 impl Channel {
     fn new() -> Self {
         let (sender, receiver) = flume::unbounded();
-        Self {
-            sender,
-            receiver: receiver.into_stream(),
-        }
+        let receiver = receiver.into_stream();
+
+        Self { sender, receiver }
     }
 
     fn send(&self, task: Message) {
@@ -193,5 +192,39 @@ impl Stream for Channel {
 
     fn poll_next(mut self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.as_mut().receiver.poll_next_unpin(context)
+    }
+}
+
+// TODO: this will need an overhaul if alternatives to `flume` can be found
+struct Broadcaster<T: Clone>(RwLock<Vec<Sender<T>>>);
+
+impl<T: Clone> Broadcaster<T> {
+    fn new() -> Self {
+        Self(RwLock::default())
+    }
+
+    fn subscribe(&self) -> BroadcastReceiver<T> {
+        let (sender, receiver) = flume::unbounded();
+        // locking is only done for a very short period of time
+        // making async-locking probably not worth the cost
+        self.0.write().push(sender);
+        BroadcastReceiver(receiver.into_stream())
+    }
+
+    fn send(&self, message: T) {
+        // throw out any `Sender`s in the process of sending that don't have a receiver anymore
+        self.0
+            .write()
+            .retain(|sender| sender.send(message.clone()).is_ok());
+    }
+}
+
+struct BroadcastReceiver<T: 'static>(RecvStream<'static, T>);
+
+impl<T> Stream for BroadcastReceiver<T> {
+    type Item = T;
+
+    fn poll_next(mut self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.as_mut().0.poll_next_unpin(context)
     }
 }

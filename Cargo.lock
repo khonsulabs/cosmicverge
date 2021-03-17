@@ -880,6 +880,7 @@ dependencies = [
  "num-traits",
  "num_cpus",
  "once_cell",
+ "parking_lot",
  "rand 0.8.3",
  "redis",
  "serde",
