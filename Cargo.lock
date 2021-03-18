@@ -873,7 +873,6 @@ dependencies = [
  "core_affinity",
  "euclid",
  "flume 0.10.2",
- "futures-executor",
  "futures-lite",
  "futures-util",
  "log",

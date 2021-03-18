@@ -33,7 +33,7 @@ pub struct Executor {
 
 impl Executor {
     /// # Notes
-    /// This is used by the global `EXECUTOR` and not intended to be used otherwise.
+    /// This is used by the global [`EXECUTOR`] and not intended to be used otherwise.
     fn init() -> Self {
         // collect `CoreId`s to pin threads
         let cores = match core_affinity::get_core_ids() {
@@ -82,7 +82,7 @@ impl Executor {
     }
 
     /// # Notes
-    /// Will shut down the current `Executor` before starting a new one.
+    /// Will shut down the current [`Executor`] before starting a new one.
     pub fn start<M, R>(main: M) -> R
     where
         M: Future<Output = R> + 'static,
@@ -132,7 +132,7 @@ impl From<Shutdown> for Message {
 }
 
 enum Management {
-    /// Shutdown `Executor`
+    /// Shutdown [`Executor`]
     Shutdown(Shutdown),
     /// Blocking thread finished processing all tasks
     FinishedBlocking,

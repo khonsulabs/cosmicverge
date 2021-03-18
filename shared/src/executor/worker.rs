@@ -45,7 +45,7 @@ impl Worker {
 
 impl Worker {
     /// # Notes
-    /// This is used by the thread-local `WORKER` and not intended to be used otherwise.
+    /// This is used by the thread-local [`WORKER`] and not intended to be used otherwise.
     ///
     /// # Panics
     /// Panics if thread wasn't given a correct name.
@@ -167,7 +167,7 @@ impl Worker {
     }
 
     /// # Notes
-    /// This will block the thread until shut down, you can still `Task::spawn` before calling this.
+    /// This will block the thread until shut down, you can still [`Task::spawn`] before calling this.
     pub(super) fn start() {
         loop {
             match Self::select_task() {
@@ -264,6 +264,8 @@ impl<R> Task<R> {
         Self(Some(task))
     }
 
+    /// # Notes
+    /// Will block the current thread until the given [`Future`] is resolved.
     pub fn block_on<F>(task: F) -> R
     where
         F: Future<Output = R>,
