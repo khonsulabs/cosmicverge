@@ -4,7 +4,7 @@ use futures_util::{
     stream::{Fuse, SelectAll},
     FutureExt, StreamExt,
 };
-use once_cell::unsync::Lazy;
+use once_cell::{sync::OnceCell, unsync::Lazy};
 use std::{
     cell::{Ref, RefCell, RefMut},
     future::Future,
@@ -20,25 +20,28 @@ use std::{
 
 pub struct Worker {
     shutdown: Fuse<BroadcastReceiver<Shutdown>>,
-    local_prio_queue: Fuse<Channel>,
-    local_normal_queue: Fuse<Channel>,
-    schedule: Schedule,
+    runtime: Runtime,
     #[cfg(feature = "tokio-support")]
     tokio: tokio::runtime::Handle,
 }
 
-enum Schedule {
+enum Runtime {
     Async {
         management: Fuse<Channel>,
-        prio: Fuse<Channel>,
-        prio_steal: Fuse<SelectAll<Channel>>,
-        normal: Fuse<Channel>,
-        normal_steal: Fuse<SelectAll<Channel>>,
+        local_prio: Fuse<Channel>,
+        global_prio: Fuse<Channel>,
+        steal_prio: Fuse<SelectAll<Channel>>,
+        local_normal: Fuse<Channel>,
+        global_normal: Fuse<Channel>,
+        steal_normal: Fuse<SelectAll<Channel>>,
     },
     Blocking {
         count: Arc<AtomicUsize>,
+        local_prio: Fuse<Channel>,
+        local_normal: Fuse<Channel>,
         finished: Fuse<Channel>,
     },
+    Alien,
 }
 
 // TODO: fix Clippy
@@ -57,33 +60,36 @@ macro_rules! select_task_internal {
             // TODO: fix in Clippy
             #[allow(clippy::mut_mut, unused_variables)]
             futures_lite::future::block_on(async move {
-                match &mut worker.schedule {
-                    Schedule::Async {
+                match &mut worker.runtime {
+                    Runtime::Async {
                         management,
-                        prio,
-                        prio_steal,
-                        normal,
-                        normal_steal,
+                        local_prio,
+                        global_prio,
+                        steal_prio,
+                        local_normal,
+                        global_normal,
+                        steal_normal,
                     } => {
                         futures_util::select_biased![
                             $(message = worker.$shutdown.select_next_some() => Message::from(message),)?
                             message = management.select_next_some() => message,
-                            message = worker.local_prio_queue.select_next_some() => message,
-                            message = prio.select_next_some() => message,
-                            message = prio_steal.select_next_some() => message,
-                            message = worker.local_normal_queue.select_next_some() => message,
-                            message = normal.select_next_some() => message,
-                            message = normal_steal.select_next_some() => message,
+                            message = local_prio.select_next_some() => message,
+                            message = global_prio.select_next_some() => message,
+                            message = steal_prio.select_next_some() => message,
+                            message = local_normal.select_next_some() => message,
+                            message = global_normal.select_next_some() => message,
+                            message = steal_normal.select_next_some() => message,
                         ]
                     }
-                    Schedule::Blocking { count: _, finished } => {
+                    Runtime::Blocking { local_prio, local_normal, finished, .. } => {
                         futures_util::select_biased![
                             $(message = worker.$shutdown.select_next_some() => Message::from(message),)?
-                            message = worker.local_prio_queue.select_next_some() => message,
-                            message = worker.local_normal_queue.select_next_some() => message,
+                            message = local_prio.select_next_some() => message,
+                            message = local_normal.select_next_some() => message,
                             $(message = finished.$finished() => Message::from(message),)?
                         ]
                     }
+                    Runtime::Alien { .. } => unreachable!("`Worker` started in an alien runtime")
                 }
             })
         })
@@ -106,60 +112,22 @@ macro_rules! select_task_nested {
 impl Worker {
     /// # Notes
     /// This is used by the thread-local [`WORKER`] and not intended to be used otherwise.
-    ///
-    /// # Panics
-    /// Panics if thread wasn't given a correct name.
     fn init() -> RefCell<Self> {
-        // parse thread name to determine schedule
-        let index = match thread::current().name().expect("no thread name set") {
-            "main" => Some(0),
-            "blocking" => None,
+        // parse thread name to determine `Runtime`
+        let runtime = match thread::current().name().expect("no thread name set") {
+            "main" => Runtime::init_async(0),
+            "blocking" => Runtime::init_blocking(),
             index => {
                 if let Ok(index) = index.parse() {
-                    Some(index)
+                    Runtime::init_async(index)
                 } else {
-                    panic!("thread name \"{}\", couldn't be parsed", index)
+                    Runtime::Alien
                 }
             }
         };
 
-        // pin thread to a physical CPU core
-        if let Some(index) = index {
-            if let Some(core_id) = EXECUTOR.cores.get(index).expect("no core found") {
-                core_affinity::set_for_current(*core_id);
-            }
-        }
-
         // shutdown queue
         let shutdown = EXECUTOR.shutdown.subscribe().fuse();
-
-        // build local queues
-        let local_prio_queue;
-        let local_normal_queue;
-
-        // async workers get their local queues from the executor
-        if let Some(index) = index {
-            local_prio_queue = EXECUTOR
-                .local_prio_queues
-                .get(index)
-                .expect("no local priority queue found")
-                .clone()
-                .fuse();
-            local_normal_queue = EXECUTOR
-                .local_normal_queues
-                .get(index)
-                .expect("no local normal queue found")
-                .clone()
-                .fuse();
-        }
-        // blocking workers make their own local queues
-        else {
-            local_prio_queue = Channel::new().fuse();
-            local_normal_queue = Channel::new().fuse();
-        }
-
-        // build other queues
-        let schedule = Self::init_schedule(index);
 
         // add tokio support
         #[cfg(feature = "tokio-support")]
@@ -168,69 +136,17 @@ impl Worker {
         // build `Worker`
         RefCell::new(Self {
             shutdown,
-            local_prio_queue,
-            local_normal_queue,
-            schedule,
+            runtime,
             #[cfg(feature = "tokio-support")]
             tokio,
         })
     }
 
-    fn init_schedule(index: Option<usize>) -> Schedule {
-        if let Some(index) = index {
-            // get management queue for this thread
-            let management = EXECUTOR
-                .management
-                .get(index)
-                .expect("no management queue found")
-                .clone()
-                .fuse();
-
-            // get priority queues to steal from
-            let mut prios = EXECUTOR.global_prio_queues.clone();
-            // split off own priority queue
-            let prio = prios
-                .splice(index..=index, iter::empty())
-                .next()
-                .expect("no priority queue found")
-                .fuse();
-            // add priority injector queue
-            let mut prio_steal = SelectAll::from_iter(prios);
-            prio_steal.push(EXECUTOR.global_prio_injector.clone());
-            let prio_steal = prio_steal.fuse();
-
-            // get normal queues to steal from
-            let mut normals = EXECUTOR.global_normal_queues.clone();
-            // split off own normal queue
-            let normal = normals
-                .splice(index..=index, iter::empty())
-                .next()
-                .expect("no normal queue found")
-                .fuse();
-
-            // add normal injector queue
-            let mut normal_steal = SelectAll::from_iter(normals);
-            normal_steal.push(EXECUTOR.global_normal_injector.clone());
-            let normal_steal = normal_steal.fuse();
-
-            // build `Queues`
-            Schedule::Async {
-                management,
-                prio,
-                prio_steal,
-                normal,
-                normal_steal,
-            }
-        } else {
-            let count = Arc::default();
-            let finished = Channel::new().fuse();
-
-            Schedule::Blocking { count, finished }
-        }
-    }
-
     /// # Notes
     /// This will block the thread until shut down, you can still call [`Task::spawn`] before calling this.
+    ///
+    /// # Panics
+    /// Panics if started in an alien thread not spawned by the [`Executor`].
     pub(super) fn start() {
         loop {
             match select_task!() {
@@ -255,22 +171,103 @@ impl Worker {
     }
 }
 
+impl Runtime {
+    fn init_async(index: usize) -> Self {
+        // pin thread to a physical CPU core
+        if let Some(core_id) = EXECUTOR.cores.get(index).expect("no core found") {
+            core_affinity::set_for_current(*core_id);
+        }
+
+        // get local queues forr this thread
+        let local_prio = EXECUTOR
+            .local_prio_queues
+            .get(index)
+            .expect("no local priority queue found")
+            .clone()
+            .fuse();
+        let local_normal = EXECUTOR
+            .local_normal_queues
+            .get(index)
+            .expect("no local normal queue found")
+            .clone()
+            .fuse();
+
+        // get management queue for this thread
+        let management = EXECUTOR
+            .management
+            .get(index)
+            .expect("no management queue found")
+            .clone()
+            .fuse();
+
+        // get priority queues to steal from
+        let mut global_prios = EXECUTOR.global_prio_queues.clone();
+        // split off own priority queue
+        let global_prio = global_prios
+            .splice(index..=index, iter::empty())
+            .next()
+            .expect("no priority queue found")
+            .fuse();
+        // add priority injector queue
+        let mut steal_prio = SelectAll::from_iter(global_prios);
+        steal_prio.push(EXECUTOR.global_prio_injector.clone());
+        let steal_prio = steal_prio.fuse();
+
+        // get normal queues to steal from
+        let mut global_normals = EXECUTOR.global_normal_queues.clone();
+        // split off own normal queue
+        let global_normal = global_normals
+            .splice(index..=index, iter::empty())
+            .next()
+            .expect("no normal queue found")
+            .fuse();
+        // add normal injector queue
+        let mut steal_normal = SelectAll::from_iter(global_normals);
+        steal_normal.push(EXECUTOR.global_normal_injector.clone());
+        let steal_normal = steal_normal.fuse();
+
+        // build `Queues`
+        Self::Async {
+            management,
+            local_prio,
+            global_prio,
+            steal_prio,
+            local_normal,
+            global_normal,
+            steal_normal,
+        }
+    }
+
+    fn init_blocking() -> Self {
+        let count = Arc::default();
+        let local_prio = Channel::new().fuse();
+        let local_normal = Channel::new().fuse();
+        let finished = Channel::new().fuse();
+
+        Self::Blocking {
+            count,
+            local_prio,
+            local_normal,
+            finished,
+        }
+    }
+}
+
 impl<R> Task<R> {
     fn spawn_internal<F, Q>(task: F, queue: Q) -> Self
     where
         F: Future<Output = R> + Send + 'static,
         R: Send,
-        Q: FnOnce(Ref<'_, Worker>) -> Channel,
+        Q: Fn(&Worker) -> &Channel + Send + Sync + 'static,
     {
         #[cfg(feature = "tokio-support")]
         let task = tokio_util::context::TokioContext::new(
             task,
             Worker::with(|worker| worker.tokio.clone()),
         );
-        // we can't try to access the `Channel` from inside the `schedule` because `Futures` might move between threads
-        let queue = Worker::with(queue);
-        let (runnable, task) =
-            async_task::spawn(task, move |runnable| queue.send(Message::Task(runnable)));
+        let (runnable, task) = async_task::spawn(task, move |runnable| {
+            Worker::with(|worker| Ref::map(worker, &queue).send(Message::Task(runnable)))
+        });
         runnable.schedule();
         Self(Some(task))
     }
@@ -321,7 +318,10 @@ impl<R> Task<R> {
 
         // if this is a blocking worker, increase the task count
         let count = Worker::with(|worker| {
-            if let Schedule::Blocking { count, finished } = &worker.schedule {
+            if let Runtime::Blocking {
+                count, finished, ..
+            } = &worker.runtime
+            {
                 count.fetch_add(1, Ordering::SeqCst);
                 Some((count.clone(), finished.get_ref().clone()))
             } else {
@@ -346,7 +346,14 @@ impl<R> Task<R> {
             Worker::with(|worker| worker.tokio.clone()),
         );
         // we can't try to access the `Channel` from inside the `schedule` because `Futures` might move between threads
-        let queue = Worker::with(move |worker| worker.local_prio_queue.get_ref().clone());
+        let queue = Worker::with(|worker| match &worker.runtime {
+            Runtime::Async { local_prio, .. } | Runtime::Blocking { local_prio, .. } => {
+                local_prio.get_ref().clone()
+            }
+            Runtime::Alien { .. } => {
+                unreachable!("attempted to `Task::block_on` inside an alien runtime")
+            }
+        });
         let (runnable, task) =
             async_task::spawn_local(task, move |task| queue.send(Message::Task(task)));
         runnable.run();
@@ -387,11 +394,11 @@ impl<R> Task<R> {
         F: Future<Output = R> + Send + 'static,
         R: Send,
     {
-        Self::spawn_internal(task, |worker| match &worker.schedule {
-            Schedule::Async { prio, .. } => prio.get_ref().clone(),
+        Self::spawn_internal(task, |worker| match &worker.runtime {
+            Runtime::Async { global_prio, .. } => global_prio.get_ref(),
             // in a blocking worker we want to send away non-local tasks
             // to shut down as soon as possible
-            Schedule::Blocking { .. } => EXECUTOR.global_prio_injector.clone(),
+            Runtime::Blocking { .. } | Runtime::Alien => &EXECUTOR.global_prio_injector,
         })
     }
 
@@ -399,7 +406,14 @@ impl<R> Task<R> {
     where
         F: Future<Output = R> + 'static,
     {
-        Self::spawn_internal_local(task, |worker| worker.local_prio_queue.get_ref().clone())
+        Self::spawn_internal_local(task, |worker| match &worker.runtime {
+            Runtime::Async { local_prio, .. } | Runtime::Blocking { local_prio, .. } => {
+                local_prio.get_ref().clone()
+            }
+            Runtime::Alien { .. } => {
+                unreachable!("attempted to `Task::spawn_local_prio` inside an alien runtime")
+            }
+        })
     }
 
     pub fn spawn<F>(task: F) -> Self
@@ -407,11 +421,11 @@ impl<R> Task<R> {
         F: Future<Output = R> + Send + 'static,
         R: Send,
     {
-        Self::spawn_internal(task, |worker| match &worker.schedule {
-            Schedule::Async { normal, .. } => normal.get_ref().clone(),
+        Self::spawn_internal(task, |worker| match &worker.runtime {
+            Runtime::Async { global_normal, .. } => global_normal.get_ref(),
             // in a blocking worker we want to send away non-local tasks
             // to shut down as soon as possible
-            Schedule::Blocking { .. } => EXECUTOR.global_normal_injector.clone(),
+            Runtime::Blocking { .. } | Runtime::Alien => &EXECUTOR.global_normal_injector,
         })
     }
 
@@ -419,7 +433,14 @@ impl<R> Task<R> {
     where
         F: Future<Output = R> + 'static,
     {
-        Self::spawn_internal_local(task, |worker| worker.local_normal_queue.get_ref().clone())
+        Self::spawn_internal_local(task, |worker| match &worker.runtime {
+            Runtime::Async { local_normal, .. } | Runtime::Blocking { local_normal, .. } => {
+                local_normal.get_ref().clone()
+            }
+            Runtime::Alien { .. } => {
+                unreachable!("attempted to `Task::spawn_local` inside an alien runtime")
+            }
+        })
     }
 
     pub fn spawn_blocking<F, S>(task: F) -> Self
@@ -433,16 +454,34 @@ impl<R> Task<R> {
             task,
             Worker::with(|worker| worker.tokio.clone()),
         );
-        // we intentionally want to query the `Blocking` `Worker` inside the newly spawned thread for a `Channel`
-        // otherwise we would send back the blocking `Task` to the spawning `Worker`
-        let (runnable, task) = async_task::spawn(task, |task| {
-            Worker::with(move |worker| worker.local_prio_queue.get_ref().send(Message::Task(task)))
-        });
+        // we have to call `spawn` before entering the new thread to return the `Task`
+        // but we want the local queue of the new `Worker`, so we register it when we are inside
+        let queue: Arc<OnceCell<Channel>> = Arc::default();
+        let (runnable, task) = {
+            let queue = Arc::clone(&queue);
+            async_task::spawn(task, move |task| {
+                queue
+                    .get()
+                    .expect("queue for blocking task not set yet")
+                    .send(Message::Task(task))
+            })
+        };
 
         // blocking tasks are spawned in a separate start
         Builder::new()
             .name(String::from("blocking"))
             .spawn(move || {
+                // register the local queue of the new `Worker`
+                queue
+                    .set(Worker::with(|worker| {
+                        if let Runtime::Blocking { local_prio, .. } = &worker.runtime {
+                            local_prio.get_ref().clone()
+                        } else {
+                            unreachable!("`Worker` isn't a blocking one")
+                        }
+                    }))
+                    .map_err(|_| ())
+                    .expect("queue for blocking task already set");
                 // run task inside the new thread instead of the spawning one
                 runnable.run();
                 Worker::start();
