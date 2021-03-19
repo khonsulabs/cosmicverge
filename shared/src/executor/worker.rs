@@ -1,9 +1,8 @@
 use super::{BroadcastReceiver, Channel, Management, Shutdown};
 use super::{Message, Task, EXECUTOR};
-use async_task::Runnable;
 use futures_util::{
     stream::{Fuse, SelectAll},
-    StreamExt,
+    FutureExt, StreamExt,
 };
 use once_cell::unsync::Lazy;
 use std::{
@@ -11,6 +10,11 @@ use std::{
     future::Future,
     iter,
     iter::FromIterator,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+    task::{Context, Poll},
     thread::{self, Builder},
 };
 
@@ -32,7 +36,7 @@ enum Schedule {
         normal_steal: Fuse<SelectAll<Channel>>,
     },
     Blocking {
-        tasks: RefCell<usize>,
+        count: Arc<AtomicUsize>,
         finished: Fuse<Channel>,
     },
 }
@@ -43,6 +47,62 @@ impl Worker {
     thread_local!(static WORKER: Lazy<RefCell<Worker>> = Lazy::new(Worker::init));
 }
 
+macro_rules! select_task_internal {
+    // TODO: fix clippy
+    // passing `Worker` as a macro parameter because `clippy::use_self` was very persistent
+    ($worker:ident$(, $shutdown:ident, $finished:expr)?) => {
+        $worker::with_mut(|mut worker| {
+            let worker = &mut *worker;
+
+            // TODO: fix in Clippy
+            #[allow(clippy::mut_mut, unused_variables)]
+            futures_lite::future::block_on(async move {
+                match &mut worker.schedule {
+                    Schedule::Async {
+                        management,
+                        prio,
+                        prio_steal,
+                        normal,
+                        normal_steal,
+                    } => {
+                        futures_util::select_biased![
+                            $(message = worker.$shutdown.select_next_some() => Message::from(message),)?
+                            message = management.select_next_some() => message,
+                            message = worker.local_prio_queue.select_next_some() => message,
+                            message = prio.select_next_some() => message,
+                            message = prio_steal.select_next_some() => message,
+                            message = worker.local_normal_queue.select_next_some() => message,
+                            message = normal.select_next_some() => message,
+                            message = normal_steal.select_next_some() => message,
+                        ]
+                    }
+                    Schedule::Blocking { count: _, finished } => {
+                        futures_util::select_biased![
+                            $(message = worker.$shutdown.select_next_some() => Message::from(message),)?
+                            message = worker.local_prio_queue.select_next_some() => message,
+                            message = worker.local_normal_queue.select_next_some() => message,
+                            $(message = finished.$finished() => Message::from(message),)?
+                        ]
+                    }
+                }
+            })
+        })
+    }
+}
+
+macro_rules! select_task {
+    () => {
+        // for some reason Rust doesn't wanna accept passing the `Ident` `finished` here
+        select_task_internal!(Self, shutdown, select_next_some)
+    };
+}
+
+macro_rules! select_task_nested {
+    () => {
+        select_task_internal!(Worker)
+    };
+}
+
 impl Worker {
     /// # Notes
     /// This is used by the thread-local [`WORKER`] and not intended to be used otherwise.
@@ -50,6 +110,7 @@ impl Worker {
     /// # Panics
     /// Panics if thread wasn't given a correct name.
     fn init() -> RefCell<Self> {
+        // parse thread name to determine schedule
         let index = match thread::current().name().expect("no thread name set") {
             "main" => Some(0),
             "blocking" => None,
@@ -57,7 +118,7 @@ impl Worker {
                 if let Ok(index) = index.parse() {
                     Some(index)
                 } else {
-                    panic!("thread name couldn't be parsed")
+                    panic!("thread name \"{}\", couldn't be parsed", index)
                 }
             }
         };
@@ -146,6 +207,7 @@ impl Worker {
                 .next()
                 .expect("no normal queue found")
                 .fuse();
+
             // add normal injector queue
             let mut normal_steal = SelectAll::from_iter(normals);
             normal_steal.push(EXECUTOR.global_normal_injector.clone());
@@ -160,17 +222,18 @@ impl Worker {
                 normal_steal,
             }
         } else {
-            let tasks = RefCell::new(0);
+            let count = Arc::default();
             let finished = Channel::new().fuse();
-            Schedule::Blocking { tasks, finished }
+
+            Schedule::Blocking { count, finished }
         }
     }
 
     /// # Notes
-    /// This will block the thread until shut down, you can still [`Task::spawn`] before calling this.
+    /// This will block the thread until shut down, you can still call [`Task::spawn`] before calling this.
     pub(super) fn start() {
         loop {
-            match Self::select_task() {
+            match select_task!() {
                 Message::Task(task) => {
                     task.run();
                 }
@@ -190,68 +253,32 @@ impl Worker {
     fn with_mut<R>(fun: impl Fn(RefMut<'_, Self>) -> R) -> R {
         Self::WORKER.with(|worker| fun(worker.borrow_mut()))
     }
-
-    fn select_task() -> Message {
-        Self::with_mut(|mut worker| {
-            let worker = &mut *worker;
-
-            // TODO: fix in Clippy
-            #[allow(clippy::mut_mut)]
-            futures_lite::future::block_on(async move {
-                match &mut worker.schedule {
-                    Schedule::Async {
-                        management,
-                        prio,
-                        prio_steal,
-                        normal,
-                        normal_steal,
-                    } => {
-                        futures_util::select_biased![
-                            message = worker.shutdown.select_next_some() => Message::from(message),
-                            message = management.select_next_some() => message,
-                            message = worker.local_prio_queue.select_next_some() => message,
-                            message = prio.select_next_some() => message,
-                            message = prio_steal.select_next_some() => message,
-                            message = worker.local_normal_queue.select_next_some() => message,
-                            message = normal.select_next_some() => message,
-                            message = normal_steal.select_next_some() => message,
-                        ]
-                    }
-                    Schedule::Blocking { tasks: _, finished } => {
-                        futures_util::select_biased![
-                            message = worker.shutdown.select_next_some() => Message::from(message),
-                            message = worker.local_prio_queue.select_next_some() => message,
-                            message = worker.local_normal_queue.select_next_some() => message,
-                            message = finished.select_next_some() => message,
-                        ]
-                    }
-                }
-            })
-        })
-    }
 }
 
 impl<R> Task<R> {
-    fn spawn_internal<F, S>(task: F, schedule: S) -> Self
+    fn spawn_internal<F, Q>(task: F, queue: Q) -> Self
     where
         F: Future<Output = R> + Send + 'static,
         R: Send,
-        S: Fn(Runnable) + Send + Sync + 'static,
+        Q: FnOnce(Ref<'_, Worker>) -> Channel,
     {
         #[cfg(feature = "tokio-support")]
         let task = tokio_util::context::TokioContext::new(
             task,
             Worker::with(|worker| worker.tokio.clone()),
         );
-        let (runnable, task) = async_task::spawn(task, schedule);
+        // we can't try to access the `Channel` from inside the `schedule` because `Futures` might move between threads
+        let queue = Worker::with(queue);
+        let (runnable, task) =
+            async_task::spawn(task, move |runnable| queue.send(Message::Task(runnable)));
         runnable.schedule();
         Self(Some(task))
     }
 
-    fn spawn_internal_local<F, S>(task: F, schedule: S) -> Self
+    fn spawn_internal_local<F, Q>(task: F, queue: Q) -> Self
     where
         F: Future<Output = R> + 'static,
-        S: Fn(Runnable) + Send + Sync + 'static,
+        Q: FnOnce(Ref<'_, Worker>) -> Channel,
     {
         let task = Self::spawn_blocking_internal(task);
         #[cfg(feature = "tokio-support")]
@@ -259,18 +286,100 @@ impl<R> Task<R> {
             task,
             Worker::with(|worker| worker.tokio.clone()),
         );
-        let (runnable, task) = async_task::spawn_local(task, schedule);
+        // we can't try to access the `Channel` from inside the `schedule` because `Futures` might move between threads
+        let queue = Worker::with(queue);
+        let (runnable, task) =
+            async_task::spawn_local(task, move |runnable| queue.send(Message::Task(runnable)));
         runnable.schedule();
         Self(Some(task))
     }
 
+    /// This makes sure that a blocking worker keeps tabs on the amount of local tasks it has to process.
+    /// If that count reaches zero it will send a [`FinishedBlocking`](Management::FinishedBlocking) [`Message`].
+    ///
     /// # Notes
-    /// Will block the current thread until the given [`Future`] is resolved.
+    /// Only use this for local tasks.
+    #[allow(clippy::future_not_send)]
+    fn spawn_blocking_internal(task: impl Future<Output = R>) -> impl Future<Output = R> {
+        // build future that has a non-opaque type
+        async fn internal<R>(
+            task: impl Future<Output = R>,
+            count: Option<(Arc<AtomicUsize>, Channel)>,
+        ) -> R {
+            let result = task.await;
+
+            // if this is a blocking worker, subtract task count after we finish a task
+            if let Some((count, finished)) = count {
+                // we substract by one, if the last value was one, then we reached zero
+                if count.fetch_sub(1, Ordering::SeqCst) == 1 {
+                    finished.send(Message::Management(Management::FinishedBlocking))
+                }
+            }
+
+            result
+        }
+
+        // if this is a blocking worker, increase the task count
+        let count = Worker::with(|worker| {
+            if let Schedule::Blocking { count, finished } = &worker.schedule {
+                count.fetch_add(1, Ordering::SeqCst);
+                Some((count.clone(), finished.get_ref().clone()))
+            } else {
+                None
+            }
+        });
+
+        // an `Arc` is passed into the future which uses it to decrease the task count after it's finished
+        // because a future can move to different threads where we loose access to the correct `Worker`
+        internal(task, count)
+    }
+
     pub fn block_on<F>(task: F) -> R
     where
-        F: Future<Output = R>,
+        F: Future<Output = R> + 'static,
+        R: 'static,
     {
-        futures_lite::future::block_on(task)
+        let task = Self::spawn_blocking_internal(task);
+        #[cfg(feature = "tokio-support")]
+        let task = tokio_util::context::TokioContext::new(
+            task,
+            Worker::with(|worker| worker.tokio.clone()),
+        );
+        // we can't try to access the `Channel` from inside the `schedule` because `Futures` might move between threads
+        let queue = Worker::with(move |worker| worker.local_prio_queue.get_ref().clone());
+        let (runnable, task) =
+            async_task::spawn_local(task, move |task| queue.send(Message::Task(task)));
+        runnable.run();
+        let mut task = Self(Some(task));
+
+        // we are not interested in any specific `Waker`, as this is running in a loop anyway
+        // the `async` yielding happens in `select_task_nested`, which is awaiting a `Message` on a `Channel`
+        // `schedule` takes care of sending a message when the `Task` is ready
+        let waker = futures_util::task::noop_waker();
+        let mut context = Context::from_waker(&waker);
+
+        loop {
+            match task.poll_unpin(&mut context) {
+                Poll::Ready(result) => break result,
+                Poll::Pending => {
+                    // we nest `Worker::start` here to simulate `async` yielding inside of a `block_on`
+                    // TODO: encapsulate this back into `Worker::start`
+                    match select_task_nested!() {
+                        Message::Task(task) => {
+                            task.run();
+                        }
+                        // TODO: log management commands
+                        Message::Management(management) => match management {
+                            // TODO: log that worker has successfully shutdown, but not for blocking workers
+                            Management::FinishedBlocking | Management::Shutdown(Shutdown) => {
+                                // `select_task_nested` specifically skips reading from `Channel`s which transmit these `Message`s
+                                unreachable!("received invalid messages in `block_on`")
+                            }
+                        },
+                    }
+                }
+            }
+        }
     }
 
     pub fn spawn_prio<F>(task: F) -> Self
@@ -278,15 +387,11 @@ impl<R> Task<R> {
         F: Future<Output = R> + Send + 'static,
         R: Send,
     {
-        Self::spawn_internal(task, |task| {
-            Worker::with(move |worker| match &worker.schedule {
-                Schedule::Async { prio, .. } => prio.get_ref().send(Message::Task(task)),
-                // in a blocking worker we want to send away non-local tasks
-                // to shut down as soon as possible
-                Schedule::Blocking { .. } => {
-                    EXECUTOR.global_prio_injector.send(Message::Task(task))
-                }
-            })
+        Self::spawn_internal(task, |worker| match &worker.schedule {
+            Schedule::Async { prio, .. } => prio.get_ref().clone(),
+            // in a blocking worker we want to send away non-local tasks
+            // to shut down as soon as possible
+            Schedule::Blocking { .. } => EXECUTOR.global_prio_injector.clone(),
         })
     }
 
@@ -294,9 +399,7 @@ impl<R> Task<R> {
     where
         F: Future<Output = R> + 'static,
     {
-        Self::spawn_internal_local(task, |task| {
-            Worker::with(move |worker| worker.local_prio_queue.get_ref().send(Message::Task(task)))
-        })
+        Self::spawn_internal_local(task, |worker| worker.local_prio_queue.get_ref().clone())
     }
 
     pub fn spawn<F>(task: F) -> Self
@@ -304,15 +407,11 @@ impl<R> Task<R> {
         F: Future<Output = R> + Send + 'static,
         R: Send,
     {
-        Self::spawn_internal(task, |task| {
-            Worker::with(move |worker| match &worker.schedule {
-                Schedule::Async { normal, .. } => normal.get_ref().send(Message::Task(task)),
-                // in a blocking worker we want to send away non-local tasks
-                // to shut down as soon as possible
-                Schedule::Blocking { .. } => {
-                    EXECUTOR.global_normal_injector.send(Message::Task(task))
-                }
-            })
+        Self::spawn_internal(task, |worker| match &worker.schedule {
+            Schedule::Async { normal, .. } => normal.get_ref().clone(),
+            // in a blocking worker we want to send away non-local tasks
+            // to shut down as soon as possible
+            Schedule::Blocking { .. } => EXECUTOR.global_normal_injector.clone(),
         })
     }
 
@@ -320,14 +419,7 @@ impl<R> Task<R> {
     where
         F: Future<Output = R> + 'static,
     {
-        Self::spawn_internal_local(task, |task| {
-            Worker::with(move |worker| {
-                worker
-                    .local_normal_queue
-                    .get_ref()
-                    .send(Message::Task(task))
-            })
-        })
+        Self::spawn_internal_local(task, |worker| worker.local_normal_queue.get_ref().clone())
     }
 
     pub fn spawn_blocking<F, S>(task: F) -> Self
@@ -341,6 +433,8 @@ impl<R> Task<R> {
             task,
             Worker::with(|worker| worker.tokio.clone()),
         );
+        // we intentionally want to query the `Blocking` `Worker` inside the newly spawned thread for a `Channel`
+        // otherwise we would send back the blocking `Task` to the spawning `Worker`
         let (runnable, task) = async_task::spawn(task, |task| {
             Worker::with(move |worker| worker.local_prio_queue.get_ref().send(Message::Task(task)))
         });
@@ -349,45 +443,12 @@ impl<R> Task<R> {
         Builder::new()
             .name(String::from("blocking"))
             .spawn(move || {
-                // schedule task inside the new thread instead of the spawning one
-                runnable.schedule();
+                // run task inside the new thread instead of the spawning one
+                runnable.run();
                 Worker::start();
             })
             .expect("failed to spawn thread");
 
         Self(Some(task))
-    }
-
-    /// This makes sure that a blocking worker keeps tabs on the amount of local tasks it has to process.
-    /// If that count reaches zero it will send a [`FinishedBlocking`](Management::FinishedBlocking) message.
-    ///
-    /// # Notes
-    /// Only use this in a local task.
-    #[allow(clippy::future_not_send)]
-    async fn spawn_blocking_internal(task: impl Future<Output = R>) -> R {
-        // increase the count by one
-        Worker::with(|worker| {
-            if let Schedule::Blocking { tasks, .. } = &worker.schedule {
-                *tasks.borrow_mut() += 1;
-            }
-        });
-
-        let result = task.await;
-
-        // decrease count after task is done
-        Worker::with(|worker| {
-            if let Schedule::Blocking { tasks, finished } = &worker.schedule {
-                *tasks.borrow_mut() -= 1;
-
-                // if no local tasks are left, tell thread to shut down
-                if *tasks.borrow() == 0 {
-                    finished
-                        .get_ref()
-                        .send(Message::Management(Management::FinishedBlocking))
-                }
-            }
-        });
-
-        result
     }
 }
