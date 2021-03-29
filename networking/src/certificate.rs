@@ -1,5 +1,5 @@
 /// A public Certificate. You can distribute it freely to peers.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Certificate(pub(crate) Vec<u8>);
 
 /// A private Key.

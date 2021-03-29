@@ -819,12 +819,10 @@ dependencies = [
 name = "cosmicverge-networking"
 version = "0.0.1"
 dependencies = [
- "async-trait",
+ "anyhow",
  "flume 0.10.2",
- "futures-executor",
  "futures-util",
  "quinn",
- "quinn-proto",
  "rcgen",
  "rustls",
  "thiserror",

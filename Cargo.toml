@@ -1,5 +1,6 @@
 [workspace]
 members = ["server", "database", "migrations", "client", "web", "shared", "networking"]
+resolver = "2"
 
 [profile.release]
 lto = true

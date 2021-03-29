@@ -58,4 +58,4 @@ mod quic;
 pub use certificate::generate_self_signed;
 pub use certificate::{Certificate, PrivateKey};
 pub use error::{Error, Result};
-pub use quic::Server;
+pub use quic::{Client, Connection, Server};

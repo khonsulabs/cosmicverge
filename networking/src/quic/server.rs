@@ -1,44 +1,63 @@
-use std::{net::SocketAddr, sync::Arc};
-
-use flume::{Receiver, Sender};
-use futures_util::StreamExt;
-use quinn::{
-    CertificateChain, Endpoint, Incoming, IncomingBiStreams, NewConnection, ServerConfigBuilder,
-    TransportConfig,
+use std::{
+    fmt::{self, Debug, Formatter},
+    net::ToSocketAddrs,
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll},
 };
+
+use flume::r#async::RecvStream;
+use futures_util::{stream::Stream, StreamExt};
+use quinn::{CertificateChain, Endpoint, Incoming, NewConnection, ServerConfigBuilder};
 use tokio::task::JoinHandle;
 
 use crate::{
     certificate::{Certificate, PrivateKey},
-    Error, Result,
+    Connection, Error, Result,
 };
 
 /// TODO: docs
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Server {
     /// Initiate new connections or close socket.
     endpoint: Endpoint,
     /// Receiving new incoming connections.
-    receiver: Receiver<Connection>,
+    receiver: RecvStream<'static, Connection>,
     /// Task handle that handles new incoming connections.
     task: Arc<JoinHandle<Result<()>>>,
+}
+
+impl Debug for Server {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Server")
+            .field("endpoint", &self.endpoint)
+            .field("receiver", &String::from("RecvStream<Connection>"))
+            .field("task", &self.task)
+            .finish()
+    }
 }
 
 impl Server {
     /// TODO: improve docs
     ///
     /// # Errors
-    /// - [`Error::Certificate`] if the certificate couldn't be parsed
-    /// - [`Error::PrivateKey`] if the private key couldn't be parsed
+    /// - [`Error::ParseAddress`] if the `address` couldn't be parsed
+    /// - [`Error::MultipleAddresses`] if the `address` contained more then one address
+    /// - [`Error::Certificate`] if the [`Certificate`] couldn't be parsed
+    /// - [`Error::PrivateKey`] if the [`PrivateKey`] couldn't be parsed
+    /// - [`Error::InvalidKeyPair`] if failed to pair the given [`Certificate`] and [`PrivateKey`]
+    /// - [`Error::BindSocket`] if the socket couldn't be bound to the given `address`
     #[allow(clippy::unwrap_in_result)]
-    pub fn new(
-        address: impl Into<SocketAddr>,
-        protocol: &str,
+    pub fn new<A: ToSocketAddrs>(
+        address: A,
+        //protocol: &str,
         certificate: &Certificate,
         private_key: &PrivateKey,
         //client_certs: impl ClientCerts + 'static,
         //filter: impl Filter + 'static,
     ) -> Result<Self> {
+        let address = super::parse_socket(address)?;
+
         let certificate =
             quinn::Certificate::from_der(&certificate.0).map_err(Error::Certificate)?;
         let private_key = quinn::PrivateKey::from_der(&private_key.0).map_err(Error::PrivateKey)?;
@@ -48,33 +67,10 @@ impl Server {
         let _ = cfg_builder
             .certificate(chain, private_key)
             .map_err(Error::InvalidKeyPair)?
-            .protocols(&[protocol.as_bytes()]);
+            /*.protocols(&[protocol.as_bytes()])*/;
         let mut cfg = cfg_builder.build();
 
-        let mut transport = TransportConfig::default();
-        #[allow(clippy::expect_used)]
-        let _ = transport
-            // TODO: research if this is necessary, it improves privacy, but may hurt network providers?
-            .allow_spin(false)
-            // TODO: we are assuming that credit handling per connection will prevent crypto buffer from going out of bounds
-            .crypto_buffer_size(usize::MAX)
-            // TODO: handle keep-alive and time-out
-            // transport.keep_alive_interval(); // heartbeat to prevent time-out, only needs to be sent from one side
-            // transport.max_idle_timeout(); // time before being dropped
-            // this API has no support for sending unordered data
-            .datagram_receive_buffer_size(None)
-            // TODO: support more then a single bidi-stream per connection
-            .max_concurrent_bidi_streams(1)
-            .expect("can't be bigger then `VarInt`")
-            // TODO: handle uni streams
-            .max_concurrent_uni_streams(0)
-            .expect("can't be bigger then `VarInt`");
-        // TODO: handle credits
-        // transport.stream_receive_window(); // total bytes receive buffer for a stream: (maximum bytes allowed per stream) * (expected latency)
-        // transport.receive_window(); // total bytes receive buffer for all streams of a single peer: (maximum number of streams) * (stream receive window)
-        // transport.send_window(); // total bytes send buffer for all streams of a single peer
-        // TODO: handle congestion, needs research
-        // transport.congestion_controller_factory();
+        let transport = super::transport();
         cfg.transport = Arc::new(transport);
 
         // TODO: finish client certification
@@ -83,11 +79,10 @@ impl Server {
 
         let mut endpoint_builder = Endpoint::builder();
         let _ = endpoint_builder.listen(cfg);
-        let (endpoint, incoming) = endpoint_builder
-            .bind(&address.into())
-            .map_err(Error::BindSocket)?;
+        let (endpoint, incoming) = endpoint_builder.bind(&address).map_err(Error::BindSocket)?;
 
         let (sender, receiver) = flume::unbounded();
+        let receiver = receiver.into_stream();
 
         // TODO: configurable executor
         let task = Arc::new(tokio::spawn(Self::incoming(
@@ -105,11 +100,11 @@ impl Server {
     /// TODO: improve docs
     async fn incoming(
         mut incoming: Incoming,
-        sender: Sender<Connection>, /*, filter: impl Filter + 'static */
+        sender: flume::Sender<Connection>, /*, filter: impl Filter + 'static */
     ) -> Result<()> {
         let mut tasks = Vec::new();
 
-        while let Some(incoming) = incoming.next().await {
+        while let Some(connecting) = incoming.next().await {
             //let filter = filter.clone();
             let sender = sender.clone();
 
@@ -131,7 +126,7 @@ impl Server {
                     connection,
                     bi_streams,
                     ..
-                }) = incoming.await
+                }) = connecting.await
                 {
                     let connection = Connection {
                         connection,
@@ -154,9 +149,12 @@ impl Server {
     }
 }
 
-pub struct Connection {
-    connection: quinn::Connection,
-    bi_streams: IncomingBiStreams,
+impl Stream for Server {
+    type Item = Connection;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.receiver.poll_next_unpin(cx)
+    }
 }
 
 /*#[async_trait]
