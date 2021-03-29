@@ -1,6 +1,6 @@
 use std::{
     fmt::{self, Debug, Formatter},
-    net::ToSocketAddrs,
+    net::{SocketAddr, ToSocketAddrs},
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
@@ -102,50 +102,51 @@ impl Server {
         mut incoming: Incoming,
         sender: flume::Sender<Connection>, /*, filter: impl Filter + 'static */
     ) -> Result<()> {
-        let mut tasks = Vec::new();
-
         while let Some(connecting) = incoming.next().await {
             //let filter = filter.clone();
             let sender = sender.clone();
 
-            // TODO: configurable executor
-            tasks.push(tokio::spawn(async move {
-                /*let address = incoming.remote_address();
-                let handshake = incoming
-                    .handshake_data()
-                    .await
-                    .map(Handshake::from)
-                    .map_err(Error::from);
+            /*let address = incoming.remote_address();
+            let handshake = incoming
+                .handshake_data()
+                .await
+                .map(Handshake::from)
+                .map_err(Error::from);
 
-                if filter
-                    .filter(address, handshake)
-                    .await
-                    .map_err(|e| e.downcast::<Error>().unwrap_or_else(Error::from))?
-                {*/
-                if let Ok(NewConnection {
+            if filter
+                .filter(address, handshake)
+                .await
+                .map_err(|e| e.downcast::<Error>().unwrap_or_else(Error::from))?
+            {*/
+            if let Ok(NewConnection {
+                connection,
+                bi_streams,
+                ..
+            }) = connecting.await
+            {
+                let connection = Connection {
                     connection,
                     bi_streams,
-                    ..
-                }) = connecting.await
-                {
-                    let connection = Connection {
-                        connection,
-                        bi_streams,
-                    };
-                    #[allow(clippy::expect_used)]
-                    sender
-                        .send(connection)
-                        .expect("no receiver for new incoming connections");
-                } else {
-                    // TODO: add logging point
-                }
-                //}
-
-                Result::<(), Error>::Ok(())
-            }));
+                };
+                #[allow(clippy::expect_used)]
+                sender
+                    .send(connection)
+                    .expect("no receiver for new incoming connections");
+            } else {
+                // TODO: add logging point
+            }
+            //}
         }
 
         Ok(())
+    }
+
+    /// TODO: improve docs
+    ///
+    /// # Errors
+    /// [`Error::LocalAddress`] if aquiring the local address failed.
+    pub fn local_address(&self) -> Result<SocketAddr> {
+        self.endpoint.local_addr().map_err(Error::LocalAddress)
     }
 }
 

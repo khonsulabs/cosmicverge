@@ -25,6 +25,16 @@ impl Connection {
     pub fn remote_address(&self) -> SocketAddr {
         self.connection.remote_address()
     }
+
+    /// TODO: docs
+    ///
+    /// # Errors
+    /// [`Error::OpenStream`] if opening a stream failed.
+    pub async fn open_stream(&self) -> Result<(Sender, Receiver)> {
+        let (sender, receiver) = self.connection.open_bi().await.map_err(Error::OpenStream)?;
+
+        Ok((Sender(sender), Receiver(receiver)))
+    }
 }
 
 impl Stream for Connection {

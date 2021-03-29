@@ -36,7 +36,6 @@
     clippy::future_not_send,
     clippy::implicit_return,
     clippy::missing_inline_in_public_items,
-    clippy::multiple_inherent_impl,
     clippy::non_ascii_literal,
     clippy::pattern_type_mismatch,
     clippy::redundant_pub_crate,
