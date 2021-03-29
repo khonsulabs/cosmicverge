@@ -9,6 +9,10 @@ codegen-units = 1
 [profile.release.package.web]
 opt-level = "s"
 
+[profile.bench]
+lto = true
+codegen-units = 1
+
 [patch.crates-io]
 # For tokio 1.0 compatibility
 # basws-server = { path = "../basws/basws-server" }

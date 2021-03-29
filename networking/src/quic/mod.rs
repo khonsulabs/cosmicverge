@@ -9,13 +9,14 @@ use std::net::{SocketAddr, ToSocketAddrs};
 #[allow(unreachable_pub)]
 pub use client::Client;
 #[allow(unreachable_pub)]
-pub use connection::Connection;
+pub use connection::{Connection, Receiver, Sender};
 #[allow(unreachable_pub)]
 pub use server::Server;
 use transport::transport;
 
 use crate::{Error, Result};
 
+/// TODO: docs
 fn parse_socket(address: impl ToSocketAddrs) -> Result<SocketAddr> {
     let mut addresses = address.to_socket_addrs().map_err(Error::ParseAddress)?;
     #[allow(clippy::expect_used)]

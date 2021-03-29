@@ -7,8 +7,6 @@ pub(super) fn transport() -> TransportConfig {
     let _ = transport
         // TODO: research if this is necessary, it improves privacy, but may hurt network providers?
         .allow_spin(false)
-        // TODO: we are assuming that credit handling per connection will prevent crypto buffer from going out of bounds
-        .crypto_buffer_size(usize::MAX)
         // TODO: handle keep-alive and time-out
         // transport.keep_alive_interval(); // heartbeat to prevent time-out, only needs to be sent from one side
         // transport.max_idle_timeout(); // time before being dropped

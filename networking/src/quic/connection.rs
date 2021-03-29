@@ -20,13 +20,14 @@ pub struct Connection {
 
 impl Connection {
     /// The peer's address.
-    /// Clients may change addresses at will, e.g. when switching to a cellular internet connection.
+    /// Clients may change addresses at will, e.g. when switching to a cellular
+    /// internet connection.
     #[must_use]
     pub fn remote_address(&self) -> SocketAddr {
         self.connection.remote_address()
     }
 
-    /// TODO: docs
+    /// TODO: improve docs
     ///
     /// # Errors
     /// [`Error::OpenStream`] if opening a stream failed.
@@ -51,6 +52,16 @@ impl Stream for Connection {
 /// TODO: docs
 #[derive(Debug)]
 pub struct Sender(SendStream);
+
+impl Sender {
+    /// TODO: improve docs
+    ///
+    /// # Errors
+    /// [`Error::Finish`] if the stream failed finishing.
+    pub async fn finish(&mut self) -> Result<()> {
+        self.0.finish().await.map_err(Error::Finish)
+    }
+}
 
 /// TODO: docs
 #[derive(Debug)]

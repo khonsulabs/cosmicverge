@@ -42,19 +42,22 @@ impl Server {
     ///
     /// # Errors
     /// - [`Error::ParseAddress`] if the `address` couldn't be parsed
-    /// - [`Error::MultipleAddresses`] if the `address` contained more then one address
+    /// - [`Error::MultipleAddresses`] if the `address` contained more then one
+    ///   address
     /// - [`Error::Certificate`] if the [`Certificate`] couldn't be parsed
     /// - [`Error::PrivateKey`] if the [`PrivateKey`] couldn't be parsed
-    /// - [`Error::InvalidKeyPair`] if failed to pair the given [`Certificate`] and [`PrivateKey`]
-    /// - [`Error::BindSocket`] if the socket couldn't be bound to the given `address`
+    /// - [`Error::InvalidKeyPair`] if failed to pair the given [`Certificate`]
+    ///   and [`PrivateKey`]
+    /// - [`Error::BindSocket`] if the socket couldn't be bound to the given
+    ///   `address`
     #[allow(clippy::unwrap_in_result)]
     pub fn new<A: ToSocketAddrs>(
         address: A,
         //protocol: &str,
         certificate: &Certificate,
         private_key: &PrivateKey,
-        //client_certs: impl ClientCerts + 'static,
-        //filter: impl Filter + 'static,
+        /*client_certs: impl ClientCerts + 'static,
+         *filter: impl Filter + 'static, */
     ) -> Result<Self> {
         let address = super::parse_socket(address)?;
 
@@ -75,7 +78,8 @@ impl Server {
 
         // TODO: finish client certification
         // let tls_cfg = Arc::get_mut(&mut cfg.crypto).unwrap();
-        // tls_cfg.set_client_certificate_verifier(Arc::new(ClientCertsWrapper(client_certs)));
+        // tls_cfg.set_client_certificate_verifier(Arc::
+        // new(ClientCertsWrapper(client_certs)));
 
         let mut endpoint_builder = Endpoint::builder();
         let _ = endpoint_builder.listen(cfg);
@@ -86,7 +90,7 @@ impl Server {
 
         // TODO: configurable executor
         let task = Arc::new(tokio::spawn(Self::incoming(
-            incoming, sender, /*, filter*/
+            incoming, sender, /* , filter */
         )));
 
         Ok(Self {
@@ -100,7 +104,7 @@ impl Server {
     /// TODO: improve docs
     async fn incoming(
         mut incoming: Incoming,
-        sender: flume::Sender<Connection>, /*, filter: impl Filter + 'static */
+        sender: flume::Sender<Connection>, /* , filter: impl Filter + 'static */
     ) -> Result<()> {
         while let Some(connecting) = incoming.next().await {
             //let filter = filter.clone();
@@ -147,6 +151,13 @@ impl Server {
     /// [`Error::LocalAddress`] if aquiring the local address failed.
     pub fn local_address(&self) -> Result<SocketAddr> {
         self.endpoint.local_addr().map_err(Error::LocalAddress)
+    }
+
+    /// Wait for all [`Connection`]s to the [`Server`] to be cleanly shut down.
+    /// Does not close existing connections or cause incoming connections to be
+    /// rejected.
+    pub async fn wait_idle(&self) {
+        self.endpoint.wait_idle().await;
     }
 }
 

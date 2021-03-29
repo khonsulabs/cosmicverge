@@ -1,4 +1,7 @@
-use std::{net::ToSocketAddrs, sync::Arc};
+use std::{
+    net::{SocketAddr, ToSocketAddrs},
+    sync::Arc,
+};
 
 use quinn::{ClientConfigBuilder, Endpoint, NewConnection};
 
@@ -16,11 +19,13 @@ impl Client {
     ///
     /// # Errors
     /// - [`Error::ParseAddress`] if the `address` couldn't be parsed
-    /// - [`Error::MultipleAddresses`] if the `address` contained more then one address
+    /// - [`Error::MultipleAddresses`] if the `address` contained more then one
+    ///   address
     /// - [`Error::Certificate`] if the [`Certificate`] couldn't be parsed
-    /// - [`Error::InvalidCertificate`] if the [`Certificate`] couldn't be added as a certificate authority
-    /// - [`Error::BindSocket`] if the socket couldn't be bound to the given `address`
-    #[allow(clippy::unwrap_in_result)]
+    /// - [`Error::InvalidCertificate`] if the [`Certificate`] couldn't be added
+    ///   as a certificate authority
+    /// - [`Error::BindSocket`] if the socket couldn't be bound to the given
+    ///   `address`
     pub fn new<A: ToSocketAddrs>(address: A, certificate: &Certificate) -> Result<Self> {
         let address = super::parse_socket(address)?;
 
@@ -47,8 +52,10 @@ impl Client {
     ///
     /// # Errors
     /// - [`Error::ParseAddress`] if the `address` couldn't be parsed
-    /// - [`Error::MultipleAddresses`] if the `address` contained more then one address
-    /// - [`Error::Connect`] if no connection to the given `address` could be established
+    /// - [`Error::MultipleAddresses`] if the `address` contained more then one
+    ///   address
+    /// - [`Error::Connect`] if no connection to the given `address` could be
+    ///   established
     /// - [`Error::Connecting`] if the connection to the given `address` failed
     pub async fn connect<A: ToSocketAddrs>(
         &self,
@@ -72,5 +79,20 @@ impl Client {
             connection,
             bi_streams,
         })
+    }
+
+    /// TODO: improve docs
+    ///
+    /// # Errors
+    /// [`Error::LocalAddress`] if aquiring the local address failed.
+    pub fn local_address(&self) -> Result<SocketAddr> {
+        self.endpoint.local_addr().map_err(Error::LocalAddress)
+    }
+
+    /// Wait for all [`Connection`]s to the [`Client`] to be cleanly shut down.
+    /// Does not close existing connections or cause incoming connections to be
+    /// rejected.
+    pub async fn wait_idle(&self) {
+        self.endpoint.wait_idle().await;
     }
 }
