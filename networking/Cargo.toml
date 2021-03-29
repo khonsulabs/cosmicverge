@@ -1,0 +1,30 @@
+[package]
+name = "cosmicverge-networking"
+version = "0.0.1"
+authors = ["Jonathan Johnson <jon@khonsulabs.com>"]
+description = "Networking code shared between Cosmicverge"
+license = "MIT"
+repository = "https://github.com/khonsulabs/cosmicverge"
+
+publish = false
+edition = "2018"
+keywords = ["sandbox", "game"]
+categories = ["games"]
+readme = "../README.md"
+
+[features]
+default = []
+certificate = ["rcgen"]
+
+[dependencies]
+async-trait = "0.1"
+flume = "0.10"
+futures-executor = "0.3"
+futures-util = "0.3"
+quinn = { version = "0.7", default-features = false, features = ["tls-rustls"] }
+quinn-proto = "0.7"
+rcgen = { version = "0.8", default-features = false, optional = true }
+rustls = { version = "0.19", features = ["dangerous_configuration"] }
+thiserror = "1"
+tokio = { version = "1", features = ["rt-multi-thread"] }
+webpki = "0.21"
