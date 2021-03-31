@@ -48,13 +48,12 @@
 
 //! TODO: top-level documentation
 
-mod builder;
 mod certificate;
-mod error;
+pub mod error;
 mod quic;
 
 #[cfg(feature = "certificate")]
 pub use certificate::generate_self_signed;
 pub use certificate::{Certificate, PrivateKey};
 pub use error::{Error, Result};
-pub use quic::{Client, Connection, Server, Sender, Receiver};
+pub use quic::{Connection, Endpoint, Incoming, Receiver, Sender};

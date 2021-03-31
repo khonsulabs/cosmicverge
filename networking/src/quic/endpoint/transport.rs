@@ -1,6 +1,9 @@
+//! Helps configuring [`TransportConfig`] to create an
+//! [`Endpoint`](crate::Endpoint).
+
 use quinn::TransportConfig;
 
-/// TODO: docs
+/// Builds [`TransportConfig`] for the [`Endpoint`](crate::Endpoint).
 pub(super) fn transport() -> TransportConfig {
     let mut transport = TransportConfig::default();
     #[allow(clippy::expect_used)]
@@ -19,9 +22,10 @@ pub(super) fn transport() -> TransportConfig {
         .max_concurrent_uni_streams(0)
         .expect("can't be bigger then `VarInt`")
         // TODO: handle credits
-        // .stream_receive_window() // total bytes receive buffer for a stream: (maximum bytes allowed per stream) * (expected latency)
-        // .receive_window() // total bytes receive buffer for all streams of a single peer: (maximum number of streams) * (stream receive window)
-        // .send_window() // total bytes send buffer for all streams of a single peer
+        // .crypto_buffer_size() // bytes receive crypto buffer
+        // .stream_receive_window() // bytes receive buffer for a stream: (maximum bytes allowed per stream) * (expected latency)
+        // .receive_window() // bytes receive buffer for all streams of a single peer: (maximum number of streams) * (stream receive window)
+        // .send_window() // bytes send buffer for all streams of a single peer
         // TODO: handle congestion, needs research
         // .congestion_controller_factory()
         ;

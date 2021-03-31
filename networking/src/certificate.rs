@@ -1,3 +1,5 @@
+//! Creating [`Certificate`]s.
+
 /// A public Certificate. You can distribute it freely to peers.
 #[derive(Clone, Debug)]
 pub struct Certificate(pub(crate) Vec<u8>);
