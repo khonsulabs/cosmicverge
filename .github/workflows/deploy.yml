@@ -72,4 +72,4 @@ jobs:
       - name: Deploy
         run: |
           rsync -avz -e "ssh -i ~/.ssh/deploy_key" release/ cosmicverge@cosmicverge.com:cosmicverge/
-          ssh -i ~/.ssh/deploy_key cosmicverge@cosmicverge.com sudo /usr/bin/systemctl restart cosmicverge.service
+          ssh -i ~/.ssh/deploy_key cosmicverge@cosmicverge.com sudo /bin/systemctl restart cosmicverge.service

@@ -48,6 +48,14 @@ impl Backend for AxumBackend {
     type ClientData = ();
 }
 
+#[cfg(debug_assertions)]
+const HTTP_LISTEN: &str = ":::8080";
+
+#[cfg(not(debug_assertions))]
+const HTTP_LISTEN: &str = ":::80";
+#[cfg(not(debug_assertions))]
+const HTTPS_LISTEN: &str = ":::443";
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     env_logger::init();
@@ -66,11 +74,11 @@ async fn main() -> anyhow::Result<()> {
     .await?;
 
     let task_server = server.clone();
-    tokio::spawn(async move { task_server.listen_for_http_on("localhost:8080").await });
+    tokio::spawn(async move { task_server.listen_for_http_on(HTTP_LISTEN).await });
     #[cfg(not(debug_assertions))]
     {
         let task_server = server.clone();
-        tokio::spawn(async move { task_server.listen_for_https_on("localhost:8081").await });
+        tokio::spawn(async move { task_server.listen_for_https_on(HTTPS_LISTEN).await });
     }
 
     server.listen_for_shutdown().await?;
