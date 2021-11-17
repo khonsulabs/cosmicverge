@@ -34,7 +34,7 @@ jobs:
 
       - name: Build 
         run: |
-          cargo build --bin cosmciverge --release
+          cargo build --bin cosmicverge --release
 
       - uses: actions/upload-artifact@v2
         with:
