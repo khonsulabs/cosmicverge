@@ -1,0 +1,9 @@
+target/
+shared/Cargo.lock
+.DS_Store
+.idea
+.env
+.vscode
+.tasks
+*.bonsaidb
+

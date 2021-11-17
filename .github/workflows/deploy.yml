@@ -1,0 +1,75 @@
+name: Deploy
+
+on: [push]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Install Rust
+        uses: hecrj/setup-rust-action@v1
+
+      - name: Build tests
+        run: |
+          cargo test --all-features --no-run
+
+      - name: Run unit tests
+        run: |
+          cargo test --all-features
+        env:
+          RUST_BACKTRACE: 1
+
+  package:
+    runs-on: ubuntu-latest
+    environment: Oxidation
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Install Rust
+        uses: hecrj/setup-rust-action@v1
+
+      - name: Build 
+        run: |
+          cargo build --bin cosmciverge --release
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: cosmicverge
+          path: target/release/cosmicverge
+
+  deploy:
+    runs-on: ubuntu-latest
+    environment: Oxidation
+    timeout-minutes: 30
+    needs: [package, test]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/download-artifact@v2
+        with:
+          name: cosmicverge
+      
+      - name: Gather artifacts 
+        run: |
+          mkdir release
+          chmod +x cosmicverge
+          mv cosmicverge release/
+          cp -r static/ release/
+
+      - name: Configure SSH 
+        run: |
+          mkdir ~/.ssh
+          chmod 0700 ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 0600 ~/.ssh/deploy_key
+          ssh-keyscan -H cosmicverge.com ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          
+      - name: Deploy
+        run: |
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key" release/ cosmicverge@cosmicverge.com:cosmicverge/
+          ssh -i ~/.ssh/deploy_key cosmicverge@cosmicverge.com sudo /usr/bin/systemctl restart cosmicverge.service

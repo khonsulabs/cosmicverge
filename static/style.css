@@ -1,0 +1,26 @@
+body {
+    background-color: #0B042F;
+    color: #D7D0FB;
+    max-width: 800px;
+    margin: 0 auto;
+    font-family: "Jura", sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #BD2828;
+    font-family: "Orbitron", sans-serif;
+}
+
+a, a:visited, a:active {
+    color: #EC3E13;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.footer {
+    text-align: center;
+    font-size: smaller;
+}
