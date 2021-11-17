@@ -350,7 +350,7 @@ dependencies = [
 [[package]]
 name = "bonsaidb"
 version = "0.1.0-dev.4"
-source = "git+https://github.com/khonsulabs/bonsaidb.git#ee161868dd826e87663c32a158d55420320e9c3f"
+source = "git+https://github.com/khonsulabs/bonsaidb.git#c1cc64443158b3ba69df3ce4303a577ba1e25d5b"
 dependencies = [
  "bonsaidb-core",
  "bonsaidb-server",
@@ -359,7 +359,7 @@ dependencies = [
 [[package]]
 name = "bonsaidb-core"
 version = "0.1.0-dev.4"
-source = "git+https://github.com/khonsulabs/bonsaidb.git#ee161868dd826e87663c32a158d55420320e9c3f"
+source = "git+https://github.com/khonsulabs/bonsaidb.git#c1cc64443158b3ba69df3ce4303a577ba1e25d5b"
 dependencies = [
  "actionable",
  "async-trait",
@@ -378,7 +378,7 @@ dependencies = [
 [[package]]
 name = "bonsaidb-local"
 version = "0.1.0-dev.4"
-source = "git+https://github.com/khonsulabs/bonsaidb.git#ee161868dd826e87663c32a158d55420320e9c3f"
+source = "git+https://github.com/khonsulabs/bonsaidb.git#c1cc64443158b3ba69df3ce4303a577ba1e25d5b"
 dependencies = [
  "async-trait",
  "bincode",
@@ -407,7 +407,7 @@ dependencies = [
 [[package]]
 name = "bonsaidb-macros"
 version = "0.1.0-dev.4"
-source = "git+https://github.com/khonsulabs/bonsaidb.git#ee161868dd826e87663c32a158d55420320e9c3f"
+source = "git+https://github.com/khonsulabs/bonsaidb.git#c1cc64443158b3ba69df3ce4303a577ba1e25d5b"
 dependencies = [
  "proc-macro-error",
  "quote",
@@ -417,7 +417,7 @@ dependencies = [
 [[package]]
 name = "bonsaidb-server"
 version = "0.1.0-dev.4"
-source = "git+https://github.com/khonsulabs/bonsaidb.git#ee161868dd826e87663c32a158d55420320e9c3f"
+source = "git+https://github.com/khonsulabs/bonsaidb.git#c1cc64443158b3ba69df3ce4303a577ba1e25d5b"
 dependencies = [
  "actionable",
  "async-acme",
@@ -551,7 +551,7 @@ dependencies = [
 [[package]]
 name = "circulate"
 version = "0.1.0"
-source = "git+https://github.com/khonsulabs/bonsaidb.git#ee161868dd826e87663c32a158d55420320e9c3f"
+source = "git+https://github.com/khonsulabs/bonsaidb.git#c1cc64443158b3ba69df3ce4303a577ba1e25d5b"
 dependencies = [
  "async-lock",
  "flume",
