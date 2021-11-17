@@ -350,7 +350,7 @@ dependencies = [
 [[package]]
 name = "bonsaidb"
 version = "0.1.0-dev.4"
-source = "git+https://github.com/khonsulabs/bonsaidb.git#c1cc64443158b3ba69df3ce4303a577ba1e25d5b"
+source = "git+https://github.com/khonsulabs/bonsaidb.git#1ac93e4055279a58b43291f117411c30734847cc"
 dependencies = [
  "bonsaidb-core",
  "bonsaidb-server",
@@ -359,7 +359,7 @@ dependencies = [
 [[package]]
 name = "bonsaidb-core"
 version = "0.1.0-dev.4"
-source = "git+https://github.com/khonsulabs/bonsaidb.git#c1cc64443158b3ba69df3ce4303a577ba1e25d5b"
+source = "git+https://github.com/khonsulabs/bonsaidb.git#1ac93e4055279a58b43291f117411c30734847cc"
 dependencies = [
  "actionable",
  "async-trait",
@@ -378,7 +378,7 @@ dependencies = [
 [[package]]
 name = "bonsaidb-local"
 version = "0.1.0-dev.4"
-source = "git+https://github.com/khonsulabs/bonsaidb.git#c1cc64443158b3ba69df3ce4303a577ba1e25d5b"
+source = "git+https://github.com/khonsulabs/bonsaidb.git#1ac93e4055279a58b43291f117411c30734847cc"
 dependencies = [
  "async-trait",
  "bincode",
@@ -407,7 +407,7 @@ dependencies = [
 [[package]]
 name = "bonsaidb-macros"
 version = "0.1.0-dev.4"
-source = "git+https://github.com/khonsulabs/bonsaidb.git#c1cc64443158b3ba69df3ce4303a577ba1e25d5b"
+source = "git+https://github.com/khonsulabs/bonsaidb.git#1ac93e4055279a58b43291f117411c30734847cc"
 dependencies = [
  "proc-macro-error",
  "quote",
@@ -417,7 +417,7 @@ dependencies = [
 [[package]]
 name = "bonsaidb-server"
 version = "0.1.0-dev.4"
-source = "git+https://github.com/khonsulabs/bonsaidb.git#c1cc64443158b3ba69df3ce4303a577ba1e25d5b"
+source = "git+https://github.com/khonsulabs/bonsaidb.git#1ac93e4055279a58b43291f117411c30734847cc"
 dependencies = [
  "actionable",
  "async-acme",
@@ -551,7 +551,7 @@ dependencies = [
 [[package]]
 name = "circulate"
 version = "0.1.0"
-source = "git+https://github.com/khonsulabs/bonsaidb.git#c1cc64443158b3ba69df3ce4303a577ba1e25d5b"
+source = "git+https://github.com/khonsulabs/bonsaidb.git#1ac93e4055279a58b43291f117411c30734847cc"
 dependencies = [
  "async-lock",
  "flume",
@@ -2188,9 +2188,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.70"
+version = "1.0.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e277c495ac6cd1a01a58d0a0c574568b4d1ddf14f59965c6a58b8d96400b54f3"
+checksum = "063bf466a64011ac24040a49009724ee60a57da1b437617ceb32e53ad61bfb19"
 dependencies = [
  "itoa",
  "ryu",

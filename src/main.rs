@@ -1,30 +1,27 @@
-//! Shows how to use the axum web framework with BonsaiDb. Any hyper-compatible
-//! framework should be usable.
-
 use std::path::Path;
 
 use async_trait::async_trait;
 use axum::{error_handling::HandleErrorExt, routing::service_method_routing::get, Router};
 use bonsaidb::server::{
-    AcmeConfiguration, Backend, Configuration, CustomServer, DefaultPermissions, NoDispatcher,
+    AcmeConfiguration, Configuration, DefaultPermissions, Peer, Server, StandardTcpProtocols,
+    TcpService,
 };
 use hyper::{server::conn::Http, StatusCode};
 use tower_http::services::ServeDir;
 
-/// The `AxumBackend` implements `Backend` and overrides
-/// `handle_http_connection` by serving the response using
-/// [`axum`](https://github.com/tokio-rs/axum).
-#[derive(Debug)]
-pub struct AxumBackend;
+#[derive(Debug, Clone)]
+pub struct Website;
 
 #[async_trait]
-impl Backend for AxumBackend {
-    async fn handle_http_connection<
+impl TcpService for Website {
+    type ApplicationProtocols = StandardTcpProtocols;
+
+    async fn handle_connection<
         S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
     >(
+        &self,
         connection: S,
-        peer_address: std::net::SocketAddr,
-        _server: &CustomServer<Self>,
+        peer: &Peer<Self::ApplicationProtocols>,
     ) -> Result<(), S> {
         let app = Router::new().nest(
             "/",
@@ -37,15 +34,11 @@ impl Backend for AxumBackend {
         );
 
         if let Err(err) = Http::new().serve_connection(connection, app).await {
-            log::error!("[http] error serving {}: {:?}", peer_address, err);
+            log::error!("[http] error serving {}: {:?}", peer.address, err);
         }
 
         Ok(())
     }
-
-    type CustomApi = ();
-    type CustomApiDispatcher = NoDispatcher<Self>;
-    type ClientData = ();
 }
 
 #[cfg(debug_assertions)]
@@ -59,7 +52,7 @@ const HTTPS_LISTEN: &str = ":::443";
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     env_logger::init();
-    let server = CustomServer::<AxumBackend>::open(
+    let server = Server::open(
         Path::new("cosmicverge.bonsaidb"),
         Configuration {
             server_name: String::from("cosmicverge.com"),
@@ -74,11 +67,15 @@ async fn main() -> anyhow::Result<()> {
     .await?;
 
     let task_server = server.clone();
-    tokio::spawn(async move { task_server.listen_for_http_on(HTTP_LISTEN).await });
+    tokio::spawn(async move { task_server.listen_for_tcp_on(HTTP_LISTEN, Website).await });
     #[cfg(not(debug_assertions))]
     {
         let task_server = server.clone();
-        tokio::spawn(async move { task_server.listen_for_https_on(HTTPS_LISTEN).await });
+        tokio::spawn(async move {
+            task_server
+                .listen_for_secure_tcp_on(HTTPS_LISTEN, Website)
+                .await
+        });
     }
 
     server.listen_for_shutdown().await?;
