@@ -15,58 +15,71 @@
 </head>
 
 <body>
-    <h1>Cosmic Verge</h1>
-    <img src="/prototype.png" width="800" />
-    <p>On February 13, 2021, a very early prototype of Cosmic Verge was shown off at the Rust GameDev Meetup. It was a
-        WASM app written in Rust powered by a Rust server.</p>
-    <p>The prototype had several limitations worth noting:</p>
-    <ul>
-        <li>It relied on PostgreSQL and Redis, both which aren't easy to deploy in a truly highly-available fashion.
-        </li>
-        <li>The design didn't allow for "load balancing" star systems, which meant that the database clusters would
-            become bottlenecks.</li>
-        <li>It used WebSockets only, which isn't a great approach for a networked game.</li>
-    </ul>
-    <p>When a second contributor joined, we began in earnest discussing our ideal approach to developing this game. With
-        a second passionate Rustacean onboard, we began hatcing ambitious plans.</p>
-    <p>The fallout from these plans is that Cosmic Verge is on hold for now. This page is being served by <a
-            href="https://github.com/khonsulabs/bonsaidb">BonsaiDb</a>, the database engine we're writing to replace
-        PostgreSQL and Redis in this game's architecture. If we begin working on Cosmic Verge again, it will be built
-        atop <a href="https://github.com/khonsulabs/ncog">Ncog</a> -- our vision of a programmable, privacy-first
-        communication and collaboration platform.</p>
-    <p>If our ambitious vision is exciting to you, and you are a Rustacean or
-        are looking to learn Rust, we'd love to hear from you on <a href="https://community.khonsulabs.com">our
-            forums</a>, <a href="https://discord.khonsulabs.com">our Discord</a>, or via the issues
-        tracker on whatever project interests you most.</p>
-    <h3>Projects Related to Cosmic Verge</h3>
-    <ul>
-        <li><a href="https://github.com/khonsulabs/bonsaidb">BonsaiDb</a>: A developer-friendly database that grows with
-            you.
-            <ul>
-                <li><a href="https://github.com/khonsulabs/actionable">Actionable</a>: A permissions-driven enum
-                    dispatching framework.</li>
-                <li><a href="https://github.com/khonsulabs/nebari">Nebari</a>:
-                    An ACID-compliant transactional key-value database implemented
-                    with an append-only file format.</li>
-                <li><a href="https://github.com/khonsulabs/custodian">Custodian</a>: Manage secrets and passwords
-                    securely.</li>
-                <li><a href="https://github.com/khonsulabs/fabruic">Fabruic</a>: A networking library abstraction with
-                    the aim of supporting both reliable, ordered and unreliable, unordered data delivery both inside and
-                    outside of the web browser. Utilizes QUIC, and eventually WebRTC.</li>
-            </ul>
-        </li>
-        <li><a href="https://github.com/khonsulabs/gooey">Gooey</a>: A GUI framework targeting native applications
-            through wgpu and browsers via the DOM.
-            <ul>
-                <li><a href="https://github.com/khonsulabs/kludgine">Kludgine</a>: A 2d rendering and windowing library
-                    with multi-window support.</li>
-                <li><a href="https://github.com/khonsulabs/easygpu">EasyGPU</a>:
-                    A wrapper around wgpu that provides some API conveniences.</li>
-                <li><a href="https://github.com/khonsulabs/figures">Figures</a>: A 2d math library that uses the Rust
-                    type system to prevent errors when dealing with scaled displays.</li>
-            </ul>
-        </li>
-    </ul>
+    <div class="content">
+        <h1>Cosmic Verge</h1>
+        <img src="/prototype.png" width="800" />
+        <p>On February 13, 2021, a very early prototype of Cosmic Verge was
+            shown off at the Rust GameDev Meetup. It was a WASM app written in Rust
+            powered by a Rust server.</p>
+        <p>The prototype had several limitations worth noting:</p>
+        <ul>
+            <li>It relied on PostgreSQL and Redis, both which aren't easy to deploy in a truly highly-available fashion.
+            </li>
+            <li>The design didn't allow for "load balancing" star systems, which meant that the database clusters would
+                become bottlenecks.</li>
+            <li>It used WebSockets only, which isn't a great approach for a networked game.</li>
+        </ul>
+        <p>When a second contributor joined, we began designing our ideal
+            approach to developing this game. With a second passionate Rustacean
+            onboard, we began hatcing ambitious plans.</p>
+        <p>The fallout from these plans is that Cosmic Verge is on hold for now.
+            This page is being served by <a href="https://github.com/khonsulabs/bonsaidb">BonsaiDb</a>, the database
+            engine we're writing to replace PostgreSQL and Redis in this game's
+            architecture. If we begin working on Cosmic Verge again, it will be
+            built atop <a href="https://github.com/khonsulabs/ncog">Ncog</a> -- our
+            vision of a programmable, privacy-first communication and collaboration
+            platform.</p>
+        <p>If our ambitious vision is exciting to you, and you are a Rustacean
+            or are looking to learn Rust, we'd love to hear from you on <a href="https://community.khonsulabs.com">our
+                forums</a>, <a href="https://discord.khonsulabs.com">our Discord</a>, or via the issues
+            tracker on whatever project interests you most.</p>
+        <h3>Projects Related to Cosmic Verge</h3>
+        <ul>
+            <li><a href="https://github.com/khonsulabs/bonsaidb">BonsaiDb</a>: A developer-friendly database that grows
+                with
+                you.
+                <ul>
+                    <li><a href="https://github.com/khonsulabs/actionable">Actionable</a>:
+                        A permissions-driven enum dispatching framework.</li>
+                    <li><a href="https://github.com/khonsulabs/custodian">Custodian</a>:
+                        Manage secrets and passwords securely.</li>
+                    <li><a href="https://github.com/khonsulabs/fabruic">Fabruic</a>: A
+                        networking library abstraction with the aim of supporting
+                        both reliable, ordered and unreliable, unordered data
+                        delivery both inside and outside of the web browser.
+                        Utilizes QUIC, and eventually WebRTC.</li>
+                    <li><a href="https://github.com/khonsulabs/nebari">Nebari</a>: An
+                        ACID-compliant transactional key-value database implemented
+                        with an append-only file format.</li>
+                </ul>
+            </li>
+            <li><a href="https://github.com/khonsulabs/gooey">Gooey</a>: A GUI
+                framework targeting native applications through wgpu and browsers
+                via the DOM.
+                <ul>
+                    <li><a href="https://github.com/khonsulabs/easygpu">EasyGPU</a>: A
+                        wrapper around wgpu that provides some API
+                        conveniences.</li>
+                    <li><a href="https://github.com/khonsulabs/figures">Figures</a>: A
+                        2d math library that uses the Rust type system to prevent
+                        errors when dealing with scaled displays.</li>
+                    <li><a href="https://github.com/khonsulabs/kludgine">Kludgine</a>:
+                        A 2d rendering and windowing library with multi-window
+                        support.</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
     <br>
     <br>
     <p class="footer">&copy; 2021 <a href="https://khonsulabs.com/">Khonsu Labs LLC</a></p>
