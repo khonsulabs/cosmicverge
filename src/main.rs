@@ -80,7 +80,7 @@ async fn redirect_to_https(req: hyper::Request<Body>) -> hyper::Response<Body> {
 const HTTP_LISTEN: &str = ":::8080";
 
 #[cfg(not(debug_assertions))]
-const HTTP_LISTEN: &str = ":::8080";
+const HTTP_LISTEN: &str = ":::80";
 #[cfg(not(debug_assertions))]
 const HTTPS_LISTEN: &str = ":::443";
 
