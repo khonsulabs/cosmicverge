@@ -1,0 +1,14 @@
+[Unit]
+Description=Cosmic Verge
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/authbind ./cosmicverge
+WorkingDirectory=/home/cosmicverge/cosmicverge
+User=cosmicverge
+Group=cosmicverge
+Restart=on-failure
+RestartSec=300s
+
+[Install]
+WantedBy=multi-user.target
